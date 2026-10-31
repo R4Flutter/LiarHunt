@@ -20,9 +20,6 @@ window.WL_CONFIG = {
   // If you change it, change the same date in firebase/firestore.rules too.
   launchDate: "2026-10-26",
 
-  // Contact email shown on the privacy page.
-  contactEmail: "hello@whoslying.example",
-
   audio: {
     // Background music and sound effect volume, from 0 to 1.
     musicVolume: 0.32,

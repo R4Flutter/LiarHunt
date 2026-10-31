@@ -1004,7 +1004,8 @@ html:not(.game) main { flex: 1; padding-block: 24px 40px; }
 .empty { background: var(--surface); border: 2px dashed var(--grid-strong); border-radius: var(--r); padding: 18px; display: grid; gap: 10px; }
 .prose { display: grid; gap: 12px; max-width: 65ch; }
 .prose h2 { margin: 12px 0 0; font-family: var(--display); font-weight: 800; font-size: var(--s2); line-height: 1; }
-.prose ul { margin: 0; }
+.prose ul, .prose ol { margin: 0; }
+.prose h3 { margin: 4px 0 0; font-size: var(--s1); line-height: 1.25; }
 .prose li + li { margin-top: 4px; }
 .foot { padding-block: 18px calc(22px + env(safe-area-inset-bottom, 0px)); border-top: 2px solid var(--ink); display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: var(--s-1); color: var(--pencil); }
 .foot a { color: var(--pencil); }
