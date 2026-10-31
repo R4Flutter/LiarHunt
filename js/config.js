@@ -57,7 +57,7 @@ window.WL_CONFIG = {
     provider: "none",
 
     // Your AdSense publisher ID, like "ca-pub-1234567890123456".
-    adsenseClient: "ca-pub-0000000000000000",
+    adsenseClient: "ca-pub-5463912491137261",
 
     // Keep true while testing. Set to false once Google approves you for H5 Games Ads.
     adsenseTestMode: true,
