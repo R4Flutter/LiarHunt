@@ -952,8 +952,23 @@ textarea.field { resize: vertical; min-height: 3.4rem; line-height: 1.4; font-si
 .w-proof { display: grid; gap: 0.25rem; }
 .w-check span { font-weight: 400; }
 .w-check span:empty::before { content: "(write the fact first)"; color: var(--pencil); }
-.mode-tile.write { grid-column: 1 / -1; }
 .mode-tile.write .mode-ico { background: var(--needle); color: var(--needle-ink); }
+.mode-tile.room .mode-ico { background: var(--ok); color: var(--surface); }
+
+/* ---------- live rooms ---------- */
+.room-code { display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; flex-wrap: wrap; border: 2px dashed var(--ink); border-radius: var(--r); padding: 0.6rem 0.8rem; background: var(--surface); }
+.room-code:empty { display: none; }
+.room-code-big { font-family: var(--display); font-weight: 900; font-size: 2.2rem; letter-spacing: 0.12em; line-height: 1; }
+.room-players { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
+.room-players li { display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto auto; gap: 0.6rem; align-items: center; border: 2px solid var(--grid-strong); border-radius: var(--r); background: var(--surface); padding: 0.45rem 0.7rem; }
+.room-players li.me { border-color: var(--ink); box-shadow: 0 2px 0 var(--ink); }
+.room-players li.win { border-color: var(--gold); box-shadow: 0 2px 0 var(--gold); }
+.rm-rank { font-family: var(--display); font-weight: 900; font-size: 1.3rem; text-align: center; }
+.rm-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rm-name em { font-style: normal; font-weight: 400; color: var(--pencil); font-size: var(--s-1); }
+.rm-mark { font-size: var(--s-1); font-weight: 700; white-space: nowrap; }
+.rm-mark.ok { color: var(--ok); } .rm-mark.no { color: var(--needle); } .rm-mark.wait { color: var(--pencil); }
+.rm-score { font-family: var(--display); font-weight: 900; font-size: 1.3rem; font-variant-numeric: tabular-nums; min-width: 2.5ch; text-align: right; }
 
 /* ---------- progress backup ---------- */
 .cloud-box { border: 2px dashed var(--grid-strong); border-radius: var(--r); padding: 0.7rem 0.8rem; display: grid; gap: 0.5rem; }
@@ -986,6 +1001,199 @@ textarea.field { resize: vertical; min-height: 3.4rem; line-height: 1.4; font-si
 .board-row.up { box-shadow: inset 4px 0 0 var(--ok); }
 .board-row.down { box-shadow: inset 4px 0 0 var(--needle); }
 .board-row.waiting { color: var(--pencil); }
+
+/* ---------- case board: pins, red string, notes ----------
+   The board's colours come from each theme's own tokens, so every desk theme gets its own cork. */
+:root {
+  --cork: color-mix(in srgb, var(--tag), var(--ink) 16%);
+  --cork-fleck: color-mix(in srgb, var(--ink) 22%, transparent);
+  --cork-glint: color-mix(in srgb, var(--paper) 35%, transparent);
+  --frame: color-mix(in srgb, var(--cork), #000 38%);
+  --shade: rgba(0, 0, 0, 0.26);
+  --pin-head: radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.8) 0 13%, transparent 32%);
+}
+html.game body {
+  background-image:
+    radial-gradient(ellipse 130% 90% at 50% 0%, transparent 55%, color-mix(in srgb, var(--ink) 8%, transparent)),
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 100% 100%, 24px 24px, 24px 24px;
+  background-position: 0 0, -1px -1px, -1px -1px;
+}
+.case-head { display: grid; gap: 0.5rem; position: relative; }
+/* facts are evidence tags held by a red pin, with a soft shadow under the tag */
+.clues li { filter: drop-shadow(0 2px 1.5px var(--shade)); }
+.clue::before {
+  left: 0.74rem; width: 0.72rem; height: 0.72rem; margin-top: -0.36rem;
+  background: var(--pin-head), var(--needle); box-shadow: none;
+}
+.clue.ticked::before { background: var(--pin-head), var(--ok); }
+/* Rush "Fog" stage: the fact stays blurred until you tap it */
+.clue.fogged { color: transparent; text-shadow: 0 0 0.55rem var(--tag-ink); }
+.clue.fogged::after {
+  content: "Tap to read"; position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%);
+  font-size: 0.75rem; font-weight: 700; color: var(--tag); background: var(--tag-ink); text-shadow: none; padding: 0.05rem 0.5rem; border-radius: 99px;
+}
+/* the red string, drawn over the board in an SVG */
+.strings { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: visible; }
+.str { fill: none; stroke: var(--needle); stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: strdraw 0.42s ease-out forwards; }
+.str-shade { fill: none; stroke: var(--shade); stroke-width: 3; transform: translate(1.5px, 3px); }
+.knot { fill: var(--needle); stroke: color-mix(in srgb, var(--needle), #000 35%); stroke-width: 1; }
+.thread.off { opacity: 0.35; }
+@keyframes strdraw { to { stroke-dashoffset: 0; } }
+/* notebook: a note on each suspect, top right of the card */
+.suspect-wrap { position: relative; }
+.suspect-wrap .suspect { padding-right: calc(max(2.5rem, 38px) + 0.7rem); }
+.note-btn {
+  position: absolute; top: calc(50% - max(1.25rem, 19px)); right: 0.4rem; z-index: 4;
+  width: max(2.5rem, 38px); height: max(2.5rem, 38px); border-radius: 50%; display: grid; place-items: center; padding: 0;
+  border: 2px dashed var(--grid-strong); background: var(--surface); color: var(--pencil); cursor: pointer;
+  font-family: var(--display); font-weight: 900; font-size: 1.3rem; line-height: 1;
+  transition: transform 0.12s ease, background-color 0.12s ease;
+}
+.note-btn svg { width: 1.05rem; height: 1.05rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.note-btn:hover { border-color: var(--ink); color: var(--ink); }
+.note-btn:active { transform: scale(0.9); }
+.note-btn.ok { background: var(--ok); border: 2px solid var(--ok); color: var(--surface); }
+.note-btn.sus { background: var(--needle); border: 2px solid var(--needle); color: var(--needle-ink); }
+.suspect.note-ok:not(.is-picked) { box-shadow: inset 5px 0 0 var(--ok); }
+.suspect.note-ok .says { color: var(--pencil); }
+.suspect.note-sus:not(.is-picked) { box-shadow: inset 5px 0 0 var(--needle); }
+/* Rush: a new stage and its rule */
+.stage-card {
+  position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px; cursor: pointer;
+  background: color-mix(in srgb, var(--paper) 60%, transparent); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+}
+.stage-in {
+  width: min(24rem, 100%); display: grid; gap: 0.25rem; text-align: center; padding: 1.1rem 1.4rem 1rem;
+  background: var(--ink); color: var(--paper); border-radius: 14px; transform: rotate(-2deg);
+  box-shadow: 0 5px 0 var(--needle), 0 22px 50px rgba(0, 0, 0, 0.35);
+  animation: stagein 0.45s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+@keyframes stagein { from { transform: rotate(-8deg) scale(0.6); opacity: 0; } to { transform: rotate(-2deg); opacity: 1; } }
+.stage-n { font-weight: 700; opacity: 0.75; }
+.stage-name { font-family: var(--display); font-weight: 900; font-size: 3rem; line-height: 0.95; }
+.stage-text { font-weight: 700; line-height: 1.35; }
+.stage-tap { font-size: var(--s-1); opacity: 0.65; margin-top: 0.35rem; }
+/* career story lines */
+.career-story, .chapter-story { color: var(--pencil); font-size: var(--s-1); line-height: 1.45; max-width: 62ch; text-wrap: pretty; }
+.career-story { margin-top: -0.25rem; }
+.story-beat { border-left: 4px solid var(--gold); padding: 0.1rem 0 0.1rem 0.75rem; line-height: 1.45; font-style: italic; }
+/* career track: the cases hang on one thread */
+.career-card .nodes { background: linear-gradient(var(--grid-strong), var(--grid-strong)) center / 100% 2px no-repeat; }
+/* HQ: today's Daily is a case folder, with a tab and, once done, a rubber stamp */
+.today-card { overflow: visible; margin-top: 1.25rem; }
+.today-card .card-trace { border-radius: calc(var(--r) - 2px) calc(var(--r) - 2px) 0 0; }
+.folder-tab {
+  position: absolute; left: 0.9rem; top: calc(-1.7rem + 2px); height: 1.7rem; z-index: 1;
+  display: inline-flex; align-items: center; padding: 0.1rem 0.9rem 0; white-space: nowrap;
+  background: var(--surface); border: 2px solid var(--ink); border-bottom: 0; border-radius: 10px 10px 0 0;
+  font-family: var(--display); font-weight: 800; font-size: 1.05rem; letter-spacing: 0.02em;
+}
+.folder-stamp { top: 5.1rem; right: 1rem; font-size: 2rem; }
+
+/* ---------- HQ: the player card opens the profile ---------- */
+.player-open {
+  flex: 1; min-width: 0; display: flex; gap: 0.9rem; align-items: center; text-align: left; cursor: pointer;
+  background: none; border: 0; color: inherit; font: inherit;
+  padding: 0.35rem 0.5rem 0.35rem 0.35rem; margin: -0.35rem 0 -0.35rem -0.35rem; border-radius: var(--r);
+  transition: background-color 0.12s ease;
+}
+.player-open:hover { background: color-mix(in srgb, var(--surface) 75%, transparent); }
+.player-title, .xp-text, .xpbar { display: block; }
+.name-hint {
+  flex: none; font-family: var(--body); font-size: 0.72rem; font-weight: 700; line-height: 1.3; letter-spacing: 0;
+  color: var(--needle); border: 1.5px dashed var(--needle); border-radius: 99px; padding: 0.05rem 0.5rem; margin-left: 0.15rem;
+}
+/* profile: an ID card */
+.profile-dlg { width: min(34rem, calc(100% - 28px)); }
+.id-card {
+  position: relative; display: grid; grid-template-columns: 5.2rem minmax(0, 1fr) auto; gap: 0.9rem; align-items: center;
+  margin-top: 0.3rem; padding: 1.15rem 0.95rem 0.95rem; border: 2px solid var(--ink); border-radius: 12px; box-shadow: 0 3px 0 var(--ink);
+  background-color: var(--paper);
+  background-image: repeating-linear-gradient(135deg, transparent 0 11px, color-mix(in srgb, var(--grid) 65%, transparent) 11px 13px);
+  overflow: hidden;
+}
+.id-card::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 0.45rem; background: var(--needle); }
+.id-mug { width: 5.2rem; height: 6rem; }
+.id-main { display: grid; gap: 0.3rem; min-width: 0; }
+.id-main h2 { overflow-wrap: anywhere; }
+.id-title { font-weight: 700; color: var(--pencil); }
+.id-badge svg { display: block; width: 3.6rem; height: auto; }
+.pf-form { display: grid; gap: 0.4rem; }
+.pf-form .field:disabled { opacity: 0.7; }
+.profile-dlg h3 { margin-top: 0.4rem; }
+@media (max-width: 420px) {
+  .id-card { grid-template-columns: 4.3rem minmax(0, 1fr); padding-right: 3.6rem; }
+  .id-mug { width: 4.3rem; height: 5rem; }
+  .id-badge { position: absolute; right: 0.6rem; top: 1rem; }
+  .id-badge svg { width: 2.7rem; }
+}
+/* HUD: an icon for the mode, a ringed back button */
+.hud-title { display: flex; align-items: center; gap: 0.55rem; }
+.hud-text { display: grid; min-width: 0; line-height: 1.05; }
+.hud-ico {
+  flex: none; width: 2.2rem; height: 2.2rem; border-radius: 9px; display: grid; place-items: center;
+  background: var(--ink); color: var(--paper); box-shadow: 0 2px 0 color-mix(in srgb, var(--ink), #000 45%);
+}
+.hud-ico:empty { display: none; }
+.hud-ico svg { width: 1.2rem; height: 1.2rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.hud-ico[data-kind="daily"], .hud-ico[data-kind="replay"], .hud-ico[data-kind="friend"], .hud-ico[data-kind="write"] {
+  background: var(--needle); color: var(--needle-ink); box-shadow: 0 2px 0 color-mix(in srgb, var(--needle), #000 40%);
+}
+.hud-ico[data-kind="rush"], .hud-ico[data-kind="results"], .hud-ico[data-kind="shop"] { background: var(--gold); color: #1b1a17; box-shadow: 0 2px 0 color-mix(in srgb, var(--gold), #000 40%); }
+.hud-ico[data-kind="night"] { background: #3d3f9e; color: #fff; box-shadow: 0 2px 0 #26276b; }
+.hud-ico[data-kind="room"] { background: var(--ok); color: var(--surface); box-shadow: 0 2px 0 color-mix(in srgb, var(--ok), #000 40%); }
+.hud-back { border: 2px solid var(--grid-strong); margin-right: 0.15rem; }
+.hud-back:hover { border-color: var(--ink); background: var(--surface); }
+/* case progress: numbered, with a tick or a cross once played */
+.pips span {
+  width: 1.6rem; height: 1.6rem; border-radius: 7px; border: 2px solid var(--grid-strong); background: var(--surface);
+  display: grid; place-items: center; font-family: var(--display); font-weight: 900; font-size: 0.95rem; line-height: 1; color: var(--pencil);
+}
+.pips span.cell-g { background: var(--ok); }
+.pips span.cell-y { background: var(--hint); }
+.pips span.cell-r { background: var(--needle); }
+.pips span.cell-g, .pips span.cell-y, .pips span.cell-r { border-color: transparent; color: var(--surface); }
+.pips span.now { border-color: var(--needle); color: var(--ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--needle) 22%, transparent); }
+/* missions: progress and reward kept apart, and the chest as a footer with a meter */
+.mission { grid-template-columns: 1.3rem minmax(0, 1fr) auto; gap: 0.7rem; }
+.m-side { gap: 0.45rem; }
+.m-count { color: var(--pencil); font-size: var(--s-1); font-variant-numeric: tabular-nums; }
+.m-reward {
+  display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.05rem 0.55rem 0.05rem 0.35rem; border-radius: 99px;
+  border: 1.5px solid color-mix(in srgb, var(--gold) 55%, transparent); font-family: var(--display); font-weight: 800; font-size: 1.02rem;
+}
+.m-claimed { color: var(--pencil); font-size: var(--s-1); }
+.m-claim { gap: 0.3rem; }
+.chest { justify-content: flex-start; gap: 0.7rem; padding-top: 0.7rem; }
+.chest-ico {
+  flex: none; width: 2.5rem; height: 2.5rem; padding: 0.42rem; border-radius: 10px;
+  background: color-mix(in srgb, var(--gold) 16%, var(--surface)); fill: none; stroke: var(--gold); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+.chest-txt { flex: 1; min-width: 0; display: grid; line-height: 1.25; }
+.chest-txt b { font-weight: 900; }
+.chest-txt span { color: var(--pencil); }
+.chest-meter { flex: none; display: flex; gap: 0.25rem; }
+.chest-meter i { width: 0.95rem; height: 0.95rem; border-radius: 4px; border: 2px solid var(--grid-strong); }
+.chest-meter i.on { background: var(--ok); border-color: var(--ok); }
+.chest.ready .chest-ico { background: var(--gold); stroke: #1b1a17; animation: glow 1.6s ease-in-out infinite; }
+.chest.opened .chest-ico { opacity: 0.55; }
+/* quick links: icon tiles instead of a row of pills */
+.hq-links { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: 0.5rem; }
+.hq-link {
+  display: flex; align-items: center; gap: 0.6rem; min-height: 3.2rem; padding: 0.45rem 0.7rem 0.45rem 0.5rem; text-align: left; cursor: pointer;
+  border: 2px solid var(--grid-strong); border-radius: var(--r); background: var(--surface); color: var(--ink);
+  font-family: var(--display); font-weight: 800; font-size: 1.15rem; line-height: 1.05; letter-spacing: 0.01em;
+  transition: border-color 0.12s ease, transform 0.12s ease;
+}
+.hq-link svg {
+  flex: none; width: 2.1rem; height: 2.1rem; padding: 0.38rem; border-radius: 8px; background: var(--paper);
+  fill: none; stroke: var(--pencil); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.12s ease;
+}
+.hq-link:hover { border-color: var(--ink); transform: translateY(-1px); }
+.hq-link:hover svg { stroke: var(--needle); }
+.hq-link:active { transform: translateY(1px); }
 
 /* ---------- wide screens: 16:9 desktop frames ---------- */
 @media (min-width: 700px) and (min-aspect-ratio: 6/5) {
@@ -1032,6 +1240,55 @@ textarea.field { resize: vertical; min-height: 3.4rem; line-height: 1.4; font-si
   .verdict-stars .st { width: 1.9rem; height: 1.9rem; }
   .why { line-height: 1.35; }
 }
+/* wide screens: the case is a cork board in a wooden frame. Paper is pinned to it, the labels are
+   label-maker tape, and the red string runs from the accused to the proof. */
+@media (min-width: 700px) and (min-aspect-ratio: 6/5) {
+  .case-grid {
+    width: calc(100% - var(--gut) - var(--gutr)); margin: 0.15rem auto 0.6rem; border-radius: 14px;
+    padding: 1.3rem 1.5rem 0.6rem;
+    background-color: var(--cork);
+    background-image:
+      radial-gradient(ellipse at 50% 35%, transparent 50%, rgba(0, 0, 0, 0.2)),
+      radial-gradient(var(--cork-fleck) 0.8px, transparent 1.4px),
+      radial-gradient(var(--cork-glint) 0.8px, transparent 1.5px);
+    background-size: 100% 100%, 9px 9px, 13px 13px;
+    background-position: 0 0, 0 0, 4px 6px;
+    box-shadow: inset 0 0 0 7px var(--frame), inset 0 0 0 9px color-mix(in srgb, var(--frame), #000 35%), inset 0 8px 22px rgba(0, 0, 0, 0.35);
+  }
+  .pane { padding: 0.55rem 0.5rem 0.8rem; }
+  /* the case sheet: paper, pinned at the top */
+  .case-head {
+    background: var(--surface); padding: 0.85rem 1rem 0.95rem; border-radius: 3px; transform: rotate(-0.5deg);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06), 0 10px 18px -8px var(--shade);
+  }
+  .case-head::before, .suspect::before {
+    content: ""; position: absolute; top: -0.42rem; left: 50%; z-index: 3; width: 0.95rem; height: 0.95rem; margin-left: -0.475rem;
+    border-radius: 50%; background: var(--pin-head), var(--needle);
+    box-shadow: 0 3px 3px rgba(0, 0, 0, 0.35), inset 0 -2px 3px rgba(0, 0, 0, 0.25);
+  }
+  /* label-maker tape for the instructions */
+  .pane > .sec, .pane > .task {
+    justify-self: start; margin: 0.35rem 0 0; padding: 0.22rem 0.65rem 0.16rem; border-radius: 3px;
+    background: var(--ink); color: var(--paper); transform: rotate(-0.8deg);
+    font-family: var(--display); font-weight: 800; font-size: 1.15rem; letter-spacing: 0.04em; line-height: 1.1;
+    box-shadow: 0 2px 4px var(--shade);
+  }
+  .pane > .sec.ask { background: var(--needle); color: var(--needle-ink); }
+  .pane-suspects > .task { margin-top: 0.1rem; }
+  .clues { gap: 0.55rem; }
+  .clues li:nth-child(odd) { transform: rotate(-0.6deg); }
+  .clues li:nth-child(even) { transform: rotate(0.45deg) translateX(0.3rem); }
+  /* suspect files, pinned and a little crooked, straightened when you pick one */
+  .suspects { gap: 0.9rem; padding-top: 0.5rem; }
+  .suspect { border-color: transparent; box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06), 0 10px 18px -8px var(--shade); }
+  .suspect-wrap:nth-child(odd) .suspect { transform: rotate(-0.5deg); }
+  .suspect-wrap:nth-child(even) .suspect { transform: rotate(0.6deg); }
+  .suspect-wrap .suspect:hover:not(:disabled), .suspect-wrap .suspect.is-picked { transform: translateY(-2px); }
+  .suspect:hover { border-color: var(--ink); }
+  .suspect.static:hover { border-color: transparent; }
+  .suspect.is-wrong { border-color: var(--grid-strong); }
+  .twist { box-shadow: 0 10px 18px -8px var(--shade); }
+}
 /* phones: facts and suspects should share one screen, so everything on the case is a bit tighter */
 @media (max-width: 699px), (max-aspect-ratio: 6/5) {
   .case-grid { padding-bottom: 1.4rem; gap: 0.6rem; }
@@ -1068,6 +1325,7 @@ html.game .icon-btn, html.game .coins { min-width: 44px; min-height: 44px; }
 @media (hover: none) { .who-key { display: none; } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
+  .str { stroke-dashoffset: 0; }
 }
 
 /* ---------- other pages (past cases, privacy, 404) ---------- */

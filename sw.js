@@ -23,12 +23,13 @@ self.addEventListener("activate", function (e) {
 self.addEventListener("fetch", function (e) {
   var req = e.request, url = new URL(req.url);
   if (req.method !== "GET" || url.origin !== location.origin) return;
+  if (req.headers.has("range")) return; // streamed music asks for byte ranges: the browser handles those itself
   var key = url.origin + url.pathname; // one cache entry per file, whatever the ?query
   var media = /\.(woff2|mp3|png|svg|ico)$/.test(url.pathname);
   e.respondWith(caches.open(CACHE).then(function (c) {
     if (media) {
       return c.match(key).then(function (hit) {
-        return hit || fetch(req).then(function (r) { if (r.ok) c.put(key, r.clone()); return r; });
+        return hit || fetch(req).then(function (r) { if (r.status === 200) c.put(key, r.clone()); return r; });
       });
     }
     // "no-cache" asks the server whether the file changed, so a new release never mixes with old files.

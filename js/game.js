@@ -30,6 +30,7 @@
   var CAUGHT = ["Caught!", "Got them!", "Case closed!", "Nailed it!", "Busted!"];
   var COIN_SVG = '<svg class="coin-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5c0-1.2 1.1-2 2.5-2s2.5.8 2.5 1.8c0 2.4-5 1.6-5 4.2 0 1.1 1.1 2 2.5 2s2.5-.8 2.5-2"/></svg>';
   var AD_SVG = '<svg class="ad-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M10 9.2v5.6l4.8-2.8z" fill="currentColor"/></svg>';
+  var PENCIL_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>';
   var FLAME_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c1 4-3 5.5-3 9.5A3 3 0 0 0 12 15a3 3 0 0 0 3-3.2c0-1.6-1-2.6-1-4.3 2.7 1.4 5 4.6 5 8A7 7 0 0 1 5 15.5C5 9.6 10.5 7.4 12 2z"/></svg>';
 
   var S = null;            // saved state (see progress.js)
@@ -242,7 +243,7 @@
   }
 
   /* ---------- screens + HUD ---------- */
-  var SCREENS = ["hq", "case", "results", "map", "shop", "ach", "files", "week", "write"];
+  var SCREENS = ["hq", "case", "results", "map", "shop", "ach", "files", "week", "write", "room"];
   function show(name) {
     screen = name;
     SCREENS.forEach(function (n) { $("scr-" + n).hidden = n !== name; });
@@ -250,14 +251,33 @@
     $("btn-home").hidden = onHQ;
     $("brand").hidden = !onHQ;
     $("hud-title").hidden = onHQ;
-    if (name !== "case") { Plat.gameplayStop(); hideCoach(); }
+    if (name !== "case") { Plat.gameplayStop(); hideCoach(); $("stage-card").hidden = true; }
     if (onHQ) { gameTrace.stop(); hqTrace.start(); } else if (name === "case") { hqTrace.stop(); gameTrace.start(); } else { hqTrace.stop(); gameTrace.stop(); }
     if (name === "hq" || name === "results") setTimeout(cloudFlush, 0);
     var el = $("scr-" + name);
     el.scrollTop = 0;
     if (name !== "case") $("verdict").hidden = true;
   }
-  function setHud(main, sub) { $("hud-main").textContent = main || ""; $("hud-sub").textContent = sub || ""; }
+  // Each screen (or, on a case, each mode) gets its own small icon next to the title.
+  var CAL_SVG = '<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>';
+  var HUD_ICO = {
+    daily: CAL_SVG, replay: CAL_SVG, results: '<svg viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7"/></svg>',
+    career: '<svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>',
+    rush: '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg>',
+    night: '<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
+    room: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3.5 19.5c0-3.2 2.5-5.5 5.5-5.5s5.5 2.3 5.5 5.5M15 14.2c2.9 0 5.2 1.9 5.2 4.8"/></svg>',
+    friend: PENCIL_SVG, write: PENCIL_SVG,
+    map: '<svg viewBox="0 0 24 24"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>',
+    shop: '<svg viewBox="0 0 24 24"><path d="M5 8h14l-1.2 12H6.2z"/><path d="M9 10V6a3 3 0 0 1 6 0v4"/></svg>',
+    ach: '<svg viewBox="0 0 24 24"><circle cx="12" cy="15" r="5"/><path d="M8.6 10.7L6 3h4l2 4 2-4h4l-2.6 7.7"/></svg>',
+    files: '<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+    week: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M12 12v9"/></svg>'
+  };
+  function setHud(main, sub) {
+    $("hud-main").textContent = main || ""; $("hud-sub").textContent = sub || "";
+    var k = screen === "case" && run ? run.kind : screen;
+    $("hud-ico").innerHTML = HUD_ICO[k] || ""; $("hud-ico").setAttribute("data-kind", k);
+  }
 
   /* ---------- HQ ---------- */
   function playerName() {
@@ -269,6 +289,7 @@
     var li = P.levelInfo(S.xp);
     $("player-badge").innerHTML = FX.badge(li.level, li.tier, 64);
     $("player-name").textContent = playerName();
+    $("name-hint").hidden = !!(myName() || !S.settings.tutorialDone);
     var av = $("player-avatar");
     if (user && user.profilePictureUrl) { av.src = user.profilePictureUrl; av.hidden = false; } else av.hidden = true;
     var nt = P.nextTitle(li.level);
@@ -295,6 +316,7 @@
     var lvl = S.career.level, ch = WL.chapterOf(lvl);
     $("career-chapter").textContent = "Career · Chapter " + ch;
     $("career-name").textContent = WL.chapterName(ch);
+    $("career-story").textContent = WL.chapterStory(ch).intro;
     $("career-nodes").innerHTML = chapterNodes(ch, false);
     var spec = WL.careerSpec(lvl);
     $("btn-play").textContent = (lvl === 1 ? "Start case 1" : "Play case " + lvl) + (spec.mode !== "liar" ? " · Twist" : "");
@@ -302,6 +324,7 @@
     renderMissions();
     $("btn-board").hidden = !lbOn();
     $("btn-friends").hidden = !lbOn();
+    $("tile-room").hidden = !lbOn();
     renderLeagueCard();
     renderBanner();
     renderCoins(false);
@@ -309,7 +332,8 @@
   function renderToday() {
     var d = S.daily && S.daily.day === TODAY ? S.daily : null, streak = dailyStreak();
     var res = d ? d.results : [], done = !!(d && d.done);
-    $("today-eyebrow").textContent = "Daily Case #" + TODAY + " · " + dayName(TODAY);
+    $("today-eyebrow").textContent = WL.formatDate(WL.dateForDay(TODAY));
+    $("today-tab").textContent = "Daily #" + TODAY;
     $("today-cells").hidden = !res.length;
     $("today-cells").innerHTML = res.length ? cells(res, 5) : "";
     var title, sub, btn;
@@ -329,6 +353,10 @@
     $("today-title").textContent = title;
     $("today-sub").innerHTML = sub;
     $("btn-daily").textContent = btn;
+    // a finished day gets the precinct's rubber stamp (added once, so it doesn't re-stamp every minute)
+    var tc = $("today-card"), st0 = tc.querySelector(".folder-stamp");
+    if (done && !st0) tc.insertAdjacentHTML("beforeend", '<span class="stamp folder-stamp" aria-hidden="true">Closed</span>');
+    if (!done && st0) st0.remove();
     $("btn-daily").className = "btn big wide " + (done ? "ghost" : "danger");
     var meta = [], st = S.lb.stand && S.lb.stand.day === TODAY ? S.lb.stand : null;
     if (done && st && st.total >= RANK_MIN) meta.push("🏆 #" + st.rank + " of " + st.total + " today");
@@ -485,18 +513,20 @@
     var ms = P.ensureMissions();
     $("mission-list").innerHTML = ms.list.map(function (m, i) {
       var done = m.progress >= m.target;
-      var side = m.claimed ? '<span class="muted">Claimed</span>'
-        : done ? '<button class="btn small primary" type="button" data-claim="' + i + '">Claim ' + m.reward + "</button>"
-        : '<span>' + COIN_SVG + m.reward + "</span>";
+      var side = m.claimed ? '<span class="m-claimed">Claimed</span>'
+        : done ? '<button class="btn small primary m-claim" type="button" data-claim="' + i + '">' + COIN_SVG + "Claim " + m.reward + "</button>"
+        : '<span class="m-count">' + m.progress + "/" + m.target + '</span><span class="m-reward">' + COIN_SVG + m.reward + "</span>";
       return '<li class="mission' + (done ? " done" : "") + (m.claimed ? " claimed" : "") + '"><span class="m-check"></span>' +
         '<span class="m-body"><span class="m-text">' + esc(P.missionText(m)) + '</span><span class="m-bar"><span style="width:' +
-        Math.round((m.progress / m.target) * 100) + '%"></span></span></span><span class="m-side">' +
-        (done ? "" : '<span class="muted">' + m.progress + "/" + m.target + "</span>&nbsp;") + side + "</span></li>";
+        Math.round((m.progress / m.target) * 100) + '%"></span></span></span><span class="m-side">' + side + "</span></li>";
     }).join("");
-    var chest = $("chest");
-    if (ms.chest) chest.innerHTML = '<span>All missions done for today. New ones tomorrow.</span>';
-    else if (P.chestReady()) chest.innerHTML = '<span><b>Mission chest</b> ' + P.CHEST.coins + ' coins + a Magnifier</span><button class="btn small danger" type="button" id="btn-chest">Open</button>';
-    else chest.innerHTML = '<span>Finish all 3 for the <b>mission chest</b>: ' + P.CHEST.coins + " coins + a Magnifier</span>";
+    var chest = $("chest"), ready = P.chestReady(), got = ms.list.filter(function (m) { return m.progress >= m.target; }).length;
+    chest.className = "chest" + (ms.chest ? " opened" : ready ? " ready" : "");
+    chest.innerHTML = '<svg class="chest-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v9H3z"/><path d="M3 12h18M10.5 12v2.5h3V12"/></svg>' +
+      '<span class="chest-txt"><b>' + (ms.chest ? "Chest opened" : "Mission chest") + "</b><span>" +
+      (ms.chest ? "New missions tomorrow." : (ready ? "" : "Finish all 3: ") + P.CHEST.coins + " coins and a Magnifier") + "</span></span>" +
+      (ms.chest ? "" : ready ? '<button class="btn small danger" type="button" id="btn-chest">Open</button>'
+        : '<span class="chest-meter" role="img" aria-label="' + got + ' of 3 missions done">' + ms.list.map(function (m) { return '<i class="' + (m.progress >= m.target ? "on" : "") + '"></i>'; }).join("") + "</span>");
     var now = new Date(), next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1), left = next - now;
     $("missions-reset").textContent = "New in " + Math.floor(left / 3600000) + "h " + Math.floor((left % 3600000) / 60000) + "m";
   }
@@ -520,9 +550,10 @@
     if (run && run.prog) { run.prog.elapsed = run.elapsed; persist(); }
     if (run && (run.kind === "career" || run.kind === "night")) saveMemo();
     if (run && run.kind === "rush" && !run.over) { run.over = true; P.rushEnd(run.score); persist(); }
+    if (room) leaveRoom(); // going back to HQ leaves a live room
     run = null;
     try {
-      var q = location.search.replace(/([?&])(c|g|w|day|restore)=[^&]*&?/g, "$1").replace(/[?&]$/, "");
+      var q = location.search.replace(/([?&])(c|g|w|room|day|restore)=[^&]*&?/g, "$1").replace(/[?&]$/, "");
       if (location.hash || q !== location.search) history.replaceState(null, "", location.pathname + q);
     } catch (e) { /* ignore */ }
     applyTheme();
@@ -637,16 +668,22 @@
   function tick(now) {
     clock.raf = 0;
     var dt = Math.min(250, now - clock.last); clock.last = now;
-    if (clock.running && run && !paused.ad && !paused.hidden && !run.revealed && !run.coachHold && !document.querySelector("dialog[open]")) {
+    if (clock.running && run && !paused.ad && !paused.hidden && !run.revealed && !run.coachHold && !run.hold && !document.querySelector("dialog[open]")) {
       run.caseElapsed += dt;
       if (run.kind === "rush") {
         // one clock for the whole run; catches add time
-        var left = run.time -= dt, sec = Math.ceil(Math.max(0, left) / 1000);
+        var left = run.time -= dt * (rule("fast") ? 1.25 : 1), sec = Math.ceil(Math.max(0, left) / 1000);
         $("rec-time").textContent = WL.fmtTime(sec * 1000);
         $("rec-time").classList.toggle("urgent", left < 10000);
         gameTrace.agit = 0.2 + 0.85 * Math.max(0, 1 - left / 60000);
         if (left < 5500 && sec !== clock.lastTickSec && sec > 0) { clock.lastTickSec = sec; Snd.play("tick"); }
         if (left <= 0) accuse(true);
+      } else if (run.kind === "room") {
+        var rl = run.limit - run.caseElapsed, rs = Math.ceil(Math.max(0, rl) / 1000);
+        $("rec-time").textContent = WL.fmtTime(rs * 1000);
+        $("rec-time").classList.toggle("urgent", rl < 10000);
+        if (rl < 5500 && rs !== clock.lastTickSec && rs > 0) { clock.lastTickSec = rs; Snd.play("tick"); }
+        if (rl <= 0) accuse(true);
       } else if (run.kind === "career" || run.kind === "night" || run.kind === "friend") {
         $("rec-time").textContent = WL.fmtTime(run.caseElapsed);
         if (run.kind === "career") renderStarsLive();
@@ -682,12 +719,14 @@
     WL.track("career_start", { level: n });
     show("case");
     loadCase();
-    // The first case of chapters 2-4 brings a new idea: say what it is (the clock waits while a dialog is open).
-    var ch = WL.chapterOf(n), news = WL.CHAPTER_NEWS[ch];
+    // A new chapter opens with its part of the story, and (chapters 2-4) the new idea it brings.
+    // The clock waits while the dialog is open. Chapter 1 skips it while the tutorial runs.
+    var ch = WL.chapterOf(n), news = WL.CHAPTER_NEWS[ch], story = WL.chapterStory(ch);
     S.career.news = S.career.news || {};
-    if (news && n === S.career.level && (n - 1) % 10 === 0 && !S.career.news[ch]) {
+    if (n === S.career.level && (n - 1) % 10 === 0 && !S.career.news[ch] && (ch > 1 || S.settings.tutorialDone)) {
       S.career.news[ch] = 1; persist();
-      showNotice({ icon: news.icon, eyebrow: "New in chapter " + ch, title: news.title, text: news.text, yes: "Got it" });
+      showNotice({ icon: news ? news.icon : "🗂️", eyebrow: "Chapter " + ch + " · " + WL.chapterName(ch), title: news ? news.title : WL.chapterName(ch),
+        text: esc(story.intro) + (news ? "<br><br><b>New:</b> " + news.text : ""), yes: "Start the chapter" });
     }
   }
   function newProg(day) { return { day: day, results: [], hints: [], elapsed: 0, done: false }; }
@@ -723,12 +762,37 @@
     loadCase();
   }
   var RUSH_START = 60000;
+  /* Rush stages: every 5 cases a new stage starts with one new rule, so a long run keeps changing.
+     Stage 1 has no rule; then the rules take turns. */
+  var RUSH_RULES = [
+    { id: "fast", name: "Fast clock", text: "The clock runs 25% faster." },
+    { id: "fog", name: "Fog", text: "The facts are blurred. Tap a fact to read it." },
+    { id: "nohint", name: "No magnifier", text: "Magnifiers don't work in this stage." },
+    { id: "thin", name: "Thin bonus", text: "Each catch adds half the usual time." }
+  ];
+  function rushStage(n) { return Math.floor((n - 1) / 5) + 1; }
+  function rushRule(n) { var st = rushStage(n); return st > 1 ? RUSH_RULES[(st - 2) % RUSH_RULES.length] : null; }
+  function rule(id) { return !!(run && run.kind === "rush" && run.rule && run.rule.id === id); }
+  // A new stage: show its rule for a moment (the clock waits), then play on. A tap skips it.
+  function stageCard() {
+    var r = run.rule, el = $("stage-card"), keep = run;
+    if (!r) return;
+    $("stage-n").textContent = "Stage " + rushStage(run.n);
+    $("stage-name").textContent = r.name;
+    $("stage-text").textContent = r.text;
+    el.hidden = false; run.hold = true;
+    Snd.play("twist");
+    var done = function () { el.hidden = true; if (run === keep) run.hold = false; clearTimeout(t); el.onclick = null; };
+    var t = setTimeout(done, 2600);
+    el.onclick = done;
+  }
   function startRush() {
     if (!S.endless.rules) { // the first run starts with the rules, so the clock isn't a surprise
       S.endless.rules = true; persist();
       showNotice({ icon: "⏱️", eyebrow: "Rush", title: "Beat the clock", yes: "Start the clock", no: "Not now", onYes: startRush,
         text: "You get <b>60 seconds</b> for the whole run. Every liar you catch, with proof, adds time: more for twists and two-fact proofs. " +
-          "A wrong suspect or a wrong proof costs one of your <b>3 lives</b>. Catch liars in a row for a combo." });
+          "A wrong suspect or a wrong proof costs one of your <b>3 lives</b>. Catch liars in a row for a combo. " +
+          "Every 5 cases a new stage starts with <b>a new rule</b>." });
       return;
     }
     run = {
@@ -742,11 +806,16 @@
   }
   function nextRush() {
     run.n++;
+    run.rule = rushRule(run.n);
     run.c = WL.rushCase(run.rng, run.n, run.avoid);
     rememberSeen(run.avoid);
     loadCase();
+    if (run.n > 1 && (run.n - 1) % 5 === 0) stageCard();
   }
-  function rushBonus(c) { return 8 + (c.mode !== "liar" ? 5 : 0) + ((c.proof || []).length > 1 ? 5 : 0); }
+  function rushBonus(c) {
+    var b = 8 + (c.mode !== "liar" ? 5 : 0) + ((c.proof || []).length > 1 ? 5 : 0);
+    return rule("thin") ? Math.ceil(b / 2) : b;
+  }
   /* What Rush showed you lately (facts, lines, openers, names), kept in the save so the next run starts with something else. */
   function seenAvoid() {
     var a = WL.newAvoid(), s = S.seen || {};
@@ -769,6 +838,8 @@
     $("actionbar").hidden = false;
     renderCase(c);
     var m = memo().get(); // a case left half-way: same mistakes, hint and clock as before the reload
+    // ...but only for the same case: an update can change a generated case, and old taps must not land on new suspects
+    if (m && (m.t ? m.t !== c.title : run.kind === "career")) m = null;
     if (m) {
       run.wrong = m.wrong || 0; run.hint = !!m.hint; run.caseElapsed = m.ms || 0;
       (m.acts || []).forEach(function (a) { act(a, true); });
@@ -780,7 +851,7 @@
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     gameTrace.agit = run.kind === "rush" ? 0.2 : 0.28;
     $("rec-time").classList.remove("urgent", "frozen");
-    $("rec-time").textContent = run.kind === "rush" ? WL.fmtTime(run.time) : run.kind === "career" ? WL.fmtTime(run.caseElapsed) : WL.fmtTime(run.elapsed);
+    $("rec-time").textContent = run.kind === "rush" ? WL.fmtTime(run.time) : run.kind === "room" ? WL.fmtTime(run.limit) : run.kind === "career" ? WL.fmtTime(run.caseElapsed) : WL.fmtTime(run.elapsed);
     $("case-grid").scrollTop = 0;
     [].forEach.call(document.querySelectorAll(".pane"), function (p) { p.scrollTop = 0; });
     if (c.mode !== "liar") Snd.play("twist");
@@ -795,11 +866,14 @@
       setHud("Case " + run.n, "Chapter " + c.spec.chapter + " · " + WL.chapterName(c.spec.chapter));
       $("case-kicker").textContent = (LEVEL[c.level] || "Case") + " · 3 stars under " + WL.fmtTime(c.spec.par * 1000);
     } else if (run.kind === "rush") {
-      setHud("Rush", "Case " + run.n);
+      setHud("Rush", "Case " + run.n + " · " + (run.rule ? run.rule.name : "Stage 1"));
       $("case-kicker").textContent = LEVEL[c.level] || "Case";
     } else if (run.kind === "night") {
       setHud("Night Shift", "Tonight's bonus case");
       $("case-kicker").textContent = (LEVEL[c.level] || "Case") + " · One try";
+    } else if (run.kind === "room") {
+      setHud("Live room", "Case " + run.round + " of " + (room && room.data ? room.data.rounds : 5));
+      $("case-kicker").textContent = (LEVEL[c.level] || "Case") + " · Everyone has the same case · One try";
     } else if (run.kind === "friend") {
       setHud(run.preview ? "Your case" : "A friend's case", run.preview ? "Try it like your friends will" : "Written by " + c.by);
       $("case-kicker").textContent = "Written by " + c.by + " · One try";
@@ -818,22 +892,48 @@
     var ul = $("clues"); ul.innerHTML = "";
     c.clues.forEach(function (txt, i) {
       var li = document.createElement("li"), b = document.createElement("button");
-      b.type = "button"; b.className = "clue"; b.textContent = txt;
+      b.type = "button"; b.className = "clue" + (rule("fog") ? " fogged" : ""); b.textContent = txt;
+      if (rule("fog")) b.setAttribute("aria-description", "Blurred. Tap to read it.");
       b.addEventListener("click", function () { tap("clue", i); });
       li.appendChild(b); ul.appendChild(li);
     });
     var box = $("suspects"); box.innerHTML = "";
+    run.notes = [];
     c.suspects.forEach(function (s, i) {
-      var el = document.createElement("button");
+      var wrap = document.createElement("div"), el = document.createElement("button"), nb = document.createElement("button");
+      wrap.className = "suspect-wrap";
       el.type = "button"; el.className = "suspect";
       el.addEventListener("click", function () { tap("suspect", i); });
       el.innerHTML = '<span class="mug">' + WL.avatar(s.name) + '</span><span class="who"><span class="who-top"><span class="who-name">' + esc(s.name) +
         '</span><span class="who-role">' + esc(s.role) + '</span><span class="who-key" aria-hidden="true">' + (i + 1) + "</span>" +
         '</span><span class="says">' + esc(s.says) + "</span></span>";
-      box.appendChild(el);
+      nb.type = "button"; nb.className = "note-btn";
+      nb.addEventListener("click", function () { noteSuspect(i); });
+      wrap.appendChild(el); wrap.appendChild(nb);
+      box.appendChild(wrap);
     });
     setPhase("pick");
     renderTools();
+  }
+  /* Notebook: tag a suspect while you check their story. Notes only, they never count as an answer. */
+  var NOTES = { "": ["Add a note", PENCIL_SVG], ok: ["Checks out", "✓"], sus: ["Suspicious", "?"] };
+  function noteSuspect(i) {
+    if (!run || run.revealed) return;
+    run.notes[i] = { "": "ok", ok: "sus", sus: "" }[run.notes[i] || ""];
+    Snd.play("tap");
+    renderNotes();
+  }
+  function renderNotes() {
+    var off = run.revealed || run.phase === "proof";
+    [].forEach.call($("suspects").querySelectorAll(".suspect-wrap"), function (w, i) {
+      var n = run.notes[i] || "", el = w.firstChild, nb = w.lastChild, name = run.c.suspects[i].name;
+      el.classList.toggle("note-ok", n === "ok"); el.classList.toggle("note-sus", n === "sus");
+      nb.hidden = off || el.classList.contains("is-wrong") || el.classList.contains("is-out");
+      nb.className = "note-btn" + (n ? " on " + n : "");
+      nb.innerHTML = NOTES[n][1];
+      nb.setAttribute("aria-label", "Your note on " + name + ": " + (n ? NOTES[n][0] : "none") + ". Tap to change it.");
+      nb.title = n ? NOTES[n][0] : "Add a note";
+    });
   }
   function pickKind() { return run.c.mode === "planted" ? "clue" : "suspect"; }
   function proofKind() { return run.c.mode === "planted" ? "suspect" : "clue"; }
@@ -852,12 +952,14 @@
         if (k === on) e.setAttribute("aria-pressed", "false"); else e.removeAttribute("aria-pressed");
       });
     });
+    renderNotes();
     var scr = $("scr-case");
     scr.classList.toggle("proving", p === "proof");
     scr.classList.toggle("planted", c.mode === "planted");
     var ask = p === "proof" && c.mode !== "planted";
     $("facts-h").textContent = ask ? (n > 1 ? "Tap the " + n + " facts that prove it" : "Tap the fact that proves it") : "Facts the police checked";
     $("facts-h").classList.toggle("ask", ask);
+    drawStrings();
     var name = c.mode === "planted" ? "" : c.suspects[c.answer].name;
     $("task").textContent = p === "pick"
       ? (c.mode === "liar" ? "One of them is lying. Tap the liar." : c.mode === "honest" ? "Tap the one person telling the truth." : "Every story is true. Tap the fact that can't be right.")
@@ -867,6 +969,8 @@
   }
   function tap(kind, i) {
     if (!run || run.revealed) return;
+    var fe = kind === "clue" && els("clue")[i];
+    if (fe && fe.classList.contains("fogged")) { fe.classList.remove("fogged"); fe.removeAttribute("aria-description"); Snd.play("tap"); return; }
     if (run.phase === "pick" && kind === "clue" && run.c.mode !== "planted") {
       var f = els("clue")[i], on = f.classList.toggle("ticked");
       f.setAttribute("aria-pressed", on ? "true" : "false");
@@ -895,7 +999,7 @@
   }
   function saveMemo() {
     if (!run || run.revealed) return;
-    memo().set({ v: run.v || 0, wrong: run.wrong || 0, hint: run.hint, ms: Math.round(run.caseElapsed), acts: run.acts });
+    memo().set({ v: run.v || 0, t: run.c.title, wrong: run.wrong || 0, hint: run.hint, ms: Math.round(run.caseElapsed), acts: run.acts });
     persist();
   }
   function act(a, silent) {
@@ -916,14 +1020,15 @@
     }
     el.classList.remove("is-picked");
     el.disabled = true;
+    renderNotes();
   }
   function renderMeta() {
     var k = run.kind;
     $("pips").hidden = !(k === "daily" || k === "replay");
     $("stars-live").hidden = k !== "career";
     $("lives").hidden = k !== "rush";
-    $("replay-tag").hidden = !(k === "replay" || k === "night" || k === "friend" || (k === "career" && run.n < S.career.level && !run.revealed));
-    $("replay-tag").textContent = k === "night" ? "Night Shift" : k === "friend" ? (run.preview ? "Preview" : run.again ? "Again" : "Friend's case") : run.catchup ? "Catch-up" : k === "replay" ? "Practice" : "Replay";
+    $("replay-tag").hidden = !(k === "replay" || k === "night" || k === "friend" || k === "room" || (k === "career" && run.n < S.career.level && !run.revealed));
+    $("replay-tag").textContent = k === "night" ? "Night Shift" : k === "room" ? "Live" : k === "friend" ? (run.preview ? "Preview" : run.again ? "Again" : "Friend's case") : run.catchup ? "Catch-up" : k === "replay" ? "Practice" : "Replay";
     var combo = k === "career" ? S.career.combo : k === "rush" ? run.combo : 0;
     $("combo").hidden = combo < 2;
     $("combo").innerHTML = FLAME_SVG + "×" + combo;
@@ -935,12 +1040,12 @@
     } else if (k === "career") {
       $("rec-left").textContent = "Case " + run.n;
       renderStarsLive(true);
-    } else if (k === "night" || k === "friend") {
-      $("rec-left").textContent = k === "night" ? "Night Shift" : "Friend's case";
+    } else if (k === "night" || k === "friend" || k === "room") {
+      $("rec-left").textContent = k === "night" ? "Night Shift" : k === "room" ? "Case " + run.round : "Friend's case";
     } else {
       var res = run.prog.results;
       $("pips").innerHTML = run.cases.map(function (_, i) {
-        return '<span class="' + (res[i] ? "cell-" + res[i] : i === run.idx ? "now" : "") + '"></span>';
+        return '<span class="' + (res[i] ? "cell-" + res[i] : i === run.idx ? "now" : "") + '">' + (res[i] === "r" ? "✗" : res[i] ? "✓" : i + 1) + "</span>";
       }).join("");
       $("pips").setAttribute("aria-label", "Case " + (Math.min(run.idx, 4) + 1) + " of 5. " + scoreOf(res) + " caught so far.");
       $("rec-left").textContent = "Case " + (Math.min(run.idx, 4) + 1) + " of 5";
@@ -966,7 +1071,7 @@
   /* ---------- power-ups ---------- */
   function hintMode() {
     if (!run || run.revealed || run.hint) return "used";
-    if (run.kind === "friend") return "off"; // a friend's case is played straight
+    if (run.kind === "friend" || run.kind === "room" || rule("nohint")) return "off"; // played straight: everyone on equal terms
     if ((S.inv.magnifier || 0) > 0) return "item";
     if (run.kind !== "rush" && canRewarded() && P.coolLeft("hintAd", 90) === 0) return "ad";
     return "none";
@@ -984,7 +1089,7 @@
     var note = "", n = (run.c.proof || []).length;
     if (run.phase === "proof") note = run.c.mode === "planted" ? "Tap the story that proves it." : "Tap the " + (n > 1 ? n + " facts that prove" : "fact that proves") + " it.";
     else if (m === "used") note = run.hint ? "One option ruled out." : "";
-    else if (m === "off") note = "No hints in a friend's case. One try.";
+    else if (m === "off") note = run.kind === "rush" ? "No magnifier in this stage." : run.kind === "room" ? "No hints in a live room. One try." : "No hints in a friend's case. One try.";
     else if (m === "none") note = "Out of magnifiers. Get more in the Shop.";
     else if (run.kind === "daily" || run.kind === "replay") note = "A hint turns this case yellow.";
     else if (run.kind === "night") note = "One try. Take your time.";
@@ -1048,6 +1153,7 @@
     if (!run || run.revealed) return;
     if (run.phase === "proof") run.sel = []; else run.pick = null;
     optionEls().forEach(function (e) { e.classList.remove("is-picked"); e.setAttribute("aria-pressed", "false"); });
+    drawStrings();
     hideConfirm();
   }
   function confirmNow() { if (run && run.phase === "proof") present(); else accuse(false); }
@@ -1096,6 +1202,7 @@
     if (k >= 0) run.sel.splice(k, 1);
     else { run.sel.push(i); if (run.sel.length > need) run.sel.shift(); }
     list.forEach(function (e, j) { var on = run.sel.indexOf(j) >= 0; e.classList.toggle("is-picked", on); e.setAttribute("aria-pressed", on ? "true" : "false"); });
+    drawStrings();
     Snd.play("tap");
     if (run.coachStep === 3) hideCoach();
     if (run.sel.length < need) { hideConfirm(); return; }
@@ -1135,18 +1242,20 @@
   function reveal(correct, how) {
     var c = run.c, pk = els(pickKind()), pf = els(proofKind());
     run.revealed = true;
+    renderNotes();
     stopClock();
     Plat.gameplayStop();
     $("scr-case").classList.remove("proving");
     $("task").textContent = correct ? "Case closed." : "Here's what really happened.";
     $("facts-h").textContent = "Facts the police checked"; $("facts-h").classList.remove("ask");
-    pk.concat(pf).forEach(function (e) { e.classList.remove("is-picked"); e.disabled = true; });
+    pk.concat(pf).forEach(function (e) { e.classList.remove("is-picked", "fogged"); e.disabled = true; });
     var ansEl = pk[c.answer];
     ansEl.classList.remove("is-accused");
     stamp(ansEl, c.mode === "honest" ? "Honest" : c.mode === "planted" ? "Fake" : "Liar", c.mode === "honest" ? "ok" : "");
     if (c.mode !== "planted") ansEl.classList.add("is-answer");
     if (c.mode === "honest") ansEl.classList.add("ok-answer");
     (c.proof || []).forEach(function (i) { if (pf[i]) pf[i].classList.add("is-proof"); });
+    drawStrings();
     if (how === "pick" && run.pick != null && pk[run.pick]) {
       pk[run.pick].classList.add("is-wrong");
       if (c.mode !== "planted") { var tag = document.createElement("span"); tag.className = "your-pick"; tag.textContent = "Your pick"; pk[run.pick].appendChild(tag); }
@@ -1162,8 +1271,52 @@
     else if (run.kind === "rush") verdictRush(correct, how);
     else if (run.kind === "night") verdictNight(correct, how);
     else if (run.kind === "friend") verdictFriend(correct, how);
+    else if (run.kind === "room") verdictRoom(correct, how);
     else verdictDaily(correct, how);
   }
+  /* ---------- case board string ----------
+     A red thread from the accused to the facts you point at (or, after the verdict, to the facts that prove it),
+     like the string on a detective's pin board. Drawn in an SVG laid over the board, redrawn when anything moves. */
+  var strKey = "", strRaf = 0;
+  function drawStrings() { if (!strRaf) strRaf = requestAnimationFrame(function () { strRaf = 0; paintStrings(); }); }
+  function pinAt(e, g) {
+    var r = e.getBoundingClientRect(), pane = e.closest(".pane"), pr = pane ? pane.getBoundingClientRect() : g;
+    var clue = e.classList.contains("clue"), em = parseFloat(getComputedStyle(e).fontSize) || 16;
+    var x = clue ? r.left + em * 1.12 : r.left + r.width / 2, y = clue ? r.top + r.height / 2 : r.top + 5;
+    var off = y < pr.top || y > pr.bottom; // scrolled out of its pane: the string ends at the pane's edge
+    return { x: x - g.left, y: Math.min(Math.max(y, pr.top), pr.bottom) - g.top, off: off };
+  }
+  function paintStrings() {
+    var svg = $("strings"), pairs = [];
+    if (run && run.c && screen === "case" && (run.phase === "proof" || run.revealed)) {
+      var c = run.c, g = svg.getBoundingClientRect(), from = els(pickKind())[c.answer], pf = els(proofKind());
+      (run.revealed ? c.proof || [] : run.sel).forEach(function (i) { if (from && pf[i]) pairs.push([pinAt(from, g), pinAt(pf[i], g), i]); });
+    }
+    var key = pairs.map(function (p) { return p[2]; }).join() + (run && run.revealed ? "r" : "");
+    var d = pairs.map(function (p) {
+      var a = p[0], b = p[1], sag = 14 + Math.abs(b.x - a.x) * 0.12; // a little slack, so it hangs like real string
+      return "M" + a.x.toFixed(1) + " " + a.y.toFixed(1) + "Q" + ((a.x + b.x) / 2).toFixed(1) + " " + ((a.y + b.y) / 2 + sag).toFixed(1) + " " + b.x.toFixed(1) + " " + b.y.toFixed(1);
+    });
+    if (key !== strKey) {
+      strKey = key;
+      svg.innerHTML = d.map(function (path, k) {
+        var a = pairs[k][0], b = pairs[k][1];
+        return '<g class="thread' + (a.off || b.off ? " off" : "") + '"><path class="str-shade" d="' + path + '"/><path class="str" pathLength="1" d="' + path + '"/>' +
+          '<circle class="knot" r="3.6" cx="' + a.x.toFixed(1) + '" cy="' + a.y.toFixed(1) + '"/><circle class="knot" r="3.6" cx="' + b.x.toFixed(1) + '" cy="' + b.y.toFixed(1) + '"/></g>';
+      }).join("");
+      return;
+    }
+    [].forEach.call(svg.querySelectorAll(".thread"), function (t, k) {
+      var a = pairs[k][0], b = pairs[k][1], ps = t.querySelectorAll("path"), ks = t.querySelectorAll("circle");
+      ps[0].setAttribute("d", d[k]); ps[1].setAttribute("d", d[k]);
+      ks[0].setAttribute("cx", a.x.toFixed(1)); ks[0].setAttribute("cy", a.y.toFixed(1));
+      ks[1].setAttribute("cx", b.x.toFixed(1)); ks[1].setAttribute("cy", b.y.toFixed(1));
+      t.classList.toggle("off", a.off || b.off);
+    });
+  }
+  [].forEach.call(document.querySelectorAll("#case-grid .pane"), function (p) { p.addEventListener("scroll", drawStrings, { passive: true }); });
+  window.addEventListener("resize", drawStrings);
+
   function missLine(how) {
     if (how === "proof") return run.c.mode === "planted" ? "You found the fake fact, but not the story that proves it. " : "Right suspect, wrong proof. Without proof, the liar walks. ";
     return "";
@@ -1195,6 +1348,7 @@
     $("proof-box").innerHTML = proofHtml(run.c);
     var tr = $("twist-reveal");
     if (run.c.twist) { tr.textContent = run.c.twist; tr.hidden = false; } else tr.hidden = true;
+    $("story-beat").hidden = !o.story; $("story-beat").textContent = o.story || "";
     $("btn-next").textContent = o.next;
     v.classList.toggle("over-suspects", run.c.mode === "planted");
     v.hidden = false;
@@ -1230,7 +1384,7 @@
       head: run.wrong ? "Case closed." : pick(CAUGHT), good: true, stars: r.stars,
       banner: r.chapterDone ? "Chapter " + r.chapter + " complete!" : r.replay && r.stars > r.prevStars ? "New best: " + r.stars + " stars" : "",
       rewards: rw(r.coins, r.xp, r.mult) + (r.replay ? '<span class="rw">Replay: no coins</span>' : ""),
-      sub: answerLine(),
+      sub: answerLine(), story: r.chapterDone ? WL.chapterStory(r.chapter).outro : "",
       next: r.chapterDone ? "Next chapter" : r.replay ? "Continue career" : "Next case"
     });
     if (r.coins) FX.float("+" + r.coins, $("coins"), "coin");
@@ -1309,6 +1463,7 @@
     if (run.kind === "friend" && !run.preview && !run.again) { shareFriendResult(); return; } // stays on the result
     $("verdict").hidden = true;
     if (run.kind === "friend") { openWrite(); return; }
+    if (run.kind === "room") { if (room) { show("room"); setHud("Live room", "Room " + room.code); renderRoom(); } else goHQ(); return; }
     if (run.kind === "career") {
       if (run.n === 1 && !S.settings.tutorialDone && !run.botched) { S.settings.tutorialDone = true; persist(); }
       var target = run.botched ? run.n : S.career.level;
@@ -1544,7 +1699,7 @@
     setTimeout(flushQueue, 1200); // level-ups and achievements that waited for the run to end
     setHud("Rush", "Results");
     var score = r.score;
-    $("res-kicker").textContent = "Rush · " + r.n + " cases";
+    $("res-kicker").textContent = "Rush · stage " + rushStage(Math.max(1, r.n)) + " · " + r.n + " cases";
     $("res-title").textContent = score === 0 ? "The liars won." : isBest && prevBest > 0 ? "New personal best!" : "Run over.";
     $("res-body").innerHTML = '<p class="res-big">' + score + "</p>" +
       '<p class="res-line">liar' + (score === 1 ? "" : "s") + " caught." + (r.bestCombo > 1 ? " Best combo ×" + r.bestCombo + "." : "") +
@@ -1670,6 +1825,7 @@
       for (var k = 1; k <= 10; k++) got += S.career.stars[(ch - 1) * 10 + k] || 0;
       html += '<section class="chapter' + (locked ? " locked" : "") + '"><div class="chapter-head"><h3>' + ch + ". " + esc(WL.chapterName(ch)) + "</h3>" +
         '<span class="muted">' + (locked ? "Finish chapter " + (ch - 1) + " to open" : '<span class="st on"></span>' + got + " / 30") + "</span></div>" +
+        (locked ? "" : '<p class="chapter-story">' + esc(ch < cur ? WL.chapterStory(ch).outro || WL.chapterStory(ch).intro : WL.chapterStory(ch).intro) + "</p>") +
         '<div class="nodes">' + chapterNodes(ch, true) + "</div></section>";
     }
     $("chapters").innerHTML = html;
@@ -1758,9 +1914,55 @@
   }
 
   /* ---------- stats ---------- */
+  /* ---------- profile: an ID card with the name, the stats below ----------
+     Anyone can name themselves here (on CrazyGames the platform name is used). A name also puts you on the leaderboards. */
+  function renderProfile() {
+    var li = P.levelInfo(S.xp), name = playerName(), cg = !!(user && user.username);
+    $("stats-h").textContent = name;
+    $("pf-mug").innerHTML = WL.avatar(name);
+    $("pf-badge").innerHTML = FX.badge(li.level, li.tier, 64);
+    $("pf-title").textContent = "Level " + li.level + " · " + li.title;
+    $("pf-xp").style.width = Math.round((li.into / li.need) * 100) + "%";
+    $("pf-xpbar").setAttribute("aria-valuemax", li.need); $("pf-xpbar").setAttribute("aria-valuenow", li.into);
+    $("pf-xpbar").setAttribute("aria-label", "Experience: " + li.into + " of " + li.need);
+    $("pf-since").textContent = "On the case since " + WL.formatDate(WL.dateForDay(S.firstDay || TODAY), "short");
+    var inp = $("pf-input");
+    inp.value = cg ? user.username : S.settings.playerName || ""; inp.disabled = cg;
+    $("pf-save").hidden = cg; $("pf-error").hidden = true;
+    $("pf-note").textContent = cg ? "This is your CrazyGames name. Change it in your CrazyGames account."
+      : lbOn() ? "Other players see it on leaderboards and on challenges you share. Your sketch changes with it."
+      : "It signs the challenges you share. Your sketch changes with it.";
+    renderStats();
+  }
+  function openProfile() { renderProfile(); openDialog("dlg-stats"); }
+  // Saves a detective name typed into a form. Shows why (and returns false) when it isn't allowed.
+  function saveName(raw, errEl) {
+    var r = WL.cleanName(raw);
+    if (!r.ok) { errEl.textContent = r.msg; errEl.hidden = false; return false; }
+    errEl.hidden = true;
+    if (r.name === S.settings.playerName) return true;
+    var first = !S.settings.playerName;
+    S.settings.playerName = r.name; persist();
+    toast(first ? "Welcome, " + esc(r.name) + "!" : "Name saved. It shows on your next score.");
+    renderHQ();
+    return true;
+  }
+  $("pf-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var first = !S.settings.playerName;
+    if (!saveName($("pf-input").value, $("pf-error"))) { FX.shake($("pf-input")); return; }
+    Snd.play("stamp");
+    WL.track(first ? "name_set" : "name_change", {});
+    if (first && lbOn()) afterJoin(); // a name is a leaderboard entry: post today's score under it
+    renderProfile();
+  });
+  $("pf-input").addEventListener("input", function () {
+    var v = WL.cleanName(this.value), n = v.ok ? v.name : playerName();
+    $("pf-mug").innerHTML = WL.avatar(n); $("stats-h").textContent = n;
+  });
   function renderStats() {
     var li = P.levelInfo(S.xp), t = S.tot, st = S.stats;
-    $("stats-row").innerHTML = statsRow([["Level", li.level], ["Cases solved", t.solved], ["3-star cases", t.stars3], ["Best streak", t.bestCombo]]);
+    $("stats-row").innerHTML = statsRow([["Level", li.level], ["Cases solved", t.solved], ["3-star cases", t.stars3], ["Best combo", t.bestCombo]]);
     var max = Math.max.apply(null, [1].concat(st.dist));
     var todayScore = S.history[TODAY] && !S.history[TODAY].replay ? S.history[TODAY].score : -1, rows = "";
     for (var s = 5; s >= 0; s--) {
@@ -1872,13 +2074,14 @@
   function rankCard(html) { var el = $("res-rank"); el.innerHTML = html; el.hidden = !html; }
   function askName(cb, why) {
     nameCb = cb || null;
-    var sign = why === "share";
+    var sign = why === "share", live = why === "room";
     $("name-input").value = S.settings.playerName || "";
     $("name-error").hidden = true;
-    $("name-h").textContent = sign ? "Sign your challenge" : S.settings.playerName ? "Change your name" : "Join the leaderboard";
+    $("name-h").textContent = sign ? "Sign your challenge" : live ? "Your name in the room" : S.settings.playerName ? "Change your name" : "Join the leaderboard";
     $("name-why").textContent = sign ? "Friends will see this name on your result and know who to beat. It's also your name on the leaderboard."
+      : live ? "Everyone in the room will see it on the scoreboard. It's also your name on the leaderboard."
       : "Pick a detective name. Other players will see it next to your score.";
-    $("name-save").textContent = sign ? "Sign and share" : S.settings.playerName ? "Save name" : "Join";
+    $("name-save").textContent = sign ? "Sign and share" : live ? "Let's play" : S.settings.playerName ? "Save name" : "Join";
     openDialog("dlg-name");
     setTimeout(function () { try { $("name-input").focus(); } catch (e) { /* ignore */ } }, 50);
   }
@@ -2048,16 +2251,12 @@
     $("board-seg").addEventListener("click", function (e) { var b = e.target.closest("[data-day]"); if (b) { boardDay = b.dataset.day; loadBoard(); } });
     $("name-form").addEventListener("submit", function (e) {
       e.preventDefault();
-      var r = LB.cleanName($("name-input").value);
-      if (!r.ok) { $("name-error").textContent = r.msg; $("name-error").hidden = false; return; }
       var first = !S.settings.playerName;
-      S.settings.playerName = r.name; persist();
+      if (!saveName($("name-input").value, $("name-error"))) return;
       closeDialog("dlg-name");
-      toast(first ? "Welcome, " + esc(r.name) + "!" : "Name saved. It shows on your next score.");
       WL.track(first ? "leaderboard_join" : "leaderboard_rename", {});
       var cb = nameCb; nameCb = null;
       if (cb) cb();
-      renderHQ();
     });
   }
 
@@ -2700,6 +2899,180 @@
     shareOut(lines.join("\n"));
   }
 
+  /* ---------- live rooms: one link, up to 10 players, the same cases at the same time ----------
+     The host opens a room and shares the link; everyone who opens it joins. When the host starts, everyone
+     plays the same cases (WL.roomCase) at once: one try, no hints, a clock per case. A proven catch scores
+     100, plus up to 50 for speed. The host's game moves the room on once everyone has answered or time is
+     up; anyone else's game does it if the host has gone quiet. Answers carry the game's seed (s), so a
+     new game in the same room never mixes with the last one. */
+  var ROUND_MS = 90000, room = null;
+  function roomLimit(c) { return c.mode === "liar" ? ROUND_MS : ROUND_MS + 30000; }
+  function roomAns(p, r) { var a = p && p.ans && p.ans[r]; return a && room && a.s === room.seed ? a : null; }
+  function roomTotal(p) { var t = 0; if (p && p.ans) Object.keys(p.ans).forEach(function (r) { var a = roomAns(p, r); if (a) t += a.pts || 0; }); return t; }
+  function roomRanked() {
+    return Object.keys(room.players).map(function (id) {
+      var p = room.players[id], ms = 0;
+      Object.keys(p.ans || {}).forEach(function (r) { var a = roomAns(p, r); if (a && a.ok) ms += a.ms; });
+      return { id: id, name: p.name, score: roomTotal(p), ms: ms, p: p };
+    }).sort(function (a, b) { return b.score - a.score || a.ms - b.ms; });
+  }
+  function withName(cb, why) {
+    if (myName()) { cb(myName()); return; }
+    askName(function () { cb(myName()); }, why);
+  }
+  function openRoom() {
+    withName(function (name) {
+      toast("Opening a room...");
+      LB.rooms.create({ name: name, seed: Math.random().toString(36).slice(2, 10), season: Math.max(1, SEASON), rounds: 5 }).then(function (code) {
+        WL.track("room_create", {});
+        return joinRoom(code, name);
+      }).catch(function (e) { toast(esc(LB.friendlyError(e))); });
+    }, "room");
+  }
+  function joinRoom(code, name) {
+    return LB.rooms.join(code, name).then(function () { enterRoom(code); WL.track("room_join", {}); })
+      .catch(function (e) { goHQ(); toast(esc(LB.friendlyError(e)), "", 4000); });
+  }
+  function enterRoom(code) {
+    if (!room || room.code !== code) {
+      leaveRoom(true);
+      room = { code: code, me: LB.rooms.me(), data: null, players: {}, gotPlayers: false, seed: "", pts: {} };
+      room.stop = LB.rooms.watch(code, function (d) { if (room) { onRoomData(d); } }, function (p) {
+        if (!room) return;
+        room.players = p; room.gotPlayers = true;
+        syncRound(); renderRoom(); roomTick();
+      });
+      room.tick = setInterval(roomTick, 1000);
+    }
+    try { history.replaceState(null, "", location.pathname + "?room=" + code); } catch (e) { /* ignore */ }
+    show("room");
+    setHud("Live room", "Room " + code);
+    renderRoom();
+  }
+  function leaveRoom(quiet) {
+    if (!room) return;
+    var r = room;
+    room = null;
+    if (r.stop) r.stop();
+    clearInterval(r.tick);
+    LB.rooms.leave(r.code).catch(function () { /* already gone */ });
+    try { history.replaceState(null, "", location.pathname); } catch (e) { /* ignore */ }
+    if (!quiet) toast("You left the room.");
+  }
+  function onRoomData(d) {
+    if (room.seed && d.seed !== room.seed) { room.pts = {}; LB.rooms.reset(room.code).catch(function () {}); } // the host started a new game
+    room.seed = d.seed; room.data = d;
+    // the game ended while this player was still on a case: show the final scores
+    if (d.state === "end" && screen === "case" && run && run.kind === "room" && !run.revealed) { stopClock(); show("room"); }
+    syncRound(); renderRoom(); roomTick();
+  }
+  // Start the room's current case here, unless this player already answered it (or is playing it).
+  function syncRound() {
+    var d = room && room.data;
+    if (!d || !room.gotPlayers || d.state !== "play" || d.round < 1) return;
+    if (roomAns(room.players[room.me], d.round) || room.pts[d.round] != null) return;
+    if (run && run.kind === "room" && run.round === d.round && run.seed === d.seed) return;
+    startRoomRound(d.round);
+  }
+  function startRoomRound(r) {
+    var d = room.data;
+    run = { kind: "room", round: r, seed: d.seed, c: WL.roomCase(d.seed, r, d.season), elapsed: 0 };
+    run.limit = roomLimit(run.c);
+    show("case");
+    loadCase();
+  }
+  function verdictRoom(correct, how) {
+    var pts = correct ? 100 + Math.max(0, 50 - Math.floor(run.caseElapsed / 1000)) : 0;
+    if (room && room.seed === run.seed) {
+      room.pts[run.round] = pts;
+      // total = this game's points so far: what's saved online, plus answers not saved yet
+      var mine = room.players[room.me] || {}, byRound = {}, total = 0;
+      Object.keys(mine.ans || {}).forEach(function (r) { var a = roomAns(mine, r); if (a) byRound[r] = a.pts || 0; });
+      Object.keys(room.pts).forEach(function (r) { byRound[r] = room.pts[r]; });
+      Object.keys(byRound).forEach(function (r) { total += byRound[r]; });
+      LB.rooms.answer(room.code, run.round, { ok: correct, ms: Math.round(run.caseElapsed), pts: pts, s: run.seed }, total).catch(function () { /* retried on the next answer */ });
+    }
+    setVerdict({
+      head: correct ? pick(CAUGHT) : how === "timeout" ? "Time's up." : how === "proof" ? "Not proven." : "Not quite.", good: correct,
+      rewards: pts ? '<span class="rw coin">+' + pts + " points</span>" : "",
+      sub: missLine(how) + answerLine(), next: "See the scores", hq: "Leave room"
+    });
+    WL.track("room_answer", { round: run.round, correct: correct });
+  }
+  // The host's game moves the room on 5 s after everyone answered (or time ran out); anyone else's after 25 s.
+  function roomTick() {
+    if (!room || !room.data || !room.gotPlayers) return;
+    var d = room.data;
+    if (d.state !== "play" || d.round < 1) return;
+    var c = WL.roomCase(d.seed, d.round, d.season), ids = Object.keys(room.players);
+    var allIn = ids.length > 0 && ids.every(function (id) { return roomAns(room.players[id], d.round); });
+    if (room.overRound !== d.round) { room.overRound = d.round; room.overAt = 0; }
+    if (!allIn && Date.now() - d.roundAt < roomLimit(c) + 8000) return;
+    room.overAt = room.overAt || Date.now();
+    if (screen === "room") renderRoom();
+    if (Date.now() - room.overAt < (d.host === room.me ? 5000 : 25000) || room.moving === d.seed + d.round) return;
+    room.moving = d.seed + d.round;
+    LB.rooms.update(room.code, d.round < d.rounds ? { round: d.round + 1, roundAt: true } : { state: "end" }).catch(function () { room.moving = ""; });
+  }
+  function renderRoom() {
+    if (!room || screen !== "room") return;
+    var d = room.data, host = d && d.host === room.me, list = d ? roomRanked() : [], acts = [];
+    if (!d) { $("room-h").textContent = "Joining the room..."; return; }
+    $("room-code").innerHTML = d.state === "end" ? "" : '<span class="room-code-big" aria-label="Room code">' + room.code + "</span>" +
+      '<button class="btn small primary" type="button" data-room="invite">Invite friends</button>';
+    var r = d.round, waiting = list.filter(function (x) { return !roomAns(x.p, r); }).length;
+    if (d.state === "lobby") {
+      $("room-eyebrow").textContent = "Live room · " + list.length + " of " + LB.rooms.MAX + " detectives";
+      $("room-h").textContent = host ? "Get your friends in" : "You're in!";
+      $("room-sub").textContent = host ? "Send the link. Everyone who opens it joins this room, and you all get the same " + d.rounds + " cases at the same time. 3 or more is best."
+        : "Waiting for " + d.hostName + " to start. Everyone gets the same " + d.rounds + " cases at the same time.";
+      if (host) acts.push('<button class="btn danger big wide" type="button" data-room="start"' + (list.length < 2 ? " disabled" : "") + ">" +
+        (list.length < 2 ? "Waiting for a friend to join" : "Start the game (" + list.length + " detectives)") + "</button>");
+    } else if (d.state === "play") {
+      var over = !waiting || room.overAt;
+      $("room-eyebrow").textContent = "Case " + r + " of " + d.rounds;
+      $("room-h").textContent = over ? "Case " + r + " is closed" : roomAns(room.players[room.me], r) || room.pts[r] != null ? "Waiting for " + waiting + " more" : "Case " + r + " is on";
+      $("room-sub").textContent = over ? (r < d.rounds ? "The next case starts in a moment." : "The final scores are coming.") : "The next case starts when everyone has answered, or when time runs out.";
+      if (!roomAns(room.players[room.me], r) && room.pts[r] == null && !over) acts.push('<button class="btn danger wide" type="button" data-room="back">Back to the case</button>');
+      if (host && over) acts.push('<button class="btn primary wide" type="button" data-room="next">' + (r < d.rounds ? "Next case now" : "Final scores now") + "</button>");
+    } else {
+      $("room-eyebrow").textContent = "Final scores";
+      $("room-h").textContent = list[0] && list[0].id === room.me ? "You won!" : list[0] ? list[0].name + " wins!" : "Game over";
+      $("room-sub").textContent = "Everyone played the same " + d.rounds + " cases. Points: 100 for a proven catch, up to 50 more for speed.";
+      if (host) acts.push('<button class="btn danger wide" type="button" data-room="again">Play again with new cases</button>');
+      acts.push('<button class="btn primary wide" type="button" data-room="share">Share the result</button>');
+    }
+    acts.push('<button class="btn ghost wide" type="button" data-room="leave">Leave room</button>');
+    $("room-acts").innerHTML = acts.join("");
+    $("room-players").innerHTML = list.map(function (x, i) {
+      var a = roomAns(x.p, r), mark = d.state !== "play" ? "" : a ? (a.ok ? '<span class="rm-mark ok">✓ +' + a.pts + "</span>" : '<span class="rm-mark no">✕</span>')
+        : '<span class="rm-mark wait">' + (room.overAt ? "no answer" : "thinking…") + "</span>";
+      var place = d.state === "end" ? ["🥇", "🥈", "🥉"][i] || i + 1 : d.state === "lobby" ? "🕵️" : i + 1;
+      return '<li class="' + (x.id === room.me ? "me" : "") + (d.state === "end" && i === 0 ? " win" : "") + '"><span class="rm-rank">' + place + '</span><span class="rm-name">' + esc(x.name) +
+        (x.id === d.host ? " <em>host</em>" : "") + (x.id === room.me ? " <em>(you)</em>" : "") + "</span>" + mark +
+        '<span class="rm-score">' + (d.state === "lobby" ? "" : x.score) + "</span></li>";
+    }).join("");
+  }
+  $("scr-room").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-room]");
+    if (!b || b.disabled || !room) return;
+    Snd.play("click");
+    var k = b.dataset.room, d = room.data;
+    if (k === "invite") {
+      WL.track("room_invite", {});
+      shareOut("🕵️ Join my live Who's Lying? room! We all get the same cases at the same time. Can you catch the liars faster than me?\n" +
+        Plat.shareLink({ room: room.code }) + "\nRoom code: " + room.code, "Link copied. Send it to your friends!");
+    } else if (k === "start") LB.rooms.update(room.code, { state: "play", round: 1, roundAt: true }).catch(function (er) { toast(esc(LB.friendlyError(er))); });
+    else if (k === "next") { room.moving = d.seed + d.round; LB.rooms.update(room.code, d.round < d.rounds ? { round: d.round + 1, roundAt: true } : { state: "end" }); }
+    else if (k === "again") LB.rooms.update(room.code, { state: "play", round: 1, seed: Math.random().toString(36).slice(2, 10), roundAt: true });
+    else if (k === "back") startRoomRound(d.round);
+    else if (k === "leave") { leaveRoom(); goHQ(); }
+    else if (k === "share") {
+      var list = roomRanked(), i = list.map(function (x) { return x.id; }).indexOf(room.me), me = list[i];
+      shareOut("🕵️ I came " + (i === 0 ? "first" : "#" + (i + 1)) + " of " + list.length + " in a live Who's Lying? room, with " + (me ? me.score : 0) + " points.\nPlay with us next time: " + Plat.shareLink({}));
+    }
+  });
+
   /* ---------- daily reminder (calendar event, web) ---------- */
   function pad2(n) { return String(n).padStart(2, "0"); }
   function calDate(d) { return d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) + "T" + pad2(d.getHours()) + pad2(d.getMinutes()) + "00"; }
@@ -2976,7 +3349,8 @@
   $("tile-rush").addEventListener("click", function () { Snd.play("click"); if (!unlocked("rush")) return toast("Rush opens tomorrow, or after 10 solved cases."); startRush(); });
   $("btn-shop").addEventListener("click", function () { Snd.play("click"); openShop(false); });
   $("btn-ach").addEventListener("click", function () { Snd.play("click"); openAch(); });
-  $("btn-stats").addEventListener("click", function () { Snd.play("click"); renderStats(); openDialog("dlg-stats"); });
+  $("btn-stats").addEventListener("click", function () { Snd.play("click"); openProfile(); });
+  $("btn-profile").addEventListener("click", function () { Snd.play("click"); openProfile(); });
   $("btn-board").addEventListener("click", function () { Snd.play("click"); openBoard("today"); });
   $("btn-accuse").addEventListener("click", confirmNow);
   $("btn-cancel").addEventListener("click", function () { Snd.play("click"); cancelPick(); });
@@ -2987,9 +3361,11 @@
     if (run && run.kind === "rush" && run.lives <= 0) { $("verdict").hidden = true; endRush(false); return; }
     if (run && (run.kind === "daily" || run.kind === "replay") && run.prog.results.length >= run.cases.length) { $("verdict").hidden = true; finishDaily(); return; }
     if (run && run.kind === "friend" && !run.preview && !run.again) { openWrite(); return; } // "Write one back"
+    if (run && run.kind === "room") { leaveRoom(); goHQ(); return; } // "Leave room"
     goHQ();
   });
   $("tile-write").addEventListener("click", function () { Snd.play("click"); openWrite(); });
+  $("tile-room").addEventListener("click", function () { Snd.play("click"); openRoom(); });
   $("btn-hint").addEventListener("click", useHint);
   $("btn-freeze").addEventListener("click", useFreeze);
   $("btn-share").addEventListener("click", share);
@@ -3063,6 +3439,8 @@
   function route() {
     var rc = cloudOn() ? LB.cleanSaveCode(Plat.inviteParam("restore")) : "";
     if (rc && rc !== S.sync.code) { goHQ(); toast("Looking for your saved progress..."); cloudPull(rc, "restore"); return; }
+    var rm = lbOn() ? LB.cleanCode(Plat.inviteParam("room")) : ""; // a live room link
+    if (rm) { goHQ(); withName(function (name) { joinRoom(rm, name); }, "room"); return; }
     var wc = Plat.inviteParam("w"); // a case a friend wrote
     if (wc) {
       goHQ();

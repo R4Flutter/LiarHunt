@@ -19,7 +19,7 @@
   var A = {
     ctx: null, master: null, sfxGain: null, musicGain: null, buffers: {}, loaded: false,
     soundOn: true, musicOn: true, forced: false, adMuted: false, hidden: false, touched: false,
-    music: { buf: null, offset: 0, sources: [], timer: 0, next: 0, loading: false, playing: false, wanted: false }
+    music: { el: null, playing: false, wanted: false }
   };
 
   function audible() { return !A.forced && !A.adMuted; }
@@ -121,52 +121,28 @@
     g.linearRampToValueAtTime(MUSIC_VOL, t + sec + 0.4);
   }
 
-  /* ---------- music: a crossfaded loop ---------- */
+  /* ---------- music: one looping <audio> element ----------
+     Streamed and decoded a little at a time, so it costs a few hundred KB of memory instead of the ~16 MB
+     a fully decoded buffer takes. It still runs through musicGain, so mute, ads and ducking work the same.
+     ponytail: a plain loop can leave a tiny gap at the seam; crossfade two elements if that ever bothers anyone. */
   function startMusic() {
     var m = A.music;
     m.wanted = true;
     if (!A.musicOn || m.playing || !A.touched || !ensure()) return;
+    if (!m.el) {
+      m.el = new Audio("assets/audio/music.mp3");
+      m.el.loop = true; m.el.preload = "auto";
+      try { A.ctx.createMediaElementSource(m.el).connect(A.musicGain); } catch (e) { m.el.volume = MUSIC_VOL; }
+    }
     m.playing = true;
-    if (m.buf) { schedule(true); return; }
-    if (m.loading) return;
-    m.loading = true;
-    fetchBuf("music").then(function (b) {
-      m.loading = false; m.buf = b;
-      var d = b.getChannelData(0), lim = Math.min(d.length, Math.floor(b.sampleRate * 0.08)), i = 0;
-      while (i < lim && Math.abs(d[i]) < 0.001) i++;
-      m.offset = i < lim ? i / b.sampleRate : 0; // skip MP3 encoder silence
-      if (m.playing) schedule(true);
-    }, function () { m.loading = false; m.playing = false; });
-  }
-  function schedule(first) {
-    var m = A.music, c = A.ctx;
-    if (!m.playing || !m.buf || A.hidden) return;
-    var len = m.buf.duration - m.offset, XF = Math.min(1.5, len / 4), period = len - XF;
-    var now = c.currentTime, t = m.next > now + 0.02 ? m.next : now + 0.05;
-    var s = c.createBufferSource(), g = c.createGain();
-    s.buffer = m.buf; s.connect(g); g.connect(A.musicGain);
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(1, t + (first ? 1.2 : XF));
-    g.gain.setValueAtTime(1, t + period);
-    g.gain.linearRampToValueAtTime(0, t + len);
-    s.start(t, m.offset); s.stop(t + len + 0.05);
-    var rec = { s: s, g: g };
-    m.sources.push(rec);
-    s.onended = function () { var i = m.sources.indexOf(rec); if (i >= 0) m.sources.splice(i, 1); };
-    m.next = t + period;
-    clearTimeout(m.timer);
-    m.timer = setTimeout(function () { schedule(false); }, Math.max(250, (m.next - c.currentTime - 1.2) * 1000));
+    var p = m.el.play();
+    if (p && p.catch) p.catch(function () { m.playing = false; });
   }
   function stopMusic(keepWanted) {
     var m = A.music;
-    m.playing = false; m.next = 0; clearTimeout(m.timer);
+    m.playing = false;
     if (!keepWanted) m.wanted = false;
-    if (!A.ctx) return;
-    var t = A.ctx.currentTime;
-    m.sources.forEach(function (o) {
-      try { o.g.gain.cancelScheduledValues(t); o.g.gain.setValueAtTime(o.g.gain.value, t); o.g.gain.linearRampToValueAtTime(0, t + 0.5); o.s.stop(t + 0.55); } catch (e) { /* ignore */ }
-    });
-    m.sources = [];
+    if (m.el) m.el.pause();
   }
 
   /* ---------- switches ---------- */
@@ -191,10 +167,10 @@
   document.addEventListener("visibilitychange", function () {
     A.hidden = document.hidden;
     if (!A.ctx) return;
-    if (document.hidden) { clearTimeout(A.music.timer); try { A.ctx.suspend(); } catch (e) { /* ignore */ } }
+    if (document.hidden) { if (A.music.el) A.music.el.pause(); try { A.ctx.suspend(); } catch (e) { /* ignore */ } }
     else {
       var p; try { p = A.ctx.resume(); } catch (e) { p = null; }
-      var go = function () { if (A.music.playing) { A.music.next = 0; schedule(false); } };
+      var go = function () { if (A.music.playing && A.music.el) A.music.el.play().catch(function () { /* needs a tap */ }); };
       if (p && p.then) p.then(go, go); else go();
     }
   });

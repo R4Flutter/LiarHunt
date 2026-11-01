@@ -24,7 +24,7 @@ html = html.replace("<!-- PLATFORM-HEAD -->",
   '<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>\n<script>window.WL_PLATFORM = "crazygames";</script>');
 html = html.replace(/\s*<a class="chip-btn web-only"[^>]*>.*?<\/a>/g, "");
 html = html.replace(/\s*<p class="muted small web-only">.*?<\/p>/g, "");
-html = html.replace(/<html lang="en" class="game">/, '<html lang="en" class="game cg">');
+html = html.replace(/<html lang="en" class="game"/, '<html lang="en" class="game cg"');
 if (/archive\.html|privacy\.html|whatsapp|twitter\.com|instagram|discord|googlesyndication|firebase/i.test(html.replace(/<!--[\s\S]*?-->/g, ""))) {
   console.warn("Warning: index.html still mentions a web-only link or service. Check the WEB-ONLY markers.");
 }

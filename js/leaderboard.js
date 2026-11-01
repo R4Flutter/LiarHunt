@@ -34,15 +34,8 @@
     return null;
   }
 
-  /* Names: 2-16 letters, numbers, spaces, . _ - and a small block list. */
-  var BLOCK = /(fuck|shit|bitch|cunt|nigg|fag|rape|nazi|hitler|porn|sex|dick|pussy|whore|slut|chutiya|madarchod|bhenchod|randi|gandu)/i;
-  function cleanName(raw) {
-    var n = String(raw || "").replace(/\s+/g, " ").trim();
-    if (n.length < 2 || n.length > 16) return { ok: false, msg: "Use 2 to 16 characters." };
-    if (!/^[\p{L}\p{N} ._-]+$/u.test(n)) return { ok: false, msg: "Use letters, numbers, spaces, dots, dashes or underscores." };
-    if (BLOCK.test(n.replace(/[\s._-]/g, ""))) return { ok: false, msg: "Please pick a different name." };
-    return { ok: true, name: n };
-  }
+  /* Names: the same rules everywhere, so they live in engine.js (the profile works without the leaderboard). */
+  var BLOCK = window.WL.NAME_BLOCK, cleanName = window.WL.cleanName;
 
   /* The leaderboard for a day closes 38 hours after that day starts in UTC,
      after every time zone has finished it. Rewards are given after that. */
@@ -73,7 +66,10 @@
         var firebase = window.firebase;
         if (!firebase.apps.length) firebase.initializeApp(fb);
         db = firebase.firestore();
-        return firebase.auth().signInAnonymously();
+        // testing only (?test=1&tabauth=1): every tab signs in as its own player, to try a live room alone
+        var solo = /[?&]test=1/.test(location.search) && /[?&]tabauth=1/.test(location.search);
+        return (solo ? firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE) : Promise.resolve())
+          .then(function () { return firebase.auth().signInAnonymously(); });
       })
       .then(function (cred) { uid = cred.user.uid; return uid; });
     readyP.catch(function (e) { console.warn("[leaderboard]", e && e.message ? e.message : e); readyP = null; });
@@ -85,6 +81,8 @@
     if (code === "demo") return "Not available in demo mode.";
     if (code === "not-found") return "That group code doesn't exist. Check it and try again.";
     if (code === "full") return "That group is full (50 detectives).";
+    if (code === "no-room") return "That room doesn't exist any more. Ask for a new link.";
+    if (code === "room-full") return "That room is full (10 detectives).";
     if (code === "failed-precondition") {
       console.warn("[leaderboard] Firestore needs an index. Open the link in this message to create it:", e.message);
       return "The leaderboard is still being set up. Try again in a few minutes.";
@@ -186,8 +184,136 @@
   }
   function cleanSaveCode(raw) { var c = String(raw || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); return /^[A-Z2-9]{12}$/.test(c) ? c : ""; }
 
+  /* ---------- live rooms: one link, several players, the same cases at the same time ----------
+     rooms/{code}: host, hostName, seed, season, state (lobby, play, end), round, rounds, roundAt
+     rooms/{code}/players/{uid}: name, score, ans { round: { ok, ms, pts } }
+     In demo mode (?lb=demo) a room lives in localStorage, so tabs on one computer can play together:
+     each tab is its own player. */
+  var ROOM_MAX = 10, DEMO_ROOM = "whoslying:room:", roomWatchers = {};
+  function tabId() {
+    try { var id = sessionStorage.getItem("wl-tab"); if (!id) { id = "tab-" + Math.random().toString(36).slice(2, 8); sessionStorage.setItem("wl-tab", id); } return id; }
+    catch (e) { return "tab-me"; }
+  }
+  function roomMe() { return provider === "demo" ? tabId() : uid; }
+  function demoRoom(code) { try { return JSON.parse(localStorage.getItem(DEMO_ROOM + code)); } catch (e) { return null; } }
+  function demoRoomSave(code, r) { try { localStorage.setItem(DEMO_ROOM + code, JSON.stringify(r)); } catch (e) { /* ignore */ } fireRoom(code); }
+  function fireRoom(code) { (roomWatchers[code] || []).forEach(function (f) { f(); }); }
+  window.addEventListener("storage", function (e) { if (e.key && e.key.indexOf(DEMO_ROOM) === 0) fireRoom(e.key.slice(DEMO_ROOM.length)); });
+  function roomRef(code) { return db.collection("rooms").doc(code); }
+  function stamp() { return window.firebase.firestore.FieldValue.serverTimestamp(); }
+  function ms(t) { return t && t.toMillis ? t.toMillis() : typeof t === "number" ? t : Date.now(); }
+  var rooms = {
+    MAX: ROOM_MAX,
+    me: roomMe,
+    // o: { name, seed, season, rounds } -> Promise of the new room code
+    create: function (o) {
+      return ready().then(function () {
+        var doc = { host: roomMe(), hostName: o.name, seed: o.seed, season: o.season, state: "lobby", round: 0, rounds: o.rounds };
+        if (provider === "demo") {
+          var c = newCode();
+          demoRoomSave(c, { room: Object.assign(doc, { roundAt: Date.now(), createdAt: Date.now() }), players: {} });
+          return c;
+        }
+        var tries = 0;
+        var attempt = function () {
+          var code = newCode();
+          return roomRef(code).set(Object.assign({}, doc, { roundAt: stamp(), createdAt: stamp() })).then(function () { return code; }, function (e) {
+            if (e && e.code === "permission-denied" && ++tries < 4) return attempt(); // that code is taken
+            throw e;
+          });
+        };
+        return attempt();
+      });
+    },
+    // Adds this player to the room (or renames them). -> Promise of the room
+    join: function (code, name) {
+      return ready().then(function () {
+        var me = roomMe();
+        if (provider === "demo") {
+          var r = demoRoom(code);
+          if (!r) throw err("no-room", "No such room");
+          if (!r.players[me] && Object.keys(r.players).length >= ROOM_MAX) throw err("room-full", "Room full");
+          r.players[me] = Object.assign({ score: 0, ans: {}, joinedAt: Date.now() }, r.players[me] || {}, { name: name });
+          demoRoomSave(code, r);
+          return r.room;
+        }
+        return roomRef(code).get().then(function (s) {
+          if (!s.exists) throw err("no-room", "No such room");
+          return roomRef(code).collection("players").get().then(function (ps) {
+            var mine = ps.docs.some(function (d) { return d.id === uid; });
+            if (!mine && ps.size >= ROOM_MAX) throw err("room-full", "Room full");
+            var p = roomRef(code).collection("players").doc(uid);
+            return (mine ? p.update({ name: name }) : p.set({ name: name, score: 0, ans: {}, joinedAt: stamp() })).then(function () { return s.data(); });
+          });
+        });
+      });
+    },
+    // Calls onRoom(room) and onPlayers({ id: player }) on every change. -> a function that stops watching
+    watch: function (code, onRoom, onPlayers) {
+      if (provider === "demo") {
+        var f = function () { var r = demoRoom(code); if (r) { onRoom(r.room); onPlayers(r.players); } };
+        (roomWatchers[code] = roomWatchers[code] || []).push(f);
+        setTimeout(f, 0);
+        return function () { roomWatchers[code] = (roomWatchers[code] || []).filter(function (x) { return x !== f; }); };
+      }
+      var stop1 = roomRef(code).onSnapshot(function (s) {
+        if (!s.exists) return;
+        var d = s.data();
+        onRoom(Object.assign({}, d, { roundAt: ms(d.roundAt), createdAt: ms(d.createdAt) }));
+      }, function (e) { console.warn("[room]", e && e.message); });
+      var stop2 = roomRef(code).collection("players").onSnapshot(function (q) {
+        var out = {};
+        q.docs.forEach(function (d) { out[d.id] = d.data(); });
+        onPlayers(out);
+      }, function (e) { console.warn("[room]", e && e.message); });
+      return function () { stop1(); stop2(); };
+    },
+    // Changes the room: { state, round, seed, roundAt: true (= now) }
+    update: function (code, patch) {
+      var p = Object.assign({}, patch);
+      if (provider === "demo") {
+        var r = demoRoom(code);
+        if (!r) return Promise.reject(err("no-room", "No such room"));
+        if (p.roundAt) p.roundAt = Date.now();
+        Object.assign(r.room, p); demoRoomSave(code, r);
+        return Promise.resolve();
+      }
+      if (p.roundAt) p.roundAt = stamp();
+      return ready().then(function () { return roomRef(code).update(p); });
+    },
+    // This player's answer for a round, { ok, ms, pts }, and their new total.
+    answer: function (code, round, a, score) {
+      if (provider === "demo") {
+        var r = demoRoom(code), me = roomMe();
+        if (!r || !r.players[me]) return Promise.resolve();
+        r.players[me].ans[round] = a; r.players[me].score = score; demoRoomSave(code, r);
+        return Promise.resolve();
+      }
+      var u = { score: score }; u["ans." + round] = a;
+      return ready().then(function () { return roomRef(code).collection("players").doc(uid).update(u); });
+    },
+    // Clears this player's answers and score (the host started a new game in the same room).
+    reset: function (code) {
+      if (provider === "demo") {
+        var r = demoRoom(code), me = roomMe();
+        if (r && r.players[me]) { r.players[me].ans = {}; r.players[me].score = 0; demoRoomSave(code, r); }
+        return Promise.resolve();
+      }
+      return ready().then(function () { return roomRef(code).collection("players").doc(uid).update({ ans: {}, score: 0 }); });
+    },
+    leave: function (code) {
+      if (provider === "demo") {
+        var r = demoRoom(code);
+        if (r) { delete r.players[roomMe()]; demoRoomSave(code, r); }
+        return Promise.resolve();
+      }
+      return ready().then(function () { return roomRef(code).collection("players").doc(uid).delete(); });
+    }
+  };
+
   /* ---------- public API ---------- */
   window.WLLB = {
+    rooms: rooms,
     provider: provider,
     TIERS: TIERS,
     enabled: function () { return provider !== "none"; },

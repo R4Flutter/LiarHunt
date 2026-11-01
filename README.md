@@ -315,6 +315,10 @@ From Daily #15 (Monday 9 November 2026) the game runs in seasons of 4 weeks. Eac
 - The season scoreboard needs the Firestore rules and index in `firebase/` (run `firebase deploy --only firestore`). The rules assume Season 1 starts in week 3; keep that in step with `SEASON_ONE` in `js/engine.js`.
 - To try a season early on your computer, open `index.html?test=1&today=20` (pretends today is Daily #20).
 
+### Live rooms
+
+HQ → **Play live** opens a room with one link (`?room=CODE`). Up to 10 players join, and when the host starts they all play the same 5 cases at the same time (built from the room's seed, so nothing about the cases is stored). Each case has a clock (90 seconds, 120 for the twist), one try and no hints. A proven catch scores 100, plus up to 50 for speed, with a live scoreboard between cases and a podium at the end. It uses Firestore (`rooms/{code}` and `rooms/{code}/players/{uid}`), so the rules in `firebase/` must be deployed. With `?lb=demo`, rooms run in the browser instead, and each tab is a player: handy for trying it alone.
+
 ### Cases players write
 
 HQ → **Write a case** lets players make their own mystery (3 to 5 facts, 3 suspects, the liar and the proof) and send it as a link (`?w=...`). The whole case is packed into the link, compressed, so nothing is stored online and there's nothing to moderate. Friends get one try, no hints, and can send back how they did or write one back. Web only (hidden on CrazyGames). The checker tests that a packed case comes back unchanged.

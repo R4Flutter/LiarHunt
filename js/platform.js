@@ -172,6 +172,7 @@
     if (params && params.c) return u + "?c=" + encodeURIComponent(params.c);
     if (params && params.g) return u + "?g=" + encodeURIComponent(params.g);
     if (params && params.w) return u + "?w=" + params.w; // a written case (already URL-safe)
+    if (params && params.room) return u + "?room=" + encodeURIComponent(params.room);
     if (params && params.day) return u + "#day-" + params.day;
     if (params && params.mode === "rush") return u + "#endless";
     return u;

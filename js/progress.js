@@ -15,6 +15,9 @@
     [25, "Sergeant"], [30, "Lieutenant"], [35, "Inspector"], [40, "Chief Inspector"], [45, "Commissioner"], [50, "Legend"]
   ];
   function xpNeed(level) { return 80 + 30 * (level - 1); }
+  // Below level 5 cases pay 60% XP, so the first session brings one level-up, not four.
+  // (Scaling the gain instead of the curve keeps every existing player's level where it is.)
+  function rookie(xp) { return levelInfo(S.xp).level < 5 ? Math.round(xp * 0.6) : xp; }
   function levelInfo(xp) {
     var lvl = 1, left = xp;
     while (left >= xpNeed(lvl)) { left -= xpNeed(lvl); lvl++; }
@@ -116,7 +119,7 @@
     S.career = Object.assign({ level: 1, stars: {}, combo: 0 }, S.career || {});
     S.tot = Object.assign({ solved: 0, stars3: 0, nohint: 0, twists: 0, bestCombo: 0, rushBest: 0, dailyDone: 0, perfectDays: 0, chapters: 0, themesBought: 0, liars: 0,
       bestStreak: 0, shieldSaves: 0, nights: 0, masterminds: 0, challengesWon: 0, promotions: 0 }, S.tot || {});
-    S.themes = Object.assign({ owned: ["auto", "precinct", "night"], current: "auto" }, S.themes || {});
+    S.themes = Object.assign({ owned: ["auto", "precinct", "night"], current: "precinct" }, S.themes || {});
     S.ach = S.ach || {};
     S.login = S.login || { last: "", streak: 0, pending: false };
     S.missions = S.missions || { date: "", list: [], chest: false };
@@ -169,7 +172,7 @@
     if (stars > prev) S.career.stars[n] = stars;
     var ch = spec.chapter, mult = comboMult(S.career.combo);
     var coins = replay ? 0 : [0, 8, 12, 20][stars] + Math.floor(ch / 2) * 2;
-    var xp = Math.round((20 + 3 * Math.min(ch, 10)) * (stars === 3 ? 1.5 : stars === 2 ? 1.2 : 1) * mult * (replay ? 0.25 : 1));
+    var xp = rookie(Math.round((20 + 3 * Math.min(ch, 10)) * (stars === 3 ? 1.5 : stars === 2 ? 1.2 : 1) * mult * (replay ? 0.25 : 1)));
     var chapterDone = false;
     if (!replay) {
       S.career.level = n + 1;
@@ -198,7 +201,7 @@
   function rushCatch(o) {
     var mult = comboMult(o.combo);
     var coins = 4 + Math.min(o.combo, 10);
-    var xp = Math.round(12 * mult);
+    var xp = rookie(Math.round(12 * mult));
     S.tot.solved++; S.tot.liars++;
     if (!o.hint) S.tot.nohint++;
     if (o.twist) { S.tot.twists++; missionProgress("twist", 1); }
@@ -221,7 +224,7 @@
   // Daily: one result per case, and the end of the day's set
   function dailyCase(o) {
     if (o.replay && !o.catchup) return { coins: 0, xp: o.correct ? 10 : 0 };
-    var coins = o.correct ? 12 : 0, xp = o.correct ? 35 : 5;
+    var coins = o.correct ? 12 : 0, xp = rookie(o.correct ? 35 : 5);
     if (o.correct) {
       S.tot.solved++; S.tot.liars++;
       if (!o.hint) { S.tot.nohint++; missionProgress("nohint", 1); }
@@ -268,7 +271,7 @@
 
   /* ---------- Night Shift + Case of the Week ---------- */
   function nightDone(o) {
-    var coins = o.correct ? 40 : 0, xp = o.correct ? 60 : 10;
+    var coins = o.correct ? 40 : 0, xp = rookie(o.correct ? 60 : 10);
     if (o.correct) {
       S.tot.solved++; S.tot.liars++; S.tot.nights++;
       if (!o.hint) { S.tot.nohint++; missionProgress("nohint", 1); }

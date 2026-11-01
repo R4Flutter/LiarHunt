@@ -109,13 +109,16 @@ for (let n = 1; n <= 2000; n++) {
   Object.keys(pk.more || {}).concat(Object.keys(pk.regroup || {})).forEach((id) => { if (!WL.FACTS.some((f) => f.id === id)) fail(where, `"${id}" isn't a built-in fact`); });
 });
 if (WL.packFor(1)) {
-  const avoid = WL.newAvoid();
+  const avoid = WL.newAvoid(), atOf = {};
+  [...(WL.packFor(1).facts || []), ...(WL.packFor(1).combos || [])].forEach((f) => { if (f.at) atOf[f.id] = f.at; });
   for (let n = 1; n <= 1500; n++) {
     const spec = { mode: ["liar", "liar", "honest", "planted"][n % 4], clueCount: 3 + (n % 3), maxTier: 3, combo: n % 2 === 0, near: n % 3 === 0 };
     const c = WL.generateCase2(WL.rngFrom("s" + n), { pack: WL.packFor(1), avoid, ...spec });
     checkCase(c, `season case ${n}`, true);
     checkProof(c, `season case ${n}`);
     if (/NaN|undefined|\$-|\$0\b/.test(JSON.stringify(c))) fail(`season case ${n}`, "bad text: " + JSON.stringify(c).slice(0, 160));
+    const off = c.factIds.filter((id) => (atOf[id] || WL.FACT_AT[id]) && (atOf[id] || WL.FACT_AT[id]) !== c.when);
+    if (off.length || !c.setup.includes("It happened")) fail(`season case ${n}`, `facts outside the crime's time (${c.when}): ${off.join(", ")}`);
   }
 }
 // Night Shift: 400 days.
@@ -156,6 +159,11 @@ for (let n = 1; n <= 500; n++) checkProof(WL.buildCareerLevel(n), `career ${n}`)
 for (let n = 1; n <= 60; n++) checkProof(WL.careerRetry(n, 1), `career retry ${n}`);
 for (let d = 1; d <= 400; d++) checkProof(WL.buildNight(d), `night ${d}`);
 
+// Live rooms: 10 rounds from two room seeds are full, provable cases.
+for (const seed of ["ABCD12-q", "ZZZZZZ-1"]) for (let r = 1; r <= 10; r++) {
+  const c = WL.roomCase(seed, r, 1);
+  checkCase(c, `room ${seed} case ${r}`, true); checkProof(c, `room ${seed} case ${r}`);
+}
 // Cases players write: a case packed into a link comes back exactly the same, and broken links are refused.
 const written = {
   t: "The Missing Birthday Cake", s: "Someone ate half of Grandma's birthday cake before the party.",
@@ -176,6 +184,10 @@ if (wc.suspects[wc.answer].name !== "Sam" || wc.clues[wc.proof[0]] !== written.f
 console.log(`\nHand-written:${C.medium.length} medium, ${C.hard.length} hard, ${C.twist.length} twist`);
 const handDays = Math.min(C.medium.length, C.hard.length, C.twist.length);
 console.log(`Hand-written dailies last ${handDays} days (until ${WL.formatDate(WL.dateForDay(handDays))}); after that the generator takes over.`);
+// Content guard: keep at least 4 weeks of hand-written Dailies ahead of today.
+const ahead = handDays - WL.dayNumber();
+if (ahead < 28) fail("hand-written cases", `only ${ahead} days left after today (Daily #${WL.dayNumber()}). Write more so at least 28 days are ready.`);
+else console.log(`${ahead} hand-written days are ready after today.`);
 console.log(`Generator: ${WL.FACTS.length} facts (${WL.FACTS.filter(f => f.make).length} with random times/prices), ${WL.PREMISES.length} story openers, ${seen.size} different opening cases in 400 days.`);
 console.log(`Career: checked 500 levels (${Math.ceil(500 / 10)} chapters). Rush: checked 300 cases.`);
 console.log(problems ? `\n${problems} problem(s) found.` : "\nAll good. No problems found.");

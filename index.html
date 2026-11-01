@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="game">
+<html lang="en" class="game" data-skin="precinct">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -48,8 +48,8 @@
       </button>
       <button class="brand" id="brand" type="button">Who's Lying<span class="q">?</span></button>
       <div class="hud-title" id="hud-title" hidden>
-        <span class="hud-main" id="hud-main"></span>
-        <span class="hud-sub" id="hud-sub"></span>
+        <span class="hud-ico" id="hud-ico" aria-hidden="true"></span>
+        <span class="hud-text"><span class="hud-main" id="hud-main"></span><span class="hud-sub" id="hud-sub"></span></span>
       </div>
       <div class="hud-right">
         <button class="coins" id="coins" type="button" aria-label="Coins. Open the shop">
@@ -70,13 +70,15 @@
       <div class="hq-grid">
         <div class="hq-col">
           <div class="player" id="player">
-            <div class="player-badge" id="player-badge"></div>
-            <div class="player-info">
-              <p class="player-name"><img class="player-avatar" id="player-avatar" alt="" hidden><span id="player-name">Detective</span></p>
-              <p class="player-title" id="player-title">Rookie</p>
-              <div class="xpbar" role="progressbar" id="xpbar" aria-valuemin="0"><span id="xpfill"></span></div>
-              <p class="xp-text" id="xp-text"></p>
-            </div>
+            <button class="player-open" id="btn-profile" type="button" aria-label="Open your profile">
+              <span class="player-badge" id="player-badge"></span>
+              <span class="player-info">
+                <span class="player-name"><img class="player-avatar" id="player-avatar" alt="" hidden><span id="player-name">Detective</span><span class="name-hint" id="name-hint" hidden>Add your name</span></span>
+                <span class="player-title" id="player-title">Rookie</span>
+                <span class="xpbar" role="progressbar" id="xpbar" aria-valuemin="0"><span id="xpfill"></span></span>
+                <span class="xp-text" id="xp-text"></span>
+              </span>
+            </button>
             <button class="streak-chip" id="streak-chip" type="button">
               <svg class="flame" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c1 4-3 5.5-3 9.5A3 3 0 0 0 12 15a3 3 0 0 0 3-3.2c0-1.6-1-2.6-1-4.3 2.7 1.4 5 4.6 5 8A7 7 0 0 1 5 15.5C5 9.6 10.5 7.4 12 2z"/></svg>
               <b id="streak-n">0</b><span class="shield-pips" id="streak-shields"></span>
@@ -84,6 +86,7 @@
           </div>
           <div class="hq-banner" id="hq-banner" hidden></div>
           <article class="today-card" id="today-card" aria-labelledby="today-title">
+            <span class="folder-tab" id="today-tab">Daily</span>
             <canvas class="trace card-trace" id="hq-trace" aria-hidden="true"></canvas>
             <div class="today-in">
               <p class="eyebrow" id="today-eyebrow">Daily Case</p>
@@ -99,6 +102,7 @@
             <div class="career-in">
               <p class="eyebrow" id="career-chapter">Chapter 1</p>
               <h2 class="career-name" id="career-name">Rookie Beat</h2>
+              <p class="career-story" id="career-story"></p>
               <div class="nodes" id="career-nodes"></div>
               <button class="btn primary big wide" id="btn-play" type="button">Play case 1</button>
               <button class="link-btn" id="btn-map" type="button">Career map</button>
@@ -131,6 +135,10 @@
               <span class="mode-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg></span>
               <span class="mode-txt"><b>Rush</b><span id="rush-sub">Catch liars against the clock</span></span>
             </button>
+            <button class="mode-tile room web-only" id="tile-room" type="button" hidden>
+              <span class="mode-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3.5 19.5c0-3.2 2.5-5.5 5.5-5.5s5.5 2.3 5.5 5.5M15 14.2c2.9 0 5.2 1.9 5.2 4.8"/></svg></span>
+              <span class="mode-txt"><b>Play live</b><span>One link, up to 10 friends, the same cases</span></span>
+            </button>
             <button class="mode-tile write web-only" id="tile-write" type="button">
               <span class="mode-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg></span>
               <span class="mode-txt"><b>Write a case</b><span>Hide one lie and send it to your friends</span></span>
@@ -149,12 +157,12 @@
             <div class="chest" id="chest"></div>
           </div>
           <nav class="hq-links" aria-label="More">
-            <button class="chip-btn" id="btn-board" type="button" hidden>Leaderboard</button>
-            <button class="chip-btn" id="btn-friends" type="button" hidden>Friends</button>
-            <button class="chip-btn" id="btn-files" type="button">Case files</button>
-            <button class="chip-btn" id="btn-shop" type="button">Shop</button>
-            <button class="chip-btn" id="btn-ach" type="button">Achievements</button>
-            <button class="chip-btn" id="btn-stats" type="button">Stats</button>
+            <button class="hq-link" id="btn-stats" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg><span>Profile</span></button>
+            <button class="hq-link" id="btn-board" type="button" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7"/></svg><span>Leaderboard</span></button>
+            <button class="hq-link" id="btn-friends" type="button" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3.5 19.5c0-3.2 2.5-5.5 5.5-5.5s5.5 2.3 5.5 5.5M15 14.2c2.9 0 5.2 1.9 5.2 4.8"/></svg><span>Friends</span></button>
+            <button class="hq-link" id="btn-files" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Case files</span></button>
+            <button class="hq-link" id="btn-shop" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1.2 12H6.2z"/><path d="M9 10V6a3 3 0 0 1 6 0v4"/></svg><span>Shop</span></button>
+            <button class="hq-link" id="btn-ach" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="15" r="5"/><path d="M8.6 10.7L6 3h4l2 4 2-4h4l-2.6 7.7"/></svg><span>Achievements</span></button>
           </nav>
           <!-- WEB-ONLY:START -->
           <nav class="modes socials" aria-label="Community">
@@ -188,10 +196,13 @@
         </div>
       </div>
       <div class="case-grid" id="case-grid">
+        <svg class="strings" id="strings" aria-hidden="true"></svg>
         <article class="pane pane-facts">
-          <p class="case-kicker" id="case-kicker"></p>
-          <h2 class="case-title" id="case-title"></h2>
-          <p class="case-setup" id="case-setup"></p>
+          <div class="case-head">
+            <p class="case-kicker" id="case-kicker"></p>
+            <h2 class="case-title" id="case-title"></h2>
+            <p class="case-setup" id="case-setup"></p>
+          </div>
           <div class="twist" id="twist" hidden></div>
           <h3 class="sec" id="facts-h">Facts the police checked</h3>
           <ul class="clues" id="clues" aria-labelledby="facts-h"></ul>
@@ -209,11 +220,20 @@
             <p class="why" id="why"></p>
             <div class="proof-box" id="proof-box"></div>
             <p class="twist-reveal" id="twist-reveal" hidden></p>
+            <p class="story-beat" id="story-beat" hidden></p>
             <div class="verdict-actions">
               <button class="btn primary wide" id="btn-next" type="button">Next case</button>
               <button class="btn ghost" id="btn-verdict-hq" type="button">HQ</button>
             </div>
           </div>
+        </div>
+      </div>
+      <div class="stage-card" id="stage-card" role="status" hidden>
+        <div class="stage-in">
+          <p class="stage-n" id="stage-n"></p>
+          <p class="stage-name" id="stage-name"></p>
+          <p class="stage-text" id="stage-text"></p>
+          <p class="stage-tap">Tap to start</p>
         </div>
       </div>
       <div class="actionbar" id="actionbar">
@@ -327,6 +347,18 @@
       </div>
     </section>
 
+    <!-- LIVE ROOM: one link, several players, the same cases at the same time -->
+    <section class="scr list-scr" id="scr-room" aria-labelledby="room-h" hidden>
+      <div class="list-in room">
+        <p class="eyebrow" id="room-eyebrow"></p>
+        <h2 class="page-h" id="room-h">Live room</h2>
+        <p class="muted" id="room-sub"></p>
+        <div class="room-code" id="room-code"></div>
+        <ol class="room-players" id="room-players" aria-live="polite"></ol>
+        <div class="dlg-row" id="room-acts"></div>
+      </div>
+    </section>
+
     <!-- WRITE A CASE for friends: the case travels inside the link -->
     <section class="scr list-scr" id="scr-write" aria-labelledby="write-h" hidden>
       <form class="list-in write" id="write-form" novalidate autocomplete="off">
@@ -429,10 +461,30 @@
   </div>
 </dialog>
 
-<dialog id="dlg-stats" aria-labelledby="stats-h">
+<dialog id="dlg-stats" class="profile-dlg" aria-labelledby="stats-h">
   <div class="dlg">
     <button class="icon-btn dlg-close" type="button" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-    <h2 id="stats-h">Your stats</h2>
+    <!-- profile: an ID card. The mugshot is sketched from the name, so it changes as you type. -->
+    <div class="id-card">
+      <span class="mug id-mug" id="pf-mug" aria-hidden="true"></span>
+      <div class="id-main">
+        <h2 id="stats-h">Detective</h2>
+        <p class="id-title" id="pf-title"></p>
+        <span class="xpbar" role="progressbar" id="pf-xpbar" aria-valuemin="0"><span id="pf-xp"></span></span>
+        <p class="muted small" id="pf-since"></p>
+      </div>
+      <span class="id-badge" id="pf-badge" aria-hidden="true"></span>
+    </div>
+    <form class="pf-form" id="pf-form" novalidate>
+      <label class="field-label" for="pf-input">Your detective name</label>
+      <div class="field-row">
+        <input class="field" id="pf-input" name="name" type="text" maxlength="16" autocomplete="nickname" autocapitalize="words" spellcheck="false" placeholder="Pick a name">
+        <button class="btn primary" type="submit" id="pf-save">Save</button>
+      </div>
+      <p class="field-error" id="pf-error" role="alert" hidden></p>
+      <p class="muted small" id="pf-note">Other players see it on leaderboards and on challenges you share.</p>
+    </form>
+    <h3>Record</h3>
     <dl class="stat-row" id="stats-row"></dl>
     <h3>Daily Case: liars caught per day</h3>
     <div class="dist" id="stats-dist"></div>

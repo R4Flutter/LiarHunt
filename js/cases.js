@@ -574,6 +574,244 @@ window.WL_CASES = {
       answer: 0,
       proof: [0],
       why: "The rink closed at 6 PM for repairs to the ice. Lotte couldn't have taught her seven o'clock class on it."
+    },
+    {
+      title: "The Cold Hall",
+      setup: "A box of tools vanished from the community hall on Tuesday evening, between 6 and 9 PM.",
+      clues: [
+        "The hall's heating broke on Monday. It was 3°C inside all Tuesday evening.",
+        "The tools were last seen in the hall cupboard at 6 PM.",
+        "The hall's side door was locked all evening."
+      ],
+      suspects: [
+        { name: "Anwen", role: "Choir singer", says: "I sang with the choir in the hall at seven with my scarf and gloves on the whole time." },
+        { name: "Bastian", role: "Caretaker", says: "I locked the side door on Monday and left it locked." },
+        { name: "Coral", role: "Yoga teacher", says: "My class in the hall got so hot at eight that we opened every window." }
+      ],
+      answer: 2,
+      proof: [0],
+      why: "It was 3°C inside the hall all Tuesday evening because the heating was broken. Coral's class didn't get hot enough to open every window."
+    },
+    {
+      title: "The Racing Bike",
+      setup: "A racing bike was taken from the shed behind the sports club on Sunday morning.",
+      clues: [
+        "It rained without a break from 7 AM to noon on Sunday.",
+        "The bike was in the shed at 8 AM.",
+        "The club's café opened at 10 AM."
+      ],
+      suspects: [
+        { name: "Dario", role: "Cyclist", says: "I rode the long loop from eight until eleven. The roads were bone dry." },
+        { name: "Esme", role: "Café owner", says: "I opened the café at ten and served soup to soaked runners." },
+        { name: "Faisal", role: "Groundsman", says: "I checked the shed at eight. The bike was still there." }
+      ],
+      answer: 0,
+      proof: [0],
+      why: "It rained without a break from 7 AM to noon. Dario couldn't have ridden from eight to eleven on bone-dry roads."
+    },
+    {
+      title: "The Spelling Trophy",
+      setup: "The spelling bee trophy disappeared from the school hall on Thursday afternoon.",
+      clues: [
+        "The school hall was locked from 1 PM to 4 PM while its floor was varnished.",
+        "The trophy was on the stage at 12:30 PM.",
+        "The school library stayed open until 5 PM."
+      ],
+      suspects: [
+        { name: "Greta", role: "Teacher", says: "I marked homework in the library until five." },
+        { name: "Hamid", role: "Pupil", says: "I practised my spelling on the stage at half past two, right next to the trophy." },
+        { name: "Isla", role: "Cleaner", says: "I locked the hall at one so the varnish could dry." }
+      ],
+      answer: 1,
+      proof: [0],
+      why: "The hall was locked from 1 PM to 4 PM while the floor was varnished. Hamid couldn't have practised on the stage at half past two."
+    },
+    {
+      title: "The Swapped Seascape",
+      setup: "A small painting at the Hillcrest Gallery was swapped for a copy on Friday night, between 8 and 10 PM.",
+      clues: [
+        "A power cut hit every building on Gallery Row from 8 PM to 9:30 PM.",
+        "The gallery's alarm runs on a battery and kept working during the power cut.",
+        "The painting was checked at 7:45 PM."
+      ],
+      suspects: [
+        { name: "Jun", role: "Security guard", says: "When the lights went out at eight, I checked the alarm panel by torchlight." },
+        { name: "Kaia", role: "Neighbour", says: "At nine I was watching the news on TV in my flat on Gallery Row." },
+        { name: "Lorcan", role: "Painter", says: "I was in my studio across town all evening. My lights stayed on." }
+      ],
+      answer: 1,
+      proof: [0],
+      why: "The power was out on Gallery Row from 8 PM to 9:30 PM. Kaia couldn't have watched TV in her flat there at nine."
+    },
+    {
+      title: "The Missed Ferry",
+      setup: "A tourist's wallet was taken at the harbor on Saturday, between 2 and 3 PM.",
+      clues: [
+        "Strong winds stopped every ferry on Saturday.",
+        "The harbor café was open all afternoon.",
+        "The wallet was on a café table at 1:50 PM."
+      ],
+      suspects: [
+        { name: "Mabel", role: "Café owner", says: "I served tea all afternoon. Half my customers had come to catch a ferry that never ran." },
+        { name: "Nils", role: "Deckhand", says: "I spent Saturday tying down the ferry so the wind didn't smash it." },
+        { name: "Oriel", role: "Tourist", says: "I came over on the two o'clock ferry and walked straight up to the café." }
+      ],
+      answer: 2,
+      proof: [0],
+      why: "Strong winds stopped every ferry on Saturday. Oriel couldn't have come over on the two o'clock ferry."
+    },
+    {
+      title: "The Prize Marrow",
+      setup: "The prize marrow at the village show was slashed on Saturday morning, between 9 and 11 AM.",
+      clues: [
+        "The village bakery sold out of bread by 8 AM on Saturday.",
+        "The show tent was closed to the public until 11 AM.",
+        "The marrow was weighed and labelled at 8:45 AM."
+      ],
+      suspects: [
+        { name: "Petra", role: "Judge", says: "I weighed the marrow at a quarter to nine and pinned on its label." },
+        { name: "Quentin", role: "Farmer", says: "At half past nine I was at the bakery, buying the last two loaves." },
+        { name: "Rhoda", role: "Neighbour", says: "I waited outside the tent until it opened at eleven." }
+      ],
+      answer: 1,
+      proof: [0],
+      why: "The bakery sold out of bread by 8 AM. Quentin couldn't have bought the last two loaves there at half past nine."
+    },
+    {
+      title: "The Ninth Floor",
+      setup: "Test results were stolen from the university lab on Wednesday night.",
+      clues: [
+        "The lab building's lifts were switched off at 6 PM every night that week.",
+        "The lab is on the ninth floor.",
+        "The stairwell doors were locked at 8 PM."
+      ],
+      suspects: [
+        { name: "Sami", role: "Student", says: "I took the lift up to the lab at seven to fetch my laptop." },
+        { name: "Tilda", role: "Professor", says: "I walked down nine flights of stairs at half past seven. My knees still hurt." },
+        { name: "Ugo", role: "Security guard", says: "I locked the stairwell doors at eight on the dot." }
+      ],
+      answer: 0,
+      proof: [0],
+      why: "The lifts were switched off at 6 PM every night that week. Sami couldn't have taken the lift up at seven."
+    },
+    {
+      title: "The Study Room",
+      setup: "A laptop vanished from the Riverside library's study room on Monday evening.",
+      clues: [
+        "The library closed at 5 PM on Monday for a staff meeting.",
+        "The laptop was left on a desk at 4:30 PM.",
+        "The study room window doesn't open."
+      ],
+      suspects: [
+        { name: "Vera", role: "Librarian", says: "I locked the doors at five and went to the staff meeting." },
+        { name: "Wilf", role: "Student", says: "I studied in that room until half past six. It was lovely and quiet." },
+        { name: "Xena", role: "Courier", says: "I dropped a parcel at the front desk at a quarter to five." }
+      ],
+      answer: 1,
+      proof: [0],
+      why: "The library closed at 5 PM on Monday. Wilf couldn't have studied there until half past six."
+    },
+    {
+      title: "The Bait Shop Rod",
+      setup: "A new fishing rod was stolen from the rack outside the harbor bait shop on Thursday evening.",
+      clues: [
+        "The pier was closed all Thursday while its planks were replaced.",
+        "It was a clear, dry evening.",
+        "The bait shop closed at 6 PM."
+      ],
+      suspects: [
+        { name: "Yusra", role: "Bait shop owner", says: "I closed the shop at six and left the rods in the rack outside." },
+        { name: "Zeke", role: "Angler", says: "I fished off the end of the pier all Thursday evening and caught three mackerel." },
+        { name: "Alma", role: "Jogger", says: "I ran along the harbor wall at seven. Lovely clear evening." }
+      ],
+      answer: 1,
+      proof: [0],
+      why: "The pier was closed all Thursday while its planks were replaced. Zeke couldn't have fished off the end of it that evening."
+    },
+    {
+      title: "The Cake Topper",
+      setup: "The silver cake topper vanished from the reception hall at the Oakfield Hotel on Saturday night.",
+      clues: [
+        "The hotel's only lift was broken all weekend.",
+        "The reception hall is on the fourth floor.",
+        "The band played from 8 PM until midnight."
+      ],
+      suspects: [
+        { name: "Bettina", role: "Waitress", says: "I took the lift up to the hall at nine with a tray of glasses." },
+        { name: "Cormac", role: "Drummer", says: "We played from eight until midnight. My arms are still aching." },
+        { name: "Delphine", role: "Guest", says: "I climbed four flights of stairs in high heels. Never again." }
+      ],
+      answer: 0,
+      proof: [0],
+      why: "The hotel's only lift was broken all weekend. Bettina couldn't have taken it up to the hall at nine."
+    },
+    {
+      title: "The Champion's Ribbon",
+      setup: "The champion's ribbon vanished from the prize table at the dog show on Sunday afternoon.",
+      clues: [
+        "Every dog had to stay on its lead all day at the show.",
+        "The prize table was in the main tent.",
+        "A thunderstorm hit the show at 2 PM and lasted an hour."
+      ],
+      suspects: [
+        { name: "Edgar", role: "Dog owner", says: "My spaniel stayed on his lead all day, even when he saw a cat." },
+        { name: "Fenna", role: "Judge", says: "I hung the ribbons on the prize table in the main tent at noon." },
+        { name: "Gideon", role: "Visitor", says: "At two I sat on the grass in the sunshine eating my sandwiches." }
+      ],
+      answer: 2,
+      proof: [2],
+      why: "A thunderstorm hit the show at 2 PM and lasted an hour. Gideon couldn't have sat in the sunshine at two."
+    },
+    {
+      title: "The Bakery Window",
+      setup: "Someone threw a stone through the bakery window on Mill Lane on Tuesday night, at about 11 PM.",
+      clues: [
+        "Every street light on Mill Lane was broken on Tuesday night.",
+        "The pub on the corner closed at 10:30 PM.",
+        "The bakery's back door was locked."
+      ],
+      suspects: [
+        { name: "Hester", role: "Barmaid", says: "I closed the pub at half past ten and walked home by torchlight." },
+        { name: "Ike", role: "Student", says: "At eleven I was reading the poster in the bakery window under the Mill Lane street lights." },
+        { name: "Joy", role: "Taxi driver", says: "I picked up the last pub customers at twenty to eleven." }
+      ],
+      answer: 1,
+      proof: [0],
+      why: "Every street light on Mill Lane was broken on Tuesday night. Ike couldn't have read the poster under them at eleven."
+    },
+    {
+      title: "The Jam Stall",
+      setup: "The tip jar went missing from the jam stall at the farmers' market on Saturday.",
+      clues: [
+        "The farmers' market only takes cash.",
+        "The market ran from 8 AM to 1 PM.",
+        "The jam stall sold out by 11 AM."
+      ],
+      suspects: [
+        { name: "Kemal", role: "Beekeeper", says: "I sold honey next to the jam stall until the market closed at one." },
+        { name: "Liesl", role: "Shopper", says: "I tapped my phone to pay for three jars of jam at ten." },
+        { name: "Mungo", role: "Jam maker", says: "My jam was all gone by eleven, so I packed up early." }
+      ],
+      answer: 1,
+      proof: [0],
+      why: "The farmers' market only takes cash. Liesl couldn't have paid for her jam with her phone."
+    },
+    {
+      title: "The Choir Folder",
+      setup: "The choir's music folder vanished from St. Anne's church hall on Wednesday evening.",
+      clues: [
+        "The church bell is being repaired and hasn't rung for two weeks.",
+        "Choir practice ran from 7 PM to 8:30 PM.",
+        "The folder was on the piano at 7 PM."
+      ],
+      suspects: [
+        { name: "Nadia", role: "Organist", says: "I put the folder on the piano just before seven." },
+        { name: "Osric", role: "Bell ringer", says: "I rang the church bell at eight, like every Wednesday." },
+        { name: "Perpetua", role: "Soprano", says: "We sang until half past eight and then went for chips." }
+      ],
+      answer: 1,
+      proof: [0],
+      why: "The church bell is being repaired and hasn't rung for two weeks. Osric couldn't have rung it at eight."
     }
   ],
 
@@ -1123,6 +1361,259 @@ window.WL_CASES = {
       answer: 1,
       proof: [0, 1],
       why: "High tide was at 6 PM, so the causeway was under water from 4 PM to 8 PM. Viktor couldn't have walked across it at half past five."
+    },
+    {
+      title: "No Footprints",
+      setup: "An antique garden gnome vanished from Mrs. Pike's front lawn on Monday night.",
+      clues: [
+        "Fresh snow fell on Monday night from 10 PM until midnight.",
+        "In the morning there wasn't a single footprint on Mrs. Pike's lawn.",
+        "The gnome was still on the lawn at 9:30 PM.",
+        "Mrs. Pike's gate squeaks loudly."
+      ],
+      suspects: [
+        { name: "Quincy", role: "Neighbour", says: "I cut across Mrs. Pike's lawn at one in the morning to get home faster." },
+        { name: "Rosalind", role: "Mrs. Pike's niece", says: "I saw the gnome from the window at half past nine." },
+        { name: "Silas", role: "Postman", says: "I heard that gate squeak at ten, just as the snow was starting." }
+      ],
+      answer: 0,
+      proof: [0, 1],
+      why: "Snow fell until midnight, and in the morning there wasn't a single footprint on the lawn. If Quincy had cut across it at one in the morning, his footprints would still have been in the snow."
+    },
+    {
+      title: "The 7:40 to Kelton",
+      setup: "A briefcase was stolen from the waiting room at Ashby station on Friday evening.",
+      clues: [
+        "The 7:40 PM train from Ashby to Kelton takes 50 minutes.",
+        "On Friday the 7:40 PM train left Ashby on time.",
+        "The briefcase was last seen at 7:30 PM.",
+        "Kelton's taxi rank closes at 9 PM."
+      ],
+      suspects: [
+        { name: "Tamsin", role: "Commuter", says: "I caught the 7:40 to Kelton and was home in my kitchen by eight." },
+        { name: "Udo", role: "Ticket clerk", says: "I saw the briefcase by the bench at half past seven." },
+        { name: "Valentina", role: "Nurse", says: "I took the 7:40 to Kelton and got a taxi from the rank at twenty to nine." }
+      ],
+      answer: 0,
+      proof: [0, 1],
+      why: "The 7:40 left on time and takes 50 minutes, so it reached Kelton at 8:30. Tamsin couldn't have been home in her kitchen by eight."
+    },
+    {
+      title: "The Bake Sale",
+      setup: "The cash box from the charity bake sale disappeared from the town hall on Saturday afternoon.",
+      clues: [
+        "The bake sale ran from 10 AM to 2 PM, and nothing was sold at a discount.",
+        "Brownies cost $2 each.",
+        "Lemon cakes cost $3 each.",
+        "The cash box was locked in the office at 2:15 PM."
+      ],
+      suspects: [
+        { name: "Wanda", role: "Teacher", says: "I bought three brownies and two lemon cakes for my class. It came to $10." },
+        { name: "Xavi", role: "Baker", says: "I baked the lemon cakes and sold my last one at one." },
+        { name: "Yolanda", role: "Treasurer", says: "I counted the money and locked the box in the office at a quarter past two." }
+      ],
+      answer: 0,
+      proof: [1, 2],
+      why: "Three brownies at $2 and two lemon cakes at $3 come to $12, not $10. Wanda's sum doesn't add up."
+    },
+    {
+      title: "Opening Night",
+      setup: "A jade bracelet was taken from a display case during the Linden Gallery's opening night.",
+      clues: [
+        "The gallery was open from 7 PM to 10 PM.",
+        "Guests had to leave their coats and bags in the cloakroom.",
+        "The bracelet's case was found open at 9:15 PM.",
+        "The cloakroom was closed from 8 PM to 8:30 PM while the attendant took a break."
+      ],
+      suspects: [
+        { name: "Zara", role: "Art student", says: "I got my coat back from the cloakroom at a quarter past eight and went home early." },
+        { name: "Albin", role: "Cloakroom attendant", says: "I took my break at eight and was back at my desk by half past." },
+        { name: "Bryony", role: "Sculptor", says: "I gave a speech at nine and stayed until the doors closed at ten." }
+      ],
+      answer: 0,
+      proof: [3],
+      why: "The cloakroom was closed from 8 PM to 8:30 PM. Zara couldn't have got her coat back at a quarter past eight."
+    },
+    {
+      title: "The Lighthouse Log",
+      setup: "The logbook vanished from the Point Ross lighthouse on Tuesday evening.",
+      clues: [
+        "Sunset on Tuesday was at 5:10 PM.",
+        "The lighthouse lamp switches on 30 minutes after sunset, every night.",
+        "The lamp runs on a timer. Nobody can switch it on by hand.",
+        "The logbook was signed at 6 PM."
+      ],
+      suspects: [
+        { name: "Cyrus", role: "Fisherman", says: "When I rowed past the point at half past five, the lamp was already shining." },
+        { name: "Dorota", role: "Lighthouse keeper", says: "I signed the logbook at six, after the lamp came on." },
+        { name: "Emrys", role: "Birdwatcher", says: "I watched the sunset from the rocks and left before the lamp came on." }
+      ],
+      answer: 0,
+      proof: [0, 1],
+      why: "Sunset was at 5:10 PM and the lamp switches on 30 minutes later, at 5:40. When Cyrus rowed past at half past five, it wasn't shining yet."
+    },
+    {
+      title: "The Marathon Medal",
+      setup: "The winner's gold medal vanished from the finish-line tent on Sunday.",
+      clues: [
+        "The marathon started at 9 AM.",
+        "The winner finished in 2 hours and 41 minutes.",
+        "Nobody else finished in under 3 hours.",
+        "The finish-line tent opened at 11 AM."
+      ],
+      suspects: [
+        { name: "Farah", role: "Runner", says: "I crossed the line at half past eleven, just behind the winner." },
+        { name: "Gustav", role: "Medic", says: "I opened the tent at eleven and waited for the first runners." },
+        { name: "Hollis", role: "Volunteer", says: "I handed out water at mile 20 until half past twelve." }
+      ],
+      answer: 0,
+      proof: [0, 2],
+      alt: [[0, 1]],
+      why: "The race started at 9 AM, and nobody but the winner finished in under 3 hours, so nobody else crossed the line before noon. Farah couldn't have finished at half past eleven."
+    },
+    {
+      title: "The Master Tapes",
+      setup: "The master tapes of a new album vanished from Blue Room Studios on Thursday night.",
+      clues: [
+        "The studio's back door only opens with a key card.",
+        "The key card system logs every swipe.",
+        "The log shows one swipe all night: Ilse's card, at 9:12 PM.",
+        "The tapes were in the studio at 8 PM."
+      ],
+      suspects: [
+        { name: "Ilse", role: "Sound engineer", says: "I swiped in at about ten past nine to switch off the lights." },
+        { name: "Jasper", role: "Guitarist", says: "I let myself in the back door with my own key card at ten, to fetch my guitar." },
+        { name: "Kirsi", role: "Singer", says: "I left by the front door at eight, and the tapes were still on the desk." }
+      ],
+      answer: 1,
+      proof: [1, 2],
+      why: "The key card system logs every swipe, and the only swipe all night was Ilse's at 9:12 PM. Jasper didn't swipe his card at ten."
+    },
+    {
+      title: "The Final Whistle",
+      setup: "Someone stole the takings from the Corner Café on Friday night, between closing time and 11 PM.",
+      clues: [
+        "The café closed at 6 PM.",
+        "The football match on TV kicked off at 8 PM.",
+        "The match lasted two hours, with no extra time.",
+        "The café's back door was found open at 11 PM."
+      ],
+      suspects: [
+        { name: "Lucan", role: "Café owner", says: "I locked up at six and counted the takings at a quarter past." },
+        { name: "Moira", role: "Waitress", says: "I watched the whole match at the Fox and left the moment it ended, at nine." },
+        { name: "Nestor", role: "Neighbour", says: "I noticed the café's back door open when I put my bins out at eleven." }
+      ],
+      answer: 1,
+      proof: [1, 2],
+      why: "The match kicked off at 8 PM and lasted two hours, so it ended at 10 PM. Moira couldn't have watched the whole thing and left at nine."
+    },
+    {
+      title: "The Mountain Café",
+      setup: "A ski instructor's wallet vanished from the mountain café on Sunday, between 2:30 and 3:30 PM.",
+      clues: [
+        "The top lift closed at 2 PM because of high winds.",
+        "The mountain café sits at the top of the top lift.",
+        "The wallet was on the café counter at 2:30 PM.",
+        "Skiing down from the café to the village takes at least 25 minutes."
+      ],
+      suspects: [
+        { name: "Orla", role: "Ski instructor", says: "I left my wallet on the café counter at half past two." },
+        { name: "Piet", role: "Snowboarder", says: "I rode the lift up to the mountain café at three for a hot chocolate." },
+        { name: "Quilla", role: "Café cook", says: "I skied down to the village at a quarter past three and got there at twenty to four." }
+      ],
+      answer: 1,
+      proof: [0, 1],
+      why: "The mountain café sits at the top of the top lift, and that lift closed at 2 PM. Piet couldn't have ridden up to the café at three."
+    },
+    {
+      title: "The Violin Bow",
+      setup: "A priceless violin bow vanished from the Kessler Hall green room during Friday's concert.",
+      clues: [
+        "The concert started at 7:30 PM and ran for 95 minutes, with no interval.",
+        "The bow was in the green room when the concert began.",
+        "Only musicians and stage crew may enter the green room.",
+        "The stage door was locked at 7:30 PM and opened again when the concert ended."
+      ],
+      suspects: [
+        { name: "Rasmus", role: "Stagehand", says: "I slipped out through the stage door at half past eight to catch my bus." },
+        { name: "Sunniva", role: "Violinist", says: "I played every note of the concert and went straight to the green room afterwards." },
+        { name: "Tobiah", role: "Usher", says: "I stood at the back of the hall for all 95 minutes." }
+      ],
+      answer: 0,
+      proof: [0, 3],
+      why: "The concert began at 7:30 PM and ran for 95 minutes, so it ended at 9:05. The stage door stayed locked until then, so Rasmus couldn't have left through it at half past eight."
+    },
+    {
+      title: "Grounded Balloons",
+      setup: "A camera bag vanished from the launch field of the balloon festival on Saturday morning.",
+      clues: [
+        "No balloons flew on Saturday: the wind was too strong.",
+        "The festival's food stalls opened at 9 AM.",
+        "The camera bag was last seen at 8:15 AM.",
+        "Mist covered the field until 10 AM."
+      ],
+      suspects: [
+        { name: "Ulla", role: "Balloon pilot", says: "We didn't fly on Saturday. I spent the morning folding our balloon away." },
+        { name: "Vaughn", role: "Photographer", says: "At half past eight I photographed three balloons rising out of the mist." },
+        { name: "Wilma", role: "Pancake seller", says: "I opened my stall at nine. Nobody could see a thing in that mist." }
+      ],
+      answer: 1,
+      proof: [0],
+      why: "No balloons flew on Saturday because the wind was too strong. Vaughn couldn't have photographed three of them rising at half past eight."
+    },
+    {
+      title: "The Twelve-Hour Shift",
+      setup: "Medicine went missing from the Riverside Hospital pharmacy between 10 PM and 2 AM on Tuesday night.",
+      clues: [
+        "Nurse shifts at Riverside last 12 hours.",
+        "Xander's shift on Tuesday started at 8 AM.",
+        "The pharmacy door logs every time it opens.",
+        "The log shows the door opened twice: at 11:10 PM and at 1:40 AM."
+      ],
+      suspects: [
+        { name: "Xander", role: "Nurse", says: "At midnight I was still on my shift, handing out medicine on Ward 3." },
+        { name: "Yvette", role: "Pharmacist", says: "I opened the pharmacy at ten past eleven for a doctor's order." },
+        { name: "Zephyr", role: "Porter", says: "I wheeled a patient past the pharmacy at twenty to two. The door was open." }
+      ],
+      answer: 0,
+      proof: [0, 1],
+      why: "Nurse shifts last 12 hours and Xander's started at 8 AM, so it ended at 8 PM. He wasn't still on his shift at midnight."
+    },
+    {
+      title: "The Hot Kiln",
+      setup: "A prize-winning vase was smashed at the Clayworks studio on Thursday evening.",
+      clues: [
+        "The kiln finished firing at 4 PM. It takes 6 hours to cool.",
+        "Nobody can open the kiln while it's hot.",
+        "The vase was on the shelf at 7 PM.",
+        "The studio lights are on a timer and go off at 9 PM."
+      ],
+      suspects: [
+        { name: "Aurelio", role: "Potter", says: "At eight I opened the kiln and took out my bowls to show a friend." },
+        { name: "Beatrix", role: "Teacher", says: "I saw the vase on the shelf at seven when I locked the glaze room." },
+        { name: "Cosmo", role: "Student", says: "I kept working in the dark after nine, when the lights went off." }
+      ],
+      answer: 0,
+      proof: [0, 1],
+      why: "The kiln finished firing at 4 PM and takes 6 hours to cool, and nobody can open it while it's hot, so it stayed shut until 10 PM. Aurelio didn't open it at eight."
+    },
+    {
+      title: "The Last Ferry",
+      setup: "A briefcase of documents vanished from the Harbor Hotel lobby on Sunday evening.",
+      clues: [
+        "On Sundays the last ferry from the island leaves at 6 PM.",
+        "The crossing takes 40 minutes.",
+        "The briefcase was in the lobby at 7 PM.",
+        "The hotel is a 5-minute walk from the ferry pier."
+      ],
+      suspects: [
+        { name: "Dagny", role: "Lawyer", says: "I came over on the last ferry and was sitting in the hotel lobby by half past six." },
+        { name: "Evander", role: "Tourist", says: "I came over on the last ferry, walked up to the hotel and checked in at a quarter to seven." },
+        { name: "Freya", role: "Receptionist", says: "I saw the briefcase by the lobby sofa at seven." }
+      ],
+      answer: 0,
+      proof: [0, 1],
+      why: "The last ferry left the island at 6 PM and the crossing takes 40 minutes, so it didn't land until 6:40. Dagny couldn't have been sitting in the lobby by half past six."
     }
   ],
 
@@ -1725,6 +2216,272 @@ window.WL_CASES = {
       proof: [0],
       why: "Everyone told the truth. Uma heard the shop's alarm ring at two, so the fact \"the alarm didn't go off\" was fake.",
       twist: "The \"silent alarm\" story was planted so nobody would ask who switched it off at twenty past two."
+    },
+    {
+      mode: "honest",
+      title: "The Harvest Fair",
+      setup: "The prize pumpkin vanished from the harvest fair on Saturday evening.",
+      clues: [
+        "The fair's Ferris wheel was broken all Saturday.",
+        "It rained hard from 5 PM to 8 PM.",
+        "The pumpkin tent closed at 6 PM."
+      ],
+      suspects: [
+        { name: "Gilda", role: "Farmer", says: "I rode the Ferris wheel at six and could see the whole fair from the top." },
+        { name: "Hector", role: "Fair worker", says: "I closed the pumpkin tent at six and ran to my van in the rain." },
+        { name: "Imogen", role: "Visitor", says: "I sat on the grass and ate an ice cream at seven. Lovely dry evening." }
+      ],
+      answer: 1,
+      proof: [0, 1],
+      why: "Hector told the truth. Gilda lied: the Ferris wheel was broken all Saturday. Imogen lied: it rained hard from 5 PM to 8 PM, so it wasn't a dry evening at seven.",
+      twist: "Two made-up evenings at the fair. The pumpkin left in the back of a farmer's trailer."
+    },
+    {
+      mode: "planted",
+      title: "The Closed Museum",
+      setup: "An old map vanished from the Bramley Museum on Tuesday afternoon.",
+      clues: [
+        "The museum was closed all Tuesday.",
+        "The map was in its case at noon.",
+        "The museum café sells only tea and cake."
+      ],
+      suspects: [
+        { name: "Jolene", role: "Tour guide", says: "I led a school tour round the museum at two on Tuesday." },
+        { name: "Kit", role: "Café waiter", says: "Our café only does tea and cake. People ask for sandwiches every day." },
+        { name: "Lars", role: "Curator", says: "I checked the map case at noon. The map was there." }
+      ],
+      answer: 0,
+      proof: [0],
+      why: "Everyone told the truth. Jolene led a school tour round the museum at two on Tuesday, so the fact \"the museum was closed all Tuesday\" was fake.",
+      twist: "Someone wanted the police to think nobody was in the museum that afternoon. A whole school class was."
+    },
+    {
+      mode: "honest",
+      title: "The Rooftop Orchids",
+      setup: "Rare orchids were stolen from the rooftop greenhouse of the Elm Street flats on Thursday night.",
+      clues: [
+        "The flats' lift was out of order all Thursday.",
+        "The roof door was locked at 8 PM.",
+        "A storm knocked out the power on Elm Street from 9 PM to 11 PM."
+      ],
+      suspects: [
+        { name: "Magnus", role: "Resident", says: "I watered the orchids at seven and walked down all six flights." },
+        { name: "Nell", role: "Resident", says: "I took the lift up to the roof at half past seven to fetch my washing." },
+        { name: "Oskar", role: "Caretaker", says: "I watched a film on the TV in my basement flat from nine until eleven." }
+      ],
+      answer: 0,
+      proof: [0, 2],
+      why: "Magnus told the truth. Nell lied: the lift was out of order all Thursday. Oskar lied: the power on Elm Street was out from 9 PM to 11 PM, so his TV wasn't on.",
+      twist: "Two neighbours, two invented evenings. The orchids went down the fire escape in a laundry basket."
+    },
+    {
+      mode: "planted",
+      title: "The 11:15 Bus",
+      setup: "A handbag was snatched at the Fenwick bus stop on Wednesday night, at about 11 PM.",
+      clues: [
+        "The last bus from Fenwick left at 10:30 PM.",
+        "The bus stop's shelter light was broken.",
+        "The thief ran towards the park."
+      ],
+      suspects: [
+        { name: "Ralph", role: "Student", says: "I waited at the stop in the dark, because the shelter light was broken." },
+        { name: "Pippa", role: "Bus driver", says: "I drove the 11:15 bus out of Fenwick. It was my last run of the night." },
+        { name: "Selma", role: "Victim's friend", says: "She screamed at about eleven, and someone ran off towards the park." }
+      ],
+      answer: 0,
+      proof: [1],
+      why: "Everyone told the truth. Pippa drove the 11:15 bus out of Fenwick, so the fact \"the last bus left at 10:30 PM\" was fake.",
+      twist: "With the last bus 'gone', nobody would ask who got off the 11:15."
+    },
+    {
+      mode: "honest",
+      title: "The Recipe Book",
+      setup: "The bakery on Quay Street was broken into on Monday night, and the family recipe book was taken.",
+      clues: [
+        "Thick fog covered Quay Street all Monday night.",
+        "The bakery's oven was switched off at 6 PM.",
+        "The harbor's foghorn sounded every minute all night."
+      ],
+      suspects: [
+        { name: "Tove", role: "Fisherman", says: "At ten I could see every light across the bay from Quay Street." },
+        { name: "Ulric", role: "Baker", says: "I switched the oven off at six and went home." },
+        { name: "Vesna", role: "Neighbour", says: "It was a silent night. I didn't hear a sound until morning." }
+      ],
+      answer: 1,
+      proof: [0, 2],
+      why: "Ulric told the truth. Tove lied: thick fog covered Quay Street all night, so no lights across the bay could be seen. Vesna lied: the foghorn sounded every minute all night.",
+      twist: "Two neighbours who swore they saw and heard nothing. One of them walked off with a hundred years of recipes."
+    },
+    {
+      mode: "planted",
+      title: "The New Bench",
+      setup: "Someone carved initials into the brand-new bench in Victoria Park on Friday.",
+      clues: [
+        "The bench was painted on Friday morning.",
+        "The paint was dry by 2 PM.",
+        "The park gates closed at 8 PM."
+      ],
+      suspects: [
+        { name: "Wyatt", role: "Gardener", says: "I painted the bench first thing on Friday morning." },
+        { name: "Zola", role: "Office worker", says: "I sat on the new bench at three and ruined my coat with wet paint." },
+        { name: "Ximena", role: "Park keeper", says: "I locked the park gates at eight on the dot." }
+      ],
+      answer: 1,
+      proof: [1],
+      why: "Everyone told the truth. Zola sat on the bench at three and got wet paint on her coat, so the fact \"the paint was dry by 2 PM\" was fake.",
+      twist: "Dry paint would mean anyone in the afternoon. Wet paint means the carver came later."
+    },
+    {
+      mode: "honest",
+      title: "The Silver Saddle",
+      setup: "A champion horse's silver saddle vanished from the Ridgeway Stables on Sunday night.",
+      clues: [
+        "Snow closed every road to the stables from 6 PM on Sunday.",
+        "The stables' generator failed at 9 PM, and the lights went out.",
+        "The saddle was polished at 7 PM."
+      ],
+      suspects: [
+        { name: "Agnes", role: "Groom", says: "I polished the saddle at seven and stayed in the hayloft all night because of the snow." },
+        { name: "Barnaby", role: "Vet", says: "I drove up to the stables at eight to check on a sick foal." },
+        { name: "Clementine", role: "Rider", says: "I groomed my horse under the stable lights at ten." }
+      ],
+      answer: 0,
+      proof: [0, 1],
+      why: "Agnes told the truth. Barnaby lied: snow closed every road to the stables from 6 PM. Clementine lied: the lights went out at 9 PM, so she didn't groom her horse under them at ten.",
+      twist: "Two alibis, both built on a night nobody could check. The saddle left on a sledge."
+    },
+    {
+      mode: "planted",
+      title: "The Pier Arcade",
+      setup: "The coin machines in the pier arcade were emptied on Saturday night.",
+      clues: [
+        "The arcade closed at 11 PM.",
+        "The pier gate was locked at 11:30 PM.",
+        "Nobody walked onto the pier after 10 PM."
+      ],
+      suspects: [
+        { name: "Desmond", role: "Arcade owner", says: "I closed the arcade at eleven and counted the coins in the machines." },
+        { name: "Esther", role: "Security guard", says: "I locked the pier gate at half past eleven." },
+        { name: "Florin", role: "Teenager", says: "I walked onto the pier at half past ten to meet my friends at the arcade." }
+      ],
+      answer: 2,
+      proof: [2],
+      why: "Everyone told the truth. Florin walked onto the pier at half past ten, so the fact \"nobody walked onto the pier after 10 PM\" was fake.",
+      twist: "The fake fact kept the late crowd off the suspect list. Someone in that crowd left with a bag full of coins."
+    },
+    {
+      mode: "honest",
+      title: "The Box Office",
+      setup: "A stack of concert tickets vanished from the box office at the Rialto on Friday.",
+      clues: [
+        "The box office only opens from 10 AM to 4 PM.",
+        "Every ticket for Friday's concert sold out on Monday.",
+        "The Rialto's car park was closed all Friday."
+      ],
+      suspects: [
+        { name: "Gaspard", role: "Box office clerk", says: "I opened the box office at ten and locked it at four." },
+        { name: "Henrike", role: "Fan", says: "I bought two tickets for Friday's concert at the box office on Thursday." },
+        { name: "Ignatius", role: "Delivery driver", says: "I parked in the Rialto car park at noon on Friday to drop off posters." }
+      ],
+      answer: 0,
+      proof: [1, 2],
+      why: "Gaspard told the truth. Henrike lied: every ticket sold out on Monday, so she didn't buy two on Thursday. Ignatius lied: the car park was closed all Friday.",
+      twist: "Two people with reasons to be near the box office, and both reasons made up. The tickets were for sale online by evening."
+    },
+    {
+      mode: "planted",
+      title: "The Bookshop Cat",
+      setup: "A first edition was stolen from Hartley's Books on Thursday afternoon.",
+      clues: [
+        "The shop's cat, Biscuit, hisses at every customer.",
+        "The first edition was on the counter at 1 PM.",
+        "The shop was shut from 2 PM to 3 PM for lunch."
+      ],
+      suspects: [
+        { name: "Juno", role: "Customer", says: "Biscuit hissed at me the moment I walked in." },
+        { name: "Kasimir", role: "Owner", says: "I put the first edition on the counter at one to show a buyer." },
+        { name: "Lilou", role: "Hiker", says: "I bought a map at Hartley's at half past two. The owner wrapped it for me." }
+      ],
+      answer: 2,
+      proof: [2],
+      why: "Everyone told the truth. Lilou bought a map at half past two and the owner wrapped it, so the fact \"the shop was shut from 2 PM to 3 PM\" was fake.",
+      twist: "A shop that was 'shut' has no customers to ask. This one had at least one."
+    },
+    {
+      mode: "honest",
+      title: "The Treehouse Comics",
+      setup: "A box of rare comics vanished from the Carter twins' treehouse on Tuesday afternoon.",
+      clues: [
+        "The treehouse ladder was taken down on Monday to be fixed.",
+        "Tuesday was the hottest day of the year: 34°C at 3 PM.",
+        "The twins' dog barks at every stranger. On Tuesday afternoon it barked once, at 4 PM."
+      ],
+      suspects: [
+        { name: "Mags", role: "Neighbour", says: "I climbed the ladder to the treehouse at two to fetch my son's ball." },
+        { name: "Nico", role: "Twins' cousin", says: "It was a cold, grey afternoon, so I stayed indoors with a hot chocolate." },
+        { name: "Odette", role: "Postwoman", says: "The dog barked at me when I brought the post at four." }
+      ],
+      answer: 2,
+      proof: [0, 1],
+      why: "Odette told the truth. Mags lied: the ladder was taken down on Monday, so she didn't climb it. Nico lied: it was 34°C at 3 PM, not a cold, grey afternoon.",
+      twist: "The comics didn't need a ladder: they came down on a rope, into a cousin's backpack."
+    },
+    {
+      mode: "planted",
+      title: "The Marina Key",
+      setup: "Fuel was siphoned from the boats at Saltmarsh Marina on Sunday night.",
+      clues: [
+        "The marina gate is locked from 10 PM to 6 AM.",
+        "The only gate key is kept by the harbor master.",
+        "The harbor master was away all Sunday."
+      ],
+      suspects: [
+        { name: "Rowena", role: "Boat owner", says: "I left the marina at nine, before the gate was locked." },
+        { name: "Pascal", role: "Fisherman", says: "The harbor master locked the gate behind me at ten on Sunday night." },
+        { name: "Sven", role: "Night fisherman", says: "I couldn't get to my boat at midnight, because the gate was locked." }
+      ],
+      answer: 2,
+      proof: [1],
+      why: "Everyone told the truth. Pascal saw the harbor master lock the gate at ten on Sunday night, so the fact \"the harbor master was away all Sunday\" was fake.",
+      twist: "With the harbor master 'away', nobody would ask who held the only key."
+    },
+    {
+      mode: "honest",
+      title: "The Vicarage Teapot",
+      setup: "A silver teapot vanished from the vicarage garden party on Saturday afternoon.",
+      clues: [
+        "The party ran from 2 PM to 5 PM.",
+        "A wasp nest by the front gate meant every guest came in through the back garden.",
+        "The brass band didn't turn up."
+      ],
+      suspects: [
+        { name: "Philippa", role: "Vicar's wife", says: "I poured tea from the silver teapot at half past two." },
+        { name: "Reuben", role: "Guest", says: "I walked in through the front gate at three, right past the vicar's roses." },
+        { name: "Saskia", role: "Guest", says: "The brass band played my favourite march at four." }
+      ],
+      answer: 0,
+      proof: [1, 2],
+      why: "Philippa told the truth. Reuben lied: because of the wasp nest, every guest came in through the back garden. Saskia lied: the brass band didn't turn up, so it played nothing at four.",
+      twist: "Two guests who weren't where they said. The teapot left the party under a picnic blanket."
+    },
+    {
+      mode: "planted",
+      title: "The Empty Pool",
+      setup: "Someone stole the lifeguard's radio from the lido on Wednesday evening.",
+      clues: [
+        "The lido's pool was emptied for cleaning on Monday.",
+        "The lido closed at 8 PM.",
+        "The radio was on the lifeguard chair at 7:30 PM."
+      ],
+      suspects: [
+        { name: "Ursula", role: "Lifeguard", says: "I left my radio on my chair at half past seven while I locked the changing rooms." },
+        { name: "Valentin", role: "Ticket seller", says: "I closed the till at eight and went home." },
+        { name: "Tobias", role: "Swimmer", says: "I swam forty lengths of the lido pool on Wednesday evening, until it closed." }
+      ],
+      answer: 0,
+      proof: [2],
+      why: "Everyone told the truth. Tobias swam forty lengths of the pool on Wednesday evening, so the fact \"the pool was emptied for cleaning on Monday\" was fake.",
+      twist: "An 'empty pool' meant no swimmers to question. Tobias saw who lingered by the lifeguard chair."
     }
   ]
 };

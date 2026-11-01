@@ -605,13 +605,21 @@
   function seasonStart(n) { return SEASON_ONE + (n - 1) * SEASON_DAYS; }
   // Seasons past the end of the list reuse the last season's templates.
   function packFor(n) { var L = window.WL_SEASONS || []; return L.length ? L[Math.min(Math.max(n, 1), L.length) - 1] : null; }
+  /* When each built-in fact's stories happen: "night" (the evening and night) or "day". Untagged facts fit both.
+     Season cases only use facts that match the time of the crime, so every story is about the crime's window. */
+  var FACT_AT = {};
+  ["rain", "snow", "fog", "heat", "streetlights", "blackout", "internet", "train", "bridge", "cinema", "card", "dog", "water",
+    "fireworks", "network", "tide", "parkgates", "cameraoff", "closing", "lastbus", "filmlength", "walk", "frozen", "rainhours"]
+    .forEach(function (id) { FACT_AT[id] = "night"; });
+  ["bus", "parking", "library", "bakery", "gas", "drilling", "school", "petrol", "atm", "flights", "parade", "storeroom",
+    "cafe", "museum", "market"].forEach(function (id) { FACT_AT[id] = "day"; });
   var pools = [];
   function poolOf(pack) {
     for (var i = 0; i < pools.length; i++) if (pools[i].pack === pack) return pools[i];
     var drop = {}, more = pack.more || {}, regroup = pack.regroup || {};
     (pack.drop || []).forEach(function (s) { drop[s] = 1; });
     var base = FACTS.map(function (f) {
-      return Object.assign({}, f, { groups: regroup[f.id] || f.groups, own: false,
+      return Object.assign({}, f, { groups: regroup[f.id] || f.groups, own: false, at: FACT_AT[f.id],
         lies: f.lies && f.lies.filter(function (l) { return !drop[l.say]; }).concat(more[f.id] || []) });
     });
     var mine = function (f, x) { return Object.assign({ tier: 1, groups: [f.id] }, f, x); };
@@ -653,6 +661,7 @@
     var t = avoid.t = (avoid.t || 0) + 1;
     var premise = lru(o.pack.premises, avoid.premises, byTitle, rng, t)[0];
     avoid.premises[premise.title] = t;
+    var when = premise.at || "night", inTime = function (f) { return !f.at || f.at === when; };
 
     // suspects: a local from the season's cast and two visitors
     var local = pool.cast.length ? lru(pool.cast, avoid.names, byName, rng, t)[0] : null;
@@ -667,8 +676,8 @@
     var seen = avoid.facts, taken = {}, topics = [], clueN = 0;
     var fits = function (f) { return topics.indexOf(f) < 0 && !f.groups.some(function (g) { return taken[g]; }); };
     var take = function (f) { f.groups.forEach(function (g) { taken[g] = 1; }); topics.push(f); clueN += f.combo ? 2 : 1; };
-    if (mode === "liar" && o.combo) { var cb = lru(pool.combos, seen, byId, rng, t).filter(fits)[0]; if (cb) take(cb); }
-    var singles = lru(pool.facts.filter(function (f) { return f.tier <= (o.maxTier || 3); }), seen, byId, rng, t);
+    if (mode === "liar" && o.combo) { var cb = lru(pool.combos.filter(inTime), seen, byId, rng, t).filter(fits)[0]; if (cb) take(cb); }
+    var singles = lru(pool.facts.filter(function (f) { return f.tier <= (o.maxTier || 3) && inTime(f); }), seen, byId, rng, t);
     if (o.needTier && !topics.length) { var hard = singles.filter(function (f) { return f.tier >= o.needTier && fits(f); })[0]; if (hard) take(hard); }
     for (var i = 0; i < singles.length && (clueN < o.clueCount || topics.length < 3); i++) if (fits(singles[i])) take(singles[i]);
     topics.forEach(function (f) { seen[f.id] = t; });
@@ -713,8 +722,12 @@
       proof.sort(num);
       why = mode === "honest" ? people[target].name + " told the truth. " + liars.map(function (s) { return people[s].name + " lied: " + lieOf[s].why; }).join(" ") : lieOf[target].why;
     }
+    // the crime's time window: every fact in the case is about the same stretch of time
+    var hr = function (h) { return h === 24 ? "midnight" : (h % 12 || 12) + (h < 12 ? " AM" : " PM"); };
+    var win = when === "day" ? "It happened yesterday, between " + hr(pick([7, 8], rng)) + " and " + hr(pick([17, 18], rng)) + "."
+      : "It happened between " + hr(pick([19, 20], rng)) + " and " + pick(["midnight", "1 AM"], rng) + ".";
     return {
-      title: premise.title, setup: premise.setup, clues: clues, suspects: suspects, mode: mode,
+      title: premise.title, setup: premise.setup + " " + win, when: when, clues: clues, suspects: suspects, mode: mode,
       answer: answer, proof: proof, alt: [], factIds: topics.map(byId), why: why,
       motive: mode === "liar" && premise.motives ? pick(premise.motives, rng).replace(/\{name\}/g, people[target].name) : "",
       twist: mode === "liar" ? null : pick(TWIST_LINES[mode], rng),
@@ -809,6 +822,33 @@
     { icon: "💬", title: "Two claims, one lie", text: "From now on some stories say two things. One part can be true and the other a lie, so check every claim." },
     { icon: "🧩", title: "Two facts, one proof", text: "Some lies only break when you put two facts together, like a start time and a running time. You'll need to tap both." },
     { icon: "🤔", title: "Suspicious but true", text: "Some honest stories now sound fishy: a crab bought just before the market sold out. Only a broken fact makes a liar." }];
+  /* The career story: one thread through the ten chapters, from a rookie's first week to the Collector's arrest.
+     intro shows when a chapter starts (and on the career card), outro when its last case is solved. */
+  var CHAPTER_STORY = [null,
+    { intro: "First week on the force. Sergeant Okafor gives you the small cases nobody else wants. “Anyone can find a thief,” she says. “Your job is to hear the lie.”",
+      outro: "Ten cases, ten liars. Okafor puts your name forward for the downtown squad." },
+    { intro: "Downtown, people talk fast and lie faster. Three of last month's stolen things have turned up in the same pawn shop window.",
+      outro: "The pawn shop owner shrugs: a quiet buyer called the Collector takes anything small and pretty. Nobody has seen their face." },
+    { intro: "The Collector's goods leave town by boat. Captain Reyes wants every crate on the docks checked and every alibi timed to the minute.",
+      outro: "A dock worker talks at last: the Collector's best customers live up on the hill." },
+    { intro: "Up on the hill the stories are polished, and some honest ones sound guilty. Someone here buys from the Collector.",
+      outro: "A collector of old clocks admits she paid cash for a stolen brooch, at night, to a voice behind a door." },
+    { intro: "Reyes moves you to nights. The Collector's people work after dark, so now you do too.",
+      outro: "You catch a courier with a key to an empty warehouse in the Old Quarter. Inside: a list of twelve names." },
+    { intro: "Twelve names, all from the Old Quarter. Every one of them has an alibi, and most of them are lying.",
+      outro: "Half the list were decoys. The other half all rent boats from the same yard on the river." },
+    { intro: "Fog on the water and boats that leave without lights. Someone is moving stolen goods up the river.",
+      outro: "You stop a boat at the lock. In the hold: a gold statue, a ship's bell and a business card with no name on it." },
+    { intro: "The card opens doors to the Collector's inner circle. They lie like professionals: calm, detailed and nearly perfect.",
+      outro: "One of them cracks and names the Collector's banker. Reyes says it's time to open the old files." },
+    { intro: "The banker's ledger matches cold cases going back ten years. Old alibis that nobody checked. You check them.",
+      outro: "Every old trail leads back to the pawn shop downtown, where this all began." },
+    { intro: "You know who the Collector is. Now prove it, one liar at a time, before they leave town.",
+      outro: "The pawn shop owner, the Collector all along, is in custody. Okafor leaves a note on your desk: “Told you you'd hear it.”" }];
+  function chapterStory(ch) {
+    if (ch < CHAPTER_STORY.length) return CHAPTER_STORY[ch];
+    return { intro: "Round " + roman(Math.floor((ch - 1) / 10) + 1) + ". The Collector is behind bars, but the old crew is back at work. Same streets, harder lies.", outro: "" };
+  }
   function careerSpec(n) {
     var ch = chapterOf(n), k = (n - 1) % 10 + 1, twist = k === 5 || k === 10;
     var s = { n: n, chapter: ch, slot: k, mode: "liar", clueCount: 3, maxTier: 1, needTier: 0, level: "easy", combo: false, near: false };
@@ -892,6 +932,27 @@
     var combo = n >= 9 && n % 3 === 0;
     return { mode: "liar", clueCount: n <= 3 ? 3 : combo && n >= 15 ? 5 : 4, level: n <= 3 ? "easy" : n <= 15 ? "medium" : "hard", maxTier: maxTier,
       combo: combo, near: n >= 20 };
+  }
+  /* Live rooms: everyone in a room builds the same cases from the room's seed, round by round,
+     from an easy start to a hard case with a two-fact proof, then a twist. */
+  var ROOM_SPECS = [
+    { mode: "liar", level: "easy", clueCount: 3, maxTier: 1 },
+    { mode: "liar", level: "medium", clueCount: 4, maxTier: 2 },
+    { mode: "liar", level: "medium", clueCount: 4, maxTier: 2, combo: true },
+    { mode: "liar", level: "hard", clueCount: 5, maxTier: 3, combo: true, near: true },
+    { mode: "honest", level: "twist", clueCount: 4, maxTier: 2 }
+  ];
+  var roomCache = {};
+  function roomCase(seed, round, season) {
+    var key = seed + "|" + season, R = roomCache[key] = roomCache[key] || { avoid: newAvoid(), list: [] }, pack = packFor(Math.max(1, season));
+    while (R.list.length < round) {
+      var n = R.list.length + 1, sp = Object.assign({}, ROOM_SPECS[(n - 1) % ROOM_SPECS.length]);
+      if (sp.mode === "honest" && n > ROOM_SPECS.length) sp.mode = n % 2 ? "honest" : "planted";
+      var r = rngFrom("room:" + seed + ":" + n);
+      R.list.push(pack ? generateCase2(r, Object.assign({ pack: pack, avoid: R.avoid }, sp))
+        : generateCase(r, Object.assign({}, sp, { avoid: { names: {}, premises: {}, facts: R.avoid.facts } })));
+    }
+    return R.list[round - 1];
   }
   // A Rush case from the current season's templates (or the classic generator if there are none).
   function rushCase(rng, n, avoid) {
@@ -1202,6 +1263,16 @@
     };
   }
 
+  /* ---------- player names: 2-16 letters, numbers, spaces, . _ - and a small block list ---------- */
+  var NAME_BLOCK = /(fuck|shit|bitch|cunt|nigg|fag|rape|nazi|hitler|porn|sex|dick|pussy|whore|slut|chutiya|madarchod|bhenchod|randi|gandu)/i;
+  function cleanName(raw) {
+    var n = String(raw || "").replace(/\s+/g, " ").trim();
+    if (n.length < 2 || n.length > 16) return { ok: false, msg: "Use 2 to 16 characters." };
+    if (!/^[\p{L}\p{N} ._-]+$/u.test(n)) return { ok: false, msg: "Use letters, numbers, spaces, dots, dashes or underscores." };
+    if (NAME_BLOCK.test(n.replace(/[\s._-]/g, ""))) return { ok: false, msg: "Please pick a different name." };
+    return { ok: true, name: n };
+  }
+
   /* ---------- small helpers ---------- */
   function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -1234,10 +1305,10 @@
     cfg: CFG, rngFrom: rngFrom, shuffle: shuffle, pick: pick,
     dayNumber: dayNumber, dateForDay: dateForDay, formatDate: formatDate, msToNextDay: msToNextDay,
     buildDay: buildDay, generateCase: generateCase, endlessSpec: endlessSpec, endlessSeconds: endlessSeconds,
-    careerSpec: careerSpec, buildCareerLevel: buildCareerLevel, careerRetry: careerRetry, chapterOf: chapterOf, CHAPTER_NEWS: CHAPTER_NEWS,
-    generateCase2: generateCase2, rushCase: rushCase, newAvoid: newAvoid, packFor: packFor, seasonOf: seasonOf, seasonStart: seasonStart,
+    careerSpec: careerSpec, buildCareerLevel: buildCareerLevel, careerRetry: careerRetry, chapterOf: chapterOf, CHAPTER_NEWS: CHAPTER_NEWS, chapterStory: chapterStory, FACT_AT: FACT_AT,
+    generateCase2: generateCase2, rushCase: rushCase, roomCase: roomCase, newAvoid: newAvoid, packFor: packFor, seasonOf: seasonOf, seasonStart: seasonStart,
     SEASON_ONE: SEASON_ONE, SEASON_DAYS: SEASON_DAYS, daySpecs: daySpecs,
-    checkWritten: checkWritten, packWritten: packWritten, unpackWritten: unpackWritten, writtenCase: writtenCase,
+    cleanName: cleanName, NAME_BLOCK: NAME_BLOCK, checkWritten: checkWritten, packWritten: packWritten, unpackWritten: unpackWritten, writtenCase: writtenCase,
     hash: function (s) { return hashString(String(s)).toString(36); }, chapterName: chapterName, clock: clock,
     avatar: avatar, load: load, save: save, esc: esc, fmtTime: fmtTime, fmtCountdown: fmtCountdown,
     track: track, siteUrl: siteUrl, FACTS: FACTS, PREMISES: PREMISES, CASES: CASES,
