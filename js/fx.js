@@ -111,12 +111,12 @@
   function coinFly(from, to, done) {
     var a = from && center(from.querySelector(".coin-ico") || from), b = to && center(to.querySelector(".coin-ico") || to);
     if (reduce || !a || !b || !document.body.animate) { done(); return; }
-    var landed = false, land = function () { if (!landed) { landed = true; done(); } };
+    var landed = false, land = function () { if (!landed) { landed = true; done(); } }, coins = [];
     for (var i = 0; i < 5; i++) {
       var c = document.createElement("i");
       c.className = "fx-coin"; c.setAttribute("aria-hidden", "true");
       c.style.left = a.x + "px"; c.style.top = a.y + "px";
-      document.body.appendChild(c);
+      document.body.appendChild(c); coins.push(c);
       var up = "translate(" + Math.round((Math.random() - 0.5) * 56) + "px," + Math.round(-28 - Math.random() * 36) + "px)";
       c.animate([
         { transform: "translate(0,0) scale(0.5)", opacity: 0, easing: "cubic-bezier(0.23, 1, 0.32, 1)" },   // pop out
@@ -124,7 +124,8 @@
         { transform: "translate(" + Math.round(b.x - a.x) + "px," + Math.round(b.y - a.y) + "px) scale(0.7)", opacity: 1 }
       ], { duration: 560, delay: i * 60, fill: "backwards" }).onfinish = function () { this.effect.target.remove(); land(); };
     }
-    setTimeout(land, 900); // background tabs may never finish the animation
+    // A background tab may not finish the animation: land anyway and clear the coins once all should be in.
+    setTimeout(function () { land(); coins.forEach(function (c) { c.remove(); }); }, 1000);
   }
   function fmt(n) { return Number(n).toLocaleString("en-US"); }
 

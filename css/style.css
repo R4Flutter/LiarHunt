@@ -1337,6 +1337,52 @@ html.game .icon-btn, html.game .coins { min-width: 44px; min-height: 44px; }
   .str { stroke-dashoffset: 0; }
 }
 
+/* ---------- motion ----------
+   Quick and quiet: things arrive with a strong ease-out, leave faster than they came, and only
+   transform and opacity move. "Reduce motion" (above) switches it off. Fill mode is "backwards"
+   so a finished animation lets go and leaves no stacking context behind. */
+:root { --ease-out: cubic-bezier(0.23, 1, 0.32, 1); }
+
+/* screens fade in instead of cutting (HQ has its own card cascade) */
+.scr:not(.hq):not([hidden]) { animation: fadein 0.18s var(--ease-out) backwards; }
+@keyframes fadein { from { opacity: 0; } }
+
+/* each new case is dealt onto the board: facts and suspects land a beat apart */
+.clues > li, .suspects > .suspect-wrap { animation: dealin 0.24s var(--ease-out) backwards; }
+.clues > li:nth-child(2), .suspects > .suspect-wrap:nth-child(2) { animation-delay: 0.04s; }
+.clues > li:nth-child(3), .suspects > .suspect-wrap:nth-child(3) { animation-delay: 0.08s; }
+.clues > li:nth-child(4), .suspects > .suspect-wrap:nth-child(4) { animation-delay: 0.12s; }
+.clues > li:nth-child(n+5), .suspects > .suspect-wrap:nth-child(n+5) { animation-delay: 0.16s; }
+@keyframes dealin { from { opacity: 0; transform: translateY(8px); } }
+
+/* facts and suspects give a little under your finger */
+button.clue, .suspect-wrap .suspect { transition: transform 0.12s var(--ease-out), border-color 0.12s ease; }
+button.clue:active:not(:disabled), .suspect-wrap .suspect:active:not(:disabled) { transform: scale(0.98); }
+
+/* coins flying from the result card into the wallet (fx.js coinFly) */
+.fx-coin {
+  position: fixed; z-index: 85; width: 16px; height: 16px; margin: -8px 0 0 -8px; pointer-events: none;
+  border-radius: 50%; background: var(--gold); border: 2px solid var(--ink); opacity: 0; /* seen only while flying */
+}
+
+/* the Daily result: the five squares flip over one by one */
+#res-body .res-grid span { animation: flipin 0.36s var(--ease-out) backwards; }
+#res-body .res-grid span:nth-child(2) { animation-delay: 0.09s; }
+#res-body .res-grid span:nth-child(3) { animation-delay: 0.18s; }
+#res-body .res-grid span:nth-child(4) { animation-delay: 0.27s; }
+#res-body .res-grid span:nth-child(5) { animation-delay: 0.36s; }
+@keyframes flipin { from { opacity: 0; transform: perspective(240px) rotateX(-90deg); } }
+
+/* dialogs: the dim backdrop fades in, and where the browser supports it the dialog fades out instead of vanishing */
+dialog[open]::backdrop { animation: fadein 0.2s ease-out backwards; }
+@supports (overlay: auto) {
+  dialog[open] { animation-fill-mode: backwards; } /* an opening animation that holds its last frame would block the fade-out */
+  dialog { transition: opacity 0.14s ease-out, transform 0.14s ease-out, overlay 0.14s allow-discrete, display 0.14s allow-discrete; }
+  dialog:not([open]) { opacity: 0; transform: translateY(6px) scale(0.98); pointer-events: none; }
+  dialog::backdrop { transition: opacity 0.14s ease-out, overlay 0.14s allow-discrete, display 0.14s allow-discrete; }
+  dialog:not([open])::backdrop { opacity: 0; }
+}
+
 /* ---------- other pages (past cases, privacy, 404) ---------- */
 html:not(.game) body { min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
 .wrap { width: 100%; max-width: calc(36rem + 32px); margin-inline: auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }

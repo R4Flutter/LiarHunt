@@ -215,12 +215,16 @@
     if (mult && mult > 1.001) h += '<span class="rw mult">Streak ×' + mult.toFixed(1) + "</span>";
     return h;
   }
-  var shownCoins = 0;
+  var shownCoins = 0, coinTok = 0;
   function renderCoins(animate) {
-    var to = S.coins;
-    if (animate && to !== shownCoins) { FX.countTo($("coin-n"), shownCoins, to, 700); FX.pop($("coins")); }
-    else $("coin-n").textContent = FX.fmt(to);
+    var from = shownCoins, to = S.coins, tok = ++coinTok;
     shownCoins = to;
+    if (!animate || to === from) { $("coin-n").textContent = FX.fmt(to); return; }
+    var count = function () { if (tok === coinTok) { FX.countTo($("coin-n"), from, to, 700); FX.pop($("coins")); } }; // skipped if a newer update already showed the total
+    // A case's coins fly from the result card into the wallet, once the card has slid in.
+    var chip = to > from && !$("verdict").hidden && $("verdict-rewards").querySelector(".rw.coin");
+    if (chip) setTimeout(function () { FX.coinFly(chip, $("coins"), count); }, 240);
+    else count();
   }
   function applyTheme() {
     var id = S.themes.current;
