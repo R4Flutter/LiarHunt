@@ -91,13 +91,40 @@
   /* ---------- counting numbers ---------- */
   function countTo(el, from, to, ms) {
     if (!el) return;
+    cancelAnimationFrame(el._count || 0); // a newer count replaces one still running
     if (reduce || from === to) { el.textContent = fmt(to); return; }
     var t0 = performance.now();
     (function tick(now) {
       var k = Math.min(1, (now - t0) / (ms || 600)), e = 1 - Math.pow(1 - k, 3);
       el.textContent = fmt(Math.round(from + (to - from) * e));
-      if (k < 1) requestAnimationFrame(tick);
+      if (k < 1) el._count = requestAnimationFrame(tick);
     })(t0);
+  }
+
+  /* ---------- coins fly into the wallet ----------
+     Five coins pop out of `from` (a reward chip) and get pulled into `to` (the coin counter).
+     done() runs as the first one lands, so the counter counts up while the rest arrive. */
+  function center(el) {
+    var r = el && el.getBoundingClientRect();
+    return r && r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
+  }
+  function coinFly(from, to, done) {
+    var a = from && center(from.querySelector(".coin-ico") || from), b = to && center(to.querySelector(".coin-ico") || to);
+    if (reduce || !a || !b || !document.body.animate) { done(); return; }
+    var landed = false, land = function () { if (!landed) { landed = true; done(); } };
+    for (var i = 0; i < 5; i++) {
+      var c = document.createElement("i");
+      c.className = "fx-coin"; c.setAttribute("aria-hidden", "true");
+      c.style.left = a.x + "px"; c.style.top = a.y + "px";
+      document.body.appendChild(c);
+      var up = "translate(" + Math.round((Math.random() - 0.5) * 56) + "px," + Math.round(-28 - Math.random() * 36) + "px)";
+      c.animate([
+        { transform: "translate(0,0) scale(0.5)", opacity: 0, easing: "cubic-bezier(0.23, 1, 0.32, 1)" },   // pop out
+        { transform: up + " scale(1)", opacity: 1, offset: 0.35, easing: "cubic-bezier(0.55, 0, 0.8, 0.2)" }, // then get pulled in
+        { transform: "translate(" + Math.round(b.x - a.x) + "px," + Math.round(b.y - a.y) + "px) scale(0.7)", opacity: 1 }
+      ], { duration: 560, delay: i * 60, fill: "backwards" }).onfinish = function () { this.effect.target.remove(); land(); };
+    }
+    setTimeout(land, 900); // background tabs may never finish the animation
   }
   function fmt(n) { return Number(n).toLocaleString("en-US"); }
 
@@ -119,5 +146,5 @@
   }
 
   window.addEventListener("resize", function () { if (canvas && parts.length) resize(); });
-  window.WLFX = { confetti: confetti, float: float, shake: shake, pop: pop, countTo: countTo, fmt: fmt, badge: badge, reduce: reduce };
+  window.WLFX = { confetti: confetti, float: float, shake: shake, pop: pop, countTo: countTo, coinFly: coinFly, fmt: fmt, badge: badge, reduce: reduce };
 })();

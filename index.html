@@ -414,10 +414,9 @@
     <button class="btn ghost wide web-only" type="button" id="btn-reminder">Daily reminder</button>
     <button class="btn ghost wide web-only" type="button" id="btn-install" hidden>Install the app</button>
     <div class="cloud-box web-only" id="cloud-box" hidden>
-      <p class="cloud-h">☁️ Progress backup</p>
+      <p class="cloud-h">☁️ Your progress</p>
       <p class="small" id="cloud-text"></p>
-      <div class="row2" id="cloud-acts"><button class="btn small ghost" type="button" id="btn-save-send">Send to myself</button><button class="btn small ghost" type="button" id="btn-save-copy">Copy code</button></div>
-      <button class="link-btn" type="button" id="btn-restore">Played on another device? Restore progress</button>
+      <button class="btn small ghost" type="button" id="btn-account">Account and sign-in</button>
     </div>
     <!-- WEB-ONLY:END -->
     <div class="danger-zone">
@@ -484,6 +483,20 @@
       <p class="field-error" id="pf-error" role="alert" hidden></p>
       <p class="muted small" id="pf-note">Other players see it on leaderboards and on challenges you share.</p>
     </form>
+    <!-- WEB-ONLY:START -->
+    <div class="acct web-only" id="acct" hidden>
+      <p class="acct-h">☁️ Saved online</p>
+      <p class="small" id="acct-text"></p>
+      <button class="btn google wide" type="button" id="btn-google">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.6 12.3c0-.8-.1-1.5-.2-2.3H12v4.3h6a5.1 5.1 0 0 1-2.2 3.4v2.8h3.6c2.1-2 3.2-4.8 3.2-8.2z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.4-2.7l-3.6-2.8c-1 .7-2.3 1.1-3.8 1.1-2.9 0-5.4-2-6.3-4.6H2v2.9A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.7 14a6.6 6.6 0 0 1 0-4.2V7H2a11 11 0 0 0 0 9.9z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.2-3.2A11 11 0 0 0 2 7l3.7 2.8C6.6 7.3 9.1 5.4 12 5.4z"/></svg>
+        Sign in with Google
+      </button>
+      <div class="acct-links">
+        <button class="link-btn" type="button" id="btn-signout" hidden>Sign out</button>
+        <button class="link-btn" type="button" id="btn-oldcode">Have an old save code?</button>
+      </div>
+    </div>
+    <!-- WEB-ONLY:END -->
     <h3>Record</h3>
     <dl class="stat-row" id="stats-row"></dl>
     <h3>Daily Case: liars caught per day</h3>
@@ -588,8 +601,8 @@
 <dialog id="dlg-restore" aria-labelledby="restore-h">
   <form class="dlg" id="restore-form" novalidate>
     <button class="icon-btn dlg-close" type="button" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-    <h2 id="restore-h">Restore your progress</h2>
-    <p>Played on another phone or browser? Enter the save code from there. You'll find it in Settings, under Progress backup.</p>
+    <h2 id="restore-h">Use an old save code</h2>
+    <p>Before accounts, the game gave you a 12-letter save code. Enter it to bring that progress into your account. New progress saves to your account by itself.</p>
     <label class="field-label" for="restore-code">Save code</label>
     <input class="field code" id="restore-code" type="text" maxlength="16" placeholder="ABCD-EFGH-JKMN" autocomplete="off" autocapitalize="characters" spellcheck="false">
     <p class="field-error" id="restore-error" role="alert" hidden></p>

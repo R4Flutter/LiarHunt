@@ -108,7 +108,24 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Cloud saves: each player's progress, backed up under a private 12-letter save code.
+    // Player saves: each player's game lives in their own account (anonymous, or Google once they sign in).
+    // Only that player can read, write or delete it. rev goes up by one with every save, so a device that
+    // loaded an older copy can't overwrite newer progress from another device.
+    match /players/{uid} {
+      allow get, delete: if signedIn() && request.auth.uid == uid;
+      allow list: if false;
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['data', 'xp', 'rev', 'updatedAt'])
+        && request.resource.data.data is string
+        && request.resource.data.data.size() <= 300000
+        && request.resource.data.xp is int && request.resource.data.xp >= 0
+        && request.resource.data.rev is int
+        && request.resource.data.rev == (resource == null ? 1 : resource.data.rev + 1)
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    // Old cloud saves (retired): progress backed up under a private 12-letter save code. Players can still
+    // restore from one into their account, and moving the game to a new web address writes one.
     // Knowing the code is what lets you read or update it (codes can't be listed). XP can
     // never go down, so an older copy on another device can't overwrite newer progress.
     match /saves/{code} {

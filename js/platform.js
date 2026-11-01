@@ -6,7 +6,8 @@
                 Ads, saves (Data module), username, mute setting, invite links
                 and gameplay/loading events all go through the CrazyGames SDK v3.
   "web"         Your own site (GitHub Pages). Ads use js/ads.js (AdSense or none),
-                saves use localStorage, sharing uses WhatsApp / X / copy.
+                sharing uses WhatsApp / X / copy. Saves go to the player's Firebase account
+                (game.js); localStorage is only used when Firebase isn't set up.
 */
 (function () {
   "use strict";
@@ -83,6 +84,8 @@
     if (now) write(); else saveTimer = setTimeout(write, 250);
   }
   function flush() { if (pending) save(pending, true); }
+  // The web game saves to the player's account (game.js). Once an old on-device save has reached it, this removes it.
+  function clearLocal() { pending = null; clearTimeout(saveTimer); try { window.localStorage.removeItem(KEY); } catch (e) { /* ignore */ } }
 
   /* ---------- gameplay + loading events ---------- */
   function gameplayStart() {
@@ -212,7 +215,7 @@
     name: name,
     isCrazy: function () { return name === "crazygames"; },
     init: init, on: on,
-    load: load, save: save, flush: flush,
+    load: load, save: save, flush: flush, clearLocal: clearLocal,
     gameplayStart: gameplayStart, gameplayStop: gameplayStop, loadingStart: loadingStart, loadingStop: loadingStop, happytime: happytime,
     hasAds: hasAds, midgame: midgame, rewarded: rewarded, hasAdblock: hasAdblock, adActive: function () { return adActive; },
     lastAdError: function () { return lastAdError; },

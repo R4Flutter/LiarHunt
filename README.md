@@ -26,7 +26,7 @@ It is plain HTML, CSS and JavaScript with no build step. The web version is host
 
 | Hook | What it does |
 |---|---|
-| Progress backup (web) | Every player's progress is backed up online automatically under a private save code (like `ABCD-EFGH-JKMN`). The code, or a "send to myself" link, brings it back on a new phone, a new browser, an iPhone home-screen app or a new web address. Two devices with the same code stay in sync. |
+| Cloud save (web) | Every player's game is saved in their own Firebase account (`players/{uid}`), not on the device: an anonymous account from the first visit, which **Sign in with Google** (in the profile) turns into one that follows them to any device. The game needs a connection to start. Old 12-letter save codes still bring their progress into the account once; no new codes are made. |
 | Streak Shields | Save your Daily streak if you miss a day (used automatically, hold up to 2). Earn one every 7 days in a row or buy one for 200 coins. |
 | Case Keys + Case Files | Case Files lists every past Daily. A Case Key opens a missed day with full rewards and its weekly clue. Earn one every 7 days in a row, on day 7 of the login calendar, or buy them. |
 | Comeback gift | Players who return after 3+ days get 150 coins, 2 Magnifiers and a Case Key. |
@@ -92,7 +92,7 @@ Test addresses:
 - `#endless` jumps straight into Rush.
 - `?c=6.ggyrg.92.Raj` opens a friend challenge (Daily #6, 4 of 5, 92 seconds, from Raj).
 - `?g=ABC234` opens a friend group invite.
-- `?restore=ABCDEFGHJKMN` restores progress from a save code (what the "Send to myself" link does).
+- `?restore=ABCDEFGHJKMN` brings progress from an old save code into the player's account.
 - `?test=1` adds `window.__WLtest` for automated checks (start any mode, read the saved state).
 
 Testing on `localhost` uses the real database, so delete test scores afterwards (Firestore console, or `firebase firestore:delete scores/<id>`).
@@ -113,7 +113,7 @@ git push
 
 ### Move to your own domain (players keep their progress)
 
-A player's progress lives in their browser, and browsers keep it separately for each web address. So when the game moves, the **old address forwards every player to the new one and brings their progress along** (using the online backup). For that, the old address has to stay online: the new domain goes in a **new repository**, and this repository stays behind as the old address. Example domain: `whoslying.com`.
+A player's account sign-in is kept by the browser separately for each web address. Players signed in with Google just sign in again at the new address. For everyone else, the **old address forwards them to the new one and brings their progress along** (with a one-time save code). Add the new domain to Firebase's authorized domains too. For that, the old address has to stay online: the new domain goes in a **new repository**, and this repository stays behind as the old address. Example domain: `whoslying.com`.
 
 1. At your domain seller, add these DNS records:
    - 4 × `A` records for `@`: `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`
@@ -210,9 +210,15 @@ It stores four collections:
 | `endless` | Each player's best Rush run (can only go up). |
 | `league` | One entry per player per week. The rules re-add the player's own Daily scores, so league points can't be faked. |
 | `groups` | Friend groups: name and members. Members can only add, rename or remove themselves. |
-| `saves` | Progress backups, one per save code. Saves can't be listed, only opened with their code, and their XP can never go down (so an old copy never overwrites newer progress). |
+| `players` | Each player's game, under their account ID. Only that player can read or write it, and every save raises a revision number, so a device that loaded an older copy can't overwrite newer progress from another device. |
+| `saves` | Old progress backups, one per save code (retired: read once to move into an account, and written when the game moves to a new web address). |
 
-**Free plan limits.** Each player costs about 1 read and a few writes per visit (the backup runs when they reach HQ or a results screen, leave the app, or every 2 minutes during long sessions). The free Spark plan gives 50,000 reads and 20,000 writes a day, which is enough for a few thousand players a day. Past that, switch the project to the Blaze plan (pay as you go, a few dollars at that size).
+**Free plan limits.** Each player costs about 1 read when the game opens, then 1 read and 1 write per save (at the end of every case, at HQ and results screens, when they leave the app, and at most every 20 seconds while playing). The free Spark plan gives 50,000 reads and 20,000 writes a day, which is enough for a few thousand players a day. Past that, switch the project to the Blaze plan (pay as you go, a few dollars at that size).
+
+**Before the cloud save goes live** (two steps, once):
+
+1. Deploy the rules below, so `players/{uid}` is allowed. Until then the game quietly keeps saving on the device.
+2. Firebase console → **Authentication → Sign-in method** → turn on **Google**. Then **Authentication → Settings → Authorized domains**: make sure `liarhunt.com` is listed (`localhost` is there already).
 
 Everything about the database is in this repo: `firebase.json` (location, anonymous sign-in), `firebase/firestore.rules` and `firebase/firestore.indexes.json`. After you change any of them, run:
 

@@ -68,10 +68,12 @@
         db = firebase.firestore();
         // testing only (?test=1&tabauth=1): every tab signs in as its own player, to try a live room alone
         var solo = /[?&]test=1/.test(location.search) && /[?&]tabauth=1/.test(location.search);
-        return (solo ? firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE) : Promise.resolve())
-          .then(function () { return firebase.auth().signInAnonymously(); });
+        var auth = firebase.auth();
+        return (solo ? auth.setPersistence(firebase.auth.Auth.Persistence.NONE) : Promise.resolve())
+          .then(function () { return new Promise(function (res) { var off = auth.onAuthStateChanged(function (u) { off(); res(u); }); }); })
+          .then(function (u) { return u || auth.signInAnonymously().then(function (c) { return c.user; }); });
       })
-      .then(function (cred) { uid = cred.user.uid; return uid; });
+      .then(function (u) { uid = u.uid; return uid; });
     readyP.catch(function (e) { console.warn("[leaderboard]", e && e.message ? e.message : e); readyP = null; });
     return readyP;
   }
@@ -175,7 +177,94 @@
   }
   function err(code, msg) { var e = new Error(msg); e.code = code; return e; }
 
-  /* ---------- cloud saves: a private 12-letter save code is the key ---------- */
+  /* ---------- accounts: each player's save lives at players/{uid} ----------
+     Every player has a Firebase account from their first visit (anonymous until they sign in with Google).
+     Signing in with Google upgrades that same account, so the save keeps its place. On another device,
+     signing in with Google switches to the existing account. Saves carry a revision number: a save is
+     refused ("conflict") when another device saved since this one loaded, so old progress never
+     overwrites newer progress. Demo mode (?lb=demo) keeps the account in localStorage. */
+  var DEMO_ACC = "whoslying:demo-account";
+  function demoAcc() { try { return JSON.parse(localStorage.getItem(DEMO_ACC)) || {}; } catch (e) { return {}; } }
+  function demoAccSave(a) { try { localStorage.setItem(DEMO_ACC, JSON.stringify(a)); } catch (e) { /* ignore */ } }
+  function playerRef() { return db.collection("players").doc(uid); }
+  var account = {
+    // -> { uid, google: bool, email, name }
+    info: function () {
+      if (provider === "demo") { var a = demoAcc(); return { uid: uid, google: !!a.email, email: a.email || "", name: a.email ? "Demo Detective" : "" }; }
+      var u = window.firebase && window.firebase.auth().currentUser;
+      if (!u) return null;
+      var g = (u.providerData || []).filter(function (x) { return x && x.providerId === "google.com"; })[0];
+      return { uid: u.uid, google: !!g, email: (g && g.email) || u.email || "", name: (g && g.displayName) || u.displayName || "" };
+    },
+    // -> Promise of { data, xp, rev } or null when this account has no save yet
+    load: function () {
+      return ready().then(function () {
+        if (provider === "demo") { var d = demoAcc().save; return d && d.uid === uid ? d : null; }
+        return playerRef().get().then(function (s) { return s.exists ? s.data() : null; });
+      });
+    },
+    // Saves the game. rev = the revision this device loaded. force: overwrite whatever is there. -> Promise of the new rev
+    save: function (json, xp, rev, force) {
+      return ready().then(function () {
+        if (provider === "demo") {
+          var a = demoAcc(), cur = a.save && a.save.uid === uid ? a.save.rev : 0;
+          if (!force && cur !== (rev || 0)) throw err("conflict", "Saved on another device");
+          a.save = { uid: uid, data: json, xp: xp, rev: cur + 1 }; demoAccSave(a);
+          return cur + 1;
+        }
+        return db.runTransaction(function (t) {
+          return t.get(playerRef()).then(function (s) {
+            var cur = s.exists ? s.data().rev || 0 : 0;
+            if (!force && cur !== (rev || 0)) throw err("conflict", "Saved on another device");
+            t.set(playerRef(), { data: json, xp: xp, rev: cur + 1, updatedAt: window.firebase.firestore.FieldValue.serverTimestamp() });
+            return cur + 1;
+          });
+        });
+      });
+    },
+    // Deletes this account's save (Reset all progress).
+    remove: function () {
+      return ready().then(function () {
+        if (provider === "demo") { var a = demoAcc(); delete a.save; demoAccSave(a); return; }
+        return playerRef().delete();
+      });
+    },
+    // Signs in with Google. -> Promise of { switched }: true when this Google account already had a game
+    // somewhere else, so this device is now signed in to that one (load its save next).
+    google: function () {
+      return ready().then(function () {
+        if (provider === "demo") { var a = demoAcc(); a.email = "detective@example.com"; demoAccSave(a); return { switched: false }; }
+        var auth = window.firebase.auth(), G = window.firebase.auth.GoogleAuthProvider, gp = new G(), u = auth.currentUser;
+        gp.setCustomParameters({ prompt: "select_account" });
+        if (u && !u.isAnonymous) return { switched: false };
+        return u.linkWithPopup(gp).then(function () { return { switched: false }; }, function (e) {
+          var cred = e && (e.credential || (G.credentialFromError && G.credentialFromError(e)));
+          if (e && e.code === "auth/credential-already-in-use" && cred) {
+            return auth.signInWithCredential(cred).then(function (c) { uid = c.user.uid; return { switched: true }; });
+          }
+          throw e;
+        });
+      });
+    },
+    // Signs out. The next visit starts a new anonymous account (the Google account keeps its save).
+    signOut: function () {
+      if (provider === "demo") { var a = demoAcc(); delete a.email; delete a.save; demoAccSave(a); try { localStorage.removeItem(DEMO_KEY + ":id"); } catch (e) { /* ignore */ } return Promise.resolve(); }
+      return ready().then(function () { return window.firebase.auth().signOut(); });
+    }
+  };
+  function accountError(e) {
+    var c = (e && e.code) || "";
+    if (c === "auth/popup-closed-by-user" || c === "auth/cancelled-popup-request") return "";
+    if (c === "auth/popup-blocked") return "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.";
+    if (c === "auth/operation-not-allowed") return "Google sign-in isn't switched on for this game yet.";
+    if (c === "auth/unauthorized-domain") return "Sign-in isn't set up for this web address yet.";
+    if (c === "auth/network-request-failed" || !navigator.onLine) return "You're offline. Check your connection and try again.";
+    return "Couldn't sign in. Try again in a moment.";
+  }
+
+  /* ---------- old save codes (retired): a 12-letter code could restore a backup ----------
+     No new codes are made for players. An old code (or restore link) still brings its progress into the
+     player's account, and moving the game to a new web address uses one to carry progress over. */
   function newSaveCode() {
     var a = new Uint32Array(12), c = "";
     window.crypto.getRandomValues(a);
@@ -494,6 +583,7 @@
       });
     },
 
+    account: account, accountError: accountError,
     newSaveCode: newSaveCode,
     cleanSaveCode: cleanSaveCode,
     // Back up the whole save. The rules refuse it if the cloud copy has more XP (another device is ahead).
