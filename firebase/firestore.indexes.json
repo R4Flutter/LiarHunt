@@ -18,6 +18,15 @@
         { "fieldPath": "pts", "order": "DESCENDING" },
         { "fieldPath": "timeMs", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "seasons",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "season", "order": "ASCENDING" },
+        { "fieldPath": "pts", "order": "DESCENDING" },
+        { "fieldPath": "timeMs", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

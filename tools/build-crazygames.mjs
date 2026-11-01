@@ -25,7 +25,7 @@ html = html.replace("<!-- PLATFORM-HEAD -->",
 html = html.replace(/\s*<a class="chip-btn web-only"[^>]*>.*?<\/a>/g, "");
 html = html.replace(/\s*<p class="muted small web-only">.*?<\/p>/g, "");
 html = html.replace(/<html lang="en" class="game">/, '<html lang="en" class="game cg">');
-if (/archive\.html|privacy\.html|whatsapp|twitter\.com|googlesyndication|firebase/i.test(html.replace(/<!--[\s\S]*?-->/g, ""))) {
+if (/archive\.html|privacy\.html|whatsapp|twitter\.com|instagram|discord|googlesyndication|firebase/i.test(html.replace(/<!--[\s\S]*?-->/g, ""))) {
   console.warn("Warning: index.html still mentions a web-only link or service. Check the WEB-ONLY markers.");
 }
 writeFileSync(join(out, "index.html"), html);
@@ -33,7 +33,7 @@ writeFileSync(join(out, "index.html"), html);
 // 2. files the game needs
 cpSync(join(root, "css"), join(out, "css"), { recursive: true });
 mkdirSync(join(out, "js"));
-for (const f of ["config.js", "cases.js", "engine.js", "platform.js", "progress.js", "audio.js", "fx.js", "game.js"]) {
+for (const f of ["config.js", "cases.js", "seasons.js", "engine.js", "platform.js", "progress.js", "audio.js", "fx.js", "game.js"]) {
   cpSync(join(root, "js", f), join(out, "js", f));
 }
 mkdirSync(join(out, "assets"));

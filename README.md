@@ -291,17 +291,33 @@ Open `js/cases.js`. The lists `medium`, `hard` and `twist` feed Daily cases 2, 4
     { name: "Theo",   role: "Night cleaner",   says: "I start work at ten." }
   ],
   answer: 0,   // Victor is the liar (0 = first suspect)
+  proof: [0],  // the clue(s) the player must tap to prove it; [0, 1] when it takes two facts together
   why: "It rained from 6 PM to midnight, so Victor couldn't have walked under a sky full of stars."
 }
 ```
 
-Twist cases add `mode: "honest"` (`answer` is the one honest suspect) or `mode: "planted"` (`answer` is the fake clue). Optional `twist: "..."` adds a reveal line.
+Twist cases add `mode: "honest"` (`answer` is the one honest suspect, `proof` the clues that break the two liars' stories) or `mode: "planted"` (`answer` is the fake clue, `proof` is `[n]`, the suspect whose story shows it's fake). `alt: [[1]]` accepts another proof of the same size. Optional `twist: "..."` adds a reveal line.
 
 Rules: exactly one statement contradicts the facts, simple English, name the liar in `why`. Then run:
 
 ```
 node tools/check-cases.mjs
 ```
+
+The checker also makes sure Dailies #1 to #14 never change (players already played them).
+
+### Seasons
+
+From Daily #15 (Monday 9 November 2026) the game runs in seasons of 4 weeks. Each season has its own case templates in `js/seasons.js`: a town, a cast of locals, story openers with motives, facts and two-fact puzzles. The generator mixes them with the built-in facts for every Daily, Night Shift, Career and Rush case, so each season feels different.
+
+- To add Season 2, copy Season 1's block in `js/seasons.js`, change the content, and run the checker. When a season ends without a new block, the next season reuses the last one's templates in a new mix, so the game never stops.
+- The season score is the number of liars caught in that season's Dailies, played on the day. Badges: Bronze 25, Silver 60, Gold 100, Platinum 125.
+- The season scoreboard needs the Firestore rules and index in `firebase/` (run `firebase deploy --only firestore`). The rules assume Season 1 starts in week 3; keep that in step with `SEASON_ONE` in `js/engine.js`.
+- To try a season early on your computer, open `index.html?test=1&today=20` (pretends today is Daily #20).
+
+### Cases players write
+
+HQ → **Write a case** lets players make their own mystery (3 to 5 facts, 3 suspects, the liar and the proof) and send it as a link (`?w=...`). The whole case is packed into the link, compressed, so nothing is stored online and there's nothing to moderate. Friends get one try, no hints, and can send back how they did or write one back. Web only (hidden on CrazyGames). The checker tests that a packed case comes back unchanged.
 
 ---
 

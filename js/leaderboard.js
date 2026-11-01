@@ -257,6 +257,38 @@
     dailyStanding: function (day, score, timeMs) {
       return standing("scores", [["day", day]], "score", score, Math.max(20000, Math.round(timeMs)));
     },
+    // Everyone's Daily result is posted (without a name until they join), so counts and percentiles are real.
+    // This puts the name on today's result once they join.
+    nameDaily: function (day, name, badge) {
+      return ready().then(function () {
+        if (provider === "demo") { var s = demoStore(), d = s.scores[day + "_" + uid]; if (d) { d.name = name; d.badge = badge || ""; demoSave(s); } return true; }
+        return db.collection("scores").doc(day + "_" + uid).update({ name: name, badge: badge || "" }).then(function () { return true; }, function () { return false; });
+      });
+    },
+
+    /* ---------- season scoreboard ----------
+       One entry per player per season: the sum of their 4 weekly league entries (the rules re-add them to check).
+       Season 1 is weeks 3 to 6 (Daily #15 to #42); firebase/firestore.rules assumes the same. */
+    syncSeason: function (e) {
+      if (provider !== "firebase") return demoOff();
+      return ready().then(function () {
+        var w = e.season * 4 - 1;
+        return Promise.all([w, w + 1, w + 2, w + 3].map(function (x) { return db.collection("league").doc(x + "_" + uid).get(); }));
+      }).then(function (snaps) {
+        var t = { pts: 0, timeMs: 0, days: 0 };
+        snaps.forEach(function (s) { if (s.exists) { var d = s.data(); t.pts += d.pts; t.timeMs += d.timeMs; t.days += d.days; } });
+        var doc = { uid: uid, name: e.name, badge: e.badge || "", season: e.season, pts: t.pts, timeMs: t.timeMs, days: t.days,
+          updatedAt: window.firebase.firestore.FieldValue.serverTimestamp() };
+        return db.collection("seasons").doc(e.season + "_" + uid).set(doc).then(function () { return doc; });
+      });
+    },
+    seasonTop: function (season) {
+      if (provider !== "firebase") return demoOff();
+      return ready().then(function () {
+        return db.collection("seasons").where("season", "==", season).orderBy("pts", "desc").orderBy("timeMs", "asc").limit(LIMIT).get();
+      }).then(function (snap) { return snap.docs.map(function (d) { return d.data(); }); });
+    },
+    seasonStanding: function (season, pts, timeMs) { return standing("seasons", [["season", season]], "pts", pts, timeMs); },
 
     LEAGUES: LEAGUES,
     leagueMove: leagueMove,

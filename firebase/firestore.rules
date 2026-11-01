@@ -21,6 +21,8 @@ service cloud.firestore {
     }
 
     // One daily result per player per day. Results can't be changed later.
+    // Every player posts one (name "" until they pick a name), so counts and percentiles are honest.
+    // The only change allowed: putting a name on your own unnamed result.
     match /scores/{id} {
       allow read: if true;
       allow create: if signedIn()
@@ -29,7 +31,7 @@ service cloud.firestore {
         && request.resource.data.day is int
         && request.resource.data.day >= 1 && request.resource.data.day <= 100000
         && id == string(request.resource.data.day) + '_' + request.auth.uid
-        && okName(request.resource.data.name)
+        && (okName(request.resource.data.name) || request.resource.data.name == '')
         && okBadge(request.resource.data.badge)
         && request.resource.data.score is int
         && request.resource.data.score >= 0 && request.resource.data.score <= 5
@@ -40,7 +42,13 @@ service cloud.firestore {
         && request.resource.data.timeMs >= 20000 && request.resource.data.timeMs <= 86400000
         && request.resource.data.createdAt == request.time
         && openFor(request.resource.data.day);
-      allow update, delete: if false;
+      allow update: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && resource.data.name == ''
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'badge'])
+        && okName(request.resource.data.name)
+        && okBadge(request.resource.data.badge);
+      allow delete: if false;
     }
 
     // Weekly league: one entry per player per week (weeks are 7 Dailies, Monday to Sunday).
@@ -115,6 +123,36 @@ service cloud.firestore {
         && request.resource.data.stamp is int
         && request.resource.data.updatedAt == request.time
         && (resource == null || request.resource.data.xp >= resource.data.xp);
+    }
+
+    // Season scoreboard: one entry per player per season. A season is 4 league weeks, and Season 1 is
+    // weeks 3 to 6 (Daily #15 to #42; keep in step with SEASON_ONE in js/engine.js). Points, time and days
+    // must equal the player's own league entries for those weeks, which are checked against their Daily scores.
+    function lgPath(w) { return /databases/$(database)/documents/league/$(string(w) + '_' + request.auth.uid); }
+    function lg(w) { return exists(lgPath(w)) ? get(lgPath(w)).data : { 'pts': 0, 'timeMs': 0, 'days': 0 }; }
+    function okSeason(d) {
+      let w = d.season * 4 - 1;
+      let a = lg(w);
+      let b = lg(w + 1);
+      let c = lg(w + 2);
+      let e = lg(w + 3);
+      return d.pts == a.pts + b.pts + c.pts + e.pts
+          && d.timeMs == a.timeMs + b.timeMs + c.timeMs + e.timeMs
+          && d.days == a.days + b.days + c.days + e.days;
+    }
+    match /seasons/{id} {
+      allow read: if true;
+      allow create, update: if signedIn()
+        && request.resource.data.keys().hasOnly(['uid', 'name', 'badge', 'season', 'pts', 'timeMs', 'days', 'updatedAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.season is int
+        && request.resource.data.season >= 1 && request.resource.data.season <= 2000
+        && id == string(request.resource.data.season) + '_' + request.auth.uid
+        && okName(request.resource.data.name)
+        && okBadge(request.resource.data.badge)
+        && okSeason(request.resource.data)
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
     }
 
     // Endless mode: each player keeps their best run. It can only go up.

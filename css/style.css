@@ -105,7 +105,7 @@
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; }
-html.game { font-size: clamp(14px, calc(0.45vw + 0.95vh + 4px), 18px); }
+html.game { font-size: clamp(14px, calc(0.45vw + 0.95vh + 4px), 21px); } /* grows on big screens so a case doesn't look half empty */
 body {
   margin: 0;
   font-family: var(--body);
@@ -363,8 +363,23 @@ p { margin: 0; }
   border-radius: 50%; background: var(--paper); box-shadow: inset 0 0 0 2px var(--tag-ink);
 }
 button.clue { cursor: pointer; font: inherit; }
-button.clue:hover { filter: brightness(0.96); }
+button.clue:disabled { cursor: default; }
+button.clue:not(:disabled):hover { filter: brightness(0.96); }
 .clue.is-picked { outline: 3px solid var(--needle); outline-offset: -3px; }
+/* proof step: the facts (or, in planted twists, the stories) become the thing to tap */
+.proving .clue:not(:disabled) { box-shadow: inset 0 0 0 2px var(--tag-ink); animation: askpulse 1.4s ease-in-out 2; }
+@keyframes askpulse { 50% { filter: brightness(0.92); } }
+.proving:not(.planted) .suspect:not(.is-accused), .proving.planted .clue:not(.is-accused) { opacity: 0.55; }
+.proving.planted .suspect:not(:disabled) { border-color: var(--ink); }
+.suspect.is-accused { border-color: var(--needle); box-shadow: 0 0 0 2px var(--needle); }
+.clue.is-accused, .clue.is-proof { outline: 3px solid var(--needle); outline-offset: -3px; }
+.suspect.is-proof { border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink); }
+.sec.ask { color: var(--needle); }
+/* notebook: a fact ticked off while checking the stories */
+.clue.ticked { opacity: 0.6; }
+.clue.ticked::before { background: var(--ok); box-shadow: none; }
+.mode-tile.locked { opacity: 0.6; box-shadow: none; }
+.mode-tile.locked .mode-ico { filter: grayscale(1); }
 .clue.is-out { opacity: 0.45; text-decoration: line-through; }
 .clue.is-wrong { outline: 3px dashed var(--pencil); outline-offset: -3px; opacity: 0.7; }
 .clue.has-stamp { padding-right: 6.2rem; }
@@ -421,6 +436,8 @@ button.clue:hover { filter: brightness(0.96); }
 }
 .stamp.ok { color: var(--ok); border-color: var(--ok); }
 .stamp.cleared { color: var(--pencil); border-color: var(--pencil); font-size: 1.3rem; }
+.stamp.pending { color: var(--pencil); border-color: var(--pencil); border-style: dashed; font-size: 1.2rem; }
+.suspect:disabled .who-key { visibility: hidden; }
 .clue .stamp { background: var(--tag); font-size: 1.25rem; right: 0.55rem; top: 50%; animation-name: stampc; transform: translateY(-50%) rotate(-6deg); }
 @keyframes stamp { from { transform: rotate(-9deg) scale(1.7); opacity: 0; } to { transform: rotate(-9deg) scale(1); opacity: 1; } }
 @keyframes stampc { from { transform: translateY(-50%) rotate(-6deg) scale(1.7); opacity: 0; } to { transform: translateY(-50%) rotate(-6deg) scale(1); opacity: 1; } }
@@ -465,6 +482,14 @@ button.clue:hover { filter: brightness(0.96); }
 @keyframes starpop { from { transform: scale(0.2) rotate(-40deg); opacity: 0; } to { transform: none; opacity: 1; } }
 .verdict-banner { background: var(--ink); color: var(--paper); font-family: var(--display); font-weight: 900; font-size: 1.3rem; padding: 0.3rem 0.7rem; border-radius: var(--r); justify-self: start; }
 .why { line-height: 1.45; }
+.proof-box { display: grid; gap: 0.35rem; border-left: 4px solid var(--needle); padding: 0.1rem 0 0.1rem 0.75rem; line-height: 1.4; }
+.proof-box:empty { display: none; }
+.pb-said q { font-style: italic; }
+.pb-but, .pb-said b, .pb-motive b { font-family: var(--display); font-weight: 800; font-size: 1.05rem; letter-spacing: 0.02em; }
+.pb-motive { color: var(--pencil); }
+.pb-motive b { color: var(--needle); margin-right: 0.25rem; }
+.pb-facts { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; }
+.pb-facts li { background: var(--tag); color: var(--tag-ink); border-radius: 6px; padding: 0.3rem 0.6rem; font-size: var(--s-1); }
 .twist-reveal { font-style: italic; color: var(--pencil); }
 .verdict-actions { display: flex; gap: 0.5rem; position: sticky; bottom: 0; background: var(--surface); padding-top: 0.35rem; box-shadow: 0 -10px 12px -8px var(--surface); }
 .verdict-actions .btn.ghost { flex: none; }
@@ -678,8 +703,8 @@ body:not(.booting) .boot { opacity: 0; pointer-events: none; }
 .ad-demo-row { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-top: 0.3rem; }
 
 /* ---------- web leaderboard ---------- */
-.tabs { display: grid; grid-template-columns: repeat(4, 1fr); border: 2px solid var(--ink); border-radius: var(--r); overflow: hidden; }
-.tab { background: var(--surface); border: 0; padding: 0.5rem 0.2rem; cursor: pointer; font-family: var(--display); font-weight: 800; font-size: 1.1rem; }
+.tabs { display: grid; grid-template-columns: repeat(5, 1fr); border: 2px solid var(--ink); border-radius: var(--r); overflow: hidden; }
+.tab { background: var(--surface); border: 0; padding: 0.5rem 0.1rem; cursor: pointer; font-family: var(--display); font-weight: 800; font-size: 1.05rem; min-width: 0; }
 .tab + .tab { border-left: 2px solid var(--ink); }
 .tab[aria-selected="true"] { background: var(--ink); color: var(--paper); }
 .board-note { color: var(--pencil); font-size: var(--s-1); }
@@ -791,9 +816,32 @@ dialog[open] { animation: dlgin 0.24s cubic-bezier(0.2, 1.25, 0.4, 1) both; }
 @keyframes glow { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--gold) 35%, transparent); } }
 .week-sub { font-size: var(--s-1); line-height: 1.4; }
 
+/* ---------- HQ: season ---------- */
+.season-card {
+  border: 2px solid var(--ink); border-radius: var(--r); background: var(--surface); padding: 0.8rem 0.95rem 0.95rem;
+  display: grid; gap: 0.5rem; box-shadow: 0 3px 0 var(--ink);
+  background-image: repeating-linear-gradient(135deg, transparent 0 14px, color-mix(in srgb, var(--grid) 70%, transparent) 14px 16px);
+}
+.season-title { margin: -0.3rem 0 0; font-family: var(--display); font-weight: 900; font-size: 1.85rem; line-height: 1; text-wrap: balance; }
+.season-sub { font-size: var(--s-1); line-height: 1.4; }
+.season-sub strong { font-variant-numeric: tabular-nums; }
+/* badge track: a bar with a stop for each badge */
+.season-track { position: relative; height: 0.7rem; border: 2px solid var(--ink); border-radius: 99px; background: var(--paper); margin: 0.55rem 0 1.1rem; }
+.season-track:empty { display: none; }
+.season-track > i { position: absolute; inset: 0 auto 0 0; border-radius: 99px; background: var(--ok); }
+.season-track > b { position: absolute; top: 50%; transform: translate(-50%, -50%); font-size: 1.05rem; line-height: 1; filter: grayscale(1); opacity: 0.55; }
+.season-track > b.got { filter: none; opacity: 1; }
+.season-track > b span { position: absolute; top: 1.15rem; left: 50%; transform: translateX(-50%); font-size: 0.68rem; font-weight: 700; color: var(--pencil); font-family: var(--body); }
+.season-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; }
+.season-list li { background: var(--paper); border-radius: 8px; padding: 0.35rem 0.6rem; font-size: var(--s-1); }
+
 /* ---------- HQ: mode tiles ---------- */
 .mode-tile.night .mode-ico { background: #3d3f9e; color: #fff; }
 .mode-tile.rush .mode-ico { background: var(--gold); color: #1b1a17; }
+a.mode-tile { text-decoration: none; }
+.mode-tile.discord .mode-ico { background: #5865f2; color: #fff; }
+.mode-tile.discord .mode-ico svg { fill: currentColor; stroke: none; }
+.mode-tile.insta .mode-ico { background: radial-gradient(circle at 30% 107%, #fdf497 0 5%, #fd5949 45%, #d6249f 60%, #285aeb 90%); color: #fff; }
 .mode-tile.night.is-open { border-color: #6b6fe0; box-shadow: 0 3px 0 #6b6fe0; }
 .mode-tile.night .mode-flag { background: #3d3f9e; color: #fff; }
 
@@ -862,7 +910,8 @@ dialog[open] { animation: dlgin 0.24s cubic-bezier(0.2, 1.25, 0.4, 1) both; }
 .wk-clue.open { background: var(--tag); color: var(--tag-ink); }
 .wk-clue.locked { border: 2px dashed var(--grid-strong); color: var(--pencil); }
 .wk-day { font-family: var(--display); font-weight: 900; text-transform: uppercase; font-size: 0.95rem; letter-spacing: 0.05em; min-width: 2.4rem; }
-.wk-clue.open span:last-child { flex: 1; min-width: 12rem; }
+.wk-link { flex: none; margin-left: auto; font-size: 0.72rem; font-weight: 700; border: 1.5px solid currentColor; border-radius: 99px; padding: 0 0.45rem; white-space: nowrap; }
+.wk-clue.open > span:nth-child(2) { flex: 1; min-width: 12rem; }
 .wk-why { flex: 1; min-width: 10rem; font-size: var(--s-1); }
 .wk-acts { display: flex; gap: 0.35rem; flex-wrap: wrap; }
 .wk-suspects { display: grid; grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr)); gap: 0.55rem; }
@@ -885,6 +934,26 @@ dialog[open] { animation: dlgin 0.24s cubic-bezier(0.2, 1.25, 0.4, 1) both; }
 .wk-sus:disabled { cursor: default; }
 .accusing .wk-sus { border-color: var(--needle); }
 .accusing .wk-sus:hover { transform: translateY(-2px); box-shadow: 0 3px 0 var(--needle); }
+
+/* ---------- write a case ---------- */
+.write { max-width: 44rem; }
+textarea.field { resize: vertical; min-height: 3.4rem; line-height: 1.4; font-size: var(--s0); }
+.write .field { font-size: var(--s0); }
+.w-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; counter-reset: wf; }
+.w-list li { display: flex; gap: 0.35rem; align-items: center; }
+.w-list li::before { counter-increment: wf; content: counter(wf); font-family: var(--display); font-weight: 900; min-width: 1.1rem; }
+.w-list .icon-btn { font-size: 1.4rem; line-height: 1; }
+.w-sus { display: grid; gap: 0.6rem; }
+.w-person { border: 2px solid var(--grid-strong); border-radius: var(--r); padding: 0.55rem 0.65rem 0.65rem; margin: 0; display: grid; gap: 0.45rem; min-width: 0; }
+.w-person legend { font-family: var(--display); font-weight: 800; padding: 0 0.3rem; }
+.w-person.liar { border-color: var(--needle); box-shadow: 0 0 0 1px var(--needle); }
+.w-liar, .w-check { display: flex; gap: 0.55rem; align-items: center; font-weight: 700; cursor: pointer; min-height: 2.4rem; }
+.w-liar input, .w-check input { width: 1.2rem; height: 1.2rem; accent-color: var(--needle); flex: none; }
+.w-proof { display: grid; gap: 0.25rem; }
+.w-check span { font-weight: 400; }
+.w-check span:empty::before { content: "(write the fact first)"; color: var(--pencil); }
+.mode-tile.write { grid-column: 1 / -1; }
+.mode-tile.write .mode-ico { background: var(--needle); color: var(--needle-ink); }
 
 /* ---------- progress backup ---------- */
 .cloud-box { border: 2px dashed var(--grid-strong); border-radius: var(--r); padding: 0.7rem 0.8rem; display: grid; gap: 0.5rem; }
@@ -925,11 +994,11 @@ dialog[open] { animation: dlgin 0.24s cubic-bezier(0.2, 1.25, 0.4, 1) both; }
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr); grid-template-areas: "facts suspects";
     gap: 1.4rem; overflow: hidden; padding-bottom: 0.5rem;
   }
-  .pane { max-height: 100%; overflow-y: auto; overscroll-behavior: contain; padding-right: 0.2rem; padding-bottom: 0.6rem; }
+  .pane { max-height: 100%; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding-right: 0.2rem; padding-bottom: 0.6rem; }
   .pane-facts { grid-area: facts; }
   .pane-suspects { grid-area: suspects; }
   .verdict {
-    position: relative; left: auto; right: auto; bottom: auto; grid-area: facts; z-index: 3; align-self: start;
+    position: relative; left: auto; right: auto; bottom: auto; grid-area: facts; z-index: 3; align-self: stretch;
     max-height: 100%; border: 3px solid var(--ink); border-radius: var(--r);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18); padding: 1rem 1.1rem 1.1rem;
     animation: slidein 0.22s ease-out both;
@@ -963,12 +1032,34 @@ dialog[open] { animation: dlgin 0.24s cubic-bezier(0.2, 1.25, 0.4, 1) both; }
   .verdict-stars .st { width: 1.9rem; height: 1.9rem; }
   .why { line-height: 1.35; }
 }
-/* phones: a little more breathing room for thumbs */
+/* phones: facts and suspects should share one screen, so everything on the case is a bit tighter */
 @media (max-width: 699px), (max-aspect-ratio: 6/5) {
-  .case-grid { padding-bottom: 1.4rem; }
+  .case-grid { padding-bottom: 1.4rem; gap: 0.6rem; }
   .verdict-actions .btn.ghost { min-width: 5rem; }
   .res-title { font-size: 3rem; }
+  .case-top { padding-top: 0.3rem; padding-bottom: 0.25rem; }
+  .trace { height: 2.2rem; }
+  .pane { gap: 0.45rem; }
+  .case-title { font-size: 1.75rem; }
+  .case-setup { font-size: var(--s0); line-height: 1.3; }
+  .sec { font-size: 1.12rem; }
+  .clues { gap: 0.3rem; }
+  .clue { padding: 0.38rem 0.6rem 0.38rem 1.75rem; font-size: 0.95rem; line-height: 1.3; }
+  .suspects { gap: 0.4rem; }
+  .suspect { grid-template-columns: 3.3rem minmax(0, 1fr); padding: 0.45rem 0.5rem; gap: 0.6rem; }
+  .mug { width: 3.3rem; height: 3.8rem; }
+  .who-name { font-size: 1.25rem; }
+  .says { font-size: 0.95rem; line-height: 1.32; }
+  .twist { padding: 0.4rem 0.6rem; }
+  .twist strong { font-size: 1.3rem; }
+  /* facts and suspects split the screen and each scroll on their own, so the facts never scroll out of sight */
+  .case-grid { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0.4rem; }
+  .pane { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .pane-facts { flex: 0 1 auto; max-height: 52%; padding-bottom: 0.45rem; border-bottom: 2px dashed var(--grid-strong); }
+  .pane-suspects { flex: 1 1 0; padding-bottom: 0.4rem; }
 }
+/* thumbs: header and dialog buttons at least 44 px */
+html.game .icon-btn, html.game .coins { min-width: 44px; min-height: 44px; }
 @media (max-width: 380px) {
   .brand { font-size: 1.3rem; }
   .mode-txt b { font-size: 1.2rem; }

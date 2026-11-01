@@ -48,7 +48,11 @@
     var p = String(CFG.launchDate || "2026-10-26").split("-").map(Number);
     return Date.UTC(p[0], p[1] - 1, p[2]);
   }
+  // Testing only: ?test=1&today=20 makes today Daily #20, to try a season before it starts.
+  var TEST_DAY = 0;
+  try { var tm = /[?&]test=1/.test(location.search) && location.search.match(/[?&]today=(\d+)/); if (tm) TEST_DAY = +tm[1]; } catch (e) { /* no location */ }
   function dayNumber(date) {
+    if (TEST_DAY && !date) return TEST_DAY;
     var d = date || new Date();
     var today = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
     return Math.max(1, Math.floor((today - launchUTC()) / DAY_MS) + 1);
@@ -465,7 +469,8 @@
     var avoid = avoidIds || {};
     var pool = shuffle(FACTS.filter(function (f) { return f.tier <= (maxTier || 3); }), rng);
     var fresh = pool.filter(function (f) { return !avoid[f.id]; });
-    var stale = pool.filter(function (f) { return avoid[f.id]; });
+    // least recently used first (avoid values grow with each case, see generateCase)
+    var stale = pool.filter(function (f) { return avoid[f.id]; }).sort(function (a, b) { return avoid[a.id] - avoid[b.id]; });
     var ordered = fresh.concat(stale), used = {}, out = [];
     if (needTier) {
       for (var j = 0; j < ordered.length; j++) {
@@ -502,7 +507,9 @@
     avoid.premises[premise.title] = 1;
 
     var facts = pickFacts(clueCount, rng, avoid.facts, opts.maxTier, opts.needTier);
-    facts.forEach(function (f) { avoid.facts[f.id] = 1; });
+    var t = 1;
+    for (var k in avoid.facts) t = Math.max(t, avoid.facts[k] + 1);
+    facts.forEach(function (f) { avoid.facts[f.id] = t; });
 
     var target = Math.floor(rng() * 3);
     if (opts.needTier) {
@@ -541,6 +548,9 @@
       answer = target;
       why = whyParts[0].why;
     }
+    // what the player taps to prove it: the liars' facts, or (planted) the suspect whose story shows the fake fact
+    var proof = mode === "planted" ? [target]
+      : [0, 1, 2].filter(function (i) { return (i === target) === (mode === "liar"); }).map(function (i) { return clueOrder.indexOf(i); }).sort(num);
 
     return {
       title: premise.title,
@@ -549,6 +559,9 @@
       suspects: suspects,
       mode: mode,
       answer: answer,
+      proof: proof,
+      alt: [],
+      factIds: facts.map(function (f) { return f.id; }),
       why: why,
       twist: mode === "liar" ? null : pick(TWIST_LINES[mode], rng),
       level: opts.level || (mode === "liar" ? "easy" : "twist"),
@@ -557,11 +570,17 @@
   }
 
   /* Hand-written case -> game case, with suspects and clues shuffled the same way for everyone. */
+  function num(a, b) { return a - b; }
   function prepHand(c, level, rng) {
     var mode = c.mode || "liar";
     var sOrder = shuffle([0, 1, 2], rng);
     var cOrder = shuffle(c.clues.map(function (_, i) { return i; }), rng);
+    var sets = [c.proof || []].concat(c.alt || []).map(function (s) {
+      return s.map(function (p) { return (mode === "planted" ? sOrder : cOrder).indexOf(p); }).sort(num);
+    });
     return {
+      proof: sets[0],
+      alt: sets.slice(1),
       title: c.title,
       setup: c.setup,
       clues: cOrder.map(function (i) { return c.clues[i]; }),
@@ -575,12 +594,180 @@
     };
   }
 
-  var dayCache = {};
+  /* ---------- generator 2: Season 1 on (js/seasons.js) ----------
+     Every fact is part of someone's story, and a story can make two claims (one true, one not).
+     Some lies only break against two facts together. Each season brings its own facts, story openers
+     with motives, and a cast of locals; one local turns up in every case. Facts, lines, openers and
+     names used recently come last (avoid maps hold a counter: higher = used more recently). */
+  var SEASON_ONE = 15, SEASON_DAYS = 28; // Season 1 starts with Daily #15, Monday 9 November 2026. 4 weeks each.
+  var H = { clock: clock, dur: dur, cap: cap, pick: pick };
+  function seasonOf(day) { return day < SEASON_ONE ? 0 : Math.floor((day - SEASON_ONE) / SEASON_DAYS) + 1; }
+  function seasonStart(n) { return SEASON_ONE + (n - 1) * SEASON_DAYS; }
+  // Seasons past the end of the list reuse the last season's templates.
+  function packFor(n) { var L = window.WL_SEASONS || []; return L.length ? L[Math.min(Math.max(n, 1), L.length) - 1] : null; }
+  var pools = [];
+  function poolOf(pack) {
+    for (var i = 0; i < pools.length; i++) if (pools[i].pack === pack) return pools[i];
+    var drop = {}, more = pack.more || {}, regroup = pack.regroup || {};
+    (pack.drop || []).forEach(function (s) { drop[s] = 1; });
+    var base = FACTS.map(function (f) {
+      return Object.assign({}, f, { groups: regroup[f.id] || f.groups, own: false,
+        lies: f.lies && f.lies.filter(function (l) { return !drop[l.say]; }).concat(more[f.id] || []) });
+    });
+    var mine = function (f, x) { return Object.assign({ tier: 1, groups: [f.id] }, f, x); };
+    var p = {
+      pack: pack,
+      facts: (pack.facts || []).map(function (f) { return mine(f, { own: true }); }).concat(base),
+      combos: (pack.combos || []).map(function (f) { return mine(f, { own: true, combo: true, tier: 3 }); }),
+      cast: (pack.cast || []).map(function (c) { return { name: c[0], role: c[1] }; })
+    };
+    var cast = {};
+    p.cast.forEach(function (c) { cast[c.name] = 1; });
+    p.names = NAMES.filter(function (n) { return !cast[n]; }); // a local's name always means that local
+    pools.push(p);
+    return p;
+  }
+  /* Longest unused first. The season's own facts count as 10 cases older than they are, and built-in facts that were
+     never used as 30 cases old, so the season keeps its flavour all month instead of only in the first days. */
+  function lru(list, seen, key, rng, now) {
+    var age = function (x) { var s = seen[key(x)]; return s ? now - s + (x.own ? 10 : 0) : x.own === false ? 30 : 1e9; };
+    return shuffle(list, rng).map(function (x) { return [age(x), x]; })
+      .sort(function (a, b) { return b[0] - a[0]; }).map(function (p) { return p[1]; });
+  }
+  function byId(x) { return x.id; }
+  function byTitle(x) { return x.title; }
+  function byName(x) { return x.name; }
+  function byLine(x) { return x.say || x; }
+  function line(list, rng, avoid) { var l = lru(list, avoid.lines, byLine, rng, avoid.t)[0]; avoid.lines[byLine(l)] = avoid.t; return l; }
+  function inst2(f, rng, ctx) {
+    var m = f.make ? f.make(rng, H, ctx) : f;
+    return { id: f.id, combo: !!f.combo, tier: f.tier, clues: m.clues || [m.clue], truths: m.truths, near: m.near || [], lies: m.lies };
+  }
+  function newAvoid() { return { names: {}, premises: {}, facts: {}, lines: {}, t: 0 }; }
+  function copyAvoid(a) {
+    return { names: Object.assign({}, a.names), premises: Object.assign({}, a.premises), facts: Object.assign({}, a.facts), lines: Object.assign({}, a.lines), t: a.t };
+  }
+  /* o: { pack, avoid, mode, level, clueCount, maxTier, needTier, combo (a two-fact lie), near (true lines that sound suspicious) } */
+  function generateCase2(rng, o) {
+    var pool = poolOf(o.pack), mode = o.mode || "liar", avoid = o.avoid;
+    var t = avoid.t = (avoid.t || 0) + 1;
+    var premise = lru(o.pack.premises, avoid.premises, byTitle, rng, t)[0];
+    avoid.premises[premise.title] = t;
+
+    // suspects: a local from the season's cast and two visitors
+    var local = pool.cast.length ? lru(pool.cast, avoid.names, byName, rng, t)[0] : null;
+    var visitors = lru(pool.names.map(function (n) { return { name: n }; }), avoid.names, byName, rng, t).slice(0, local ? 2 : 3);
+    var roles = shuffle(ROLES, rng);
+    var people = shuffle(visitors.map(function (v, i) { return { name: v.name, role: roles[i] }; }).concat(local ? [local] : []), rng);
+    people.forEach(function (p) { avoid.names[p.name] = t; });
+    var npcs = pool.cast.filter(function (c) { return people.every(function (p) { return p.name !== c.name; }); });
+    var ctx = { npc: npcs.length ? pick(npcs, rng) : { name: "Mr. Hale", role: "Caretaker" } };
+
+    // facts: maybe one two-fact puzzle, then single facts; never two from the same group
+    var seen = avoid.facts, taken = {}, topics = [], clueN = 0;
+    var fits = function (f) { return topics.indexOf(f) < 0 && !f.groups.some(function (g) { return taken[g]; }); };
+    var take = function (f) { f.groups.forEach(function (g) { taken[g] = 1; }); topics.push(f); clueN += f.combo ? 2 : 1; };
+    if (mode === "liar" && o.combo) { var cb = lru(pool.combos, seen, byId, rng, t).filter(fits)[0]; if (cb) take(cb); }
+    var singles = lru(pool.facts.filter(function (f) { return f.tier <= (o.maxTier || 3); }), seen, byId, rng, t);
+    if (o.needTier && !topics.length) { var hard = singles.filter(function (f) { return f.tier >= o.needTier && fits(f); })[0]; if (hard) take(hard); }
+    for (var i = 0; i < singles.length && (clueN < o.clueCount || topics.length < 3); i++) if (fits(singles[i])) take(singles[i]);
+    topics.forEach(function (f) { seen[f.id] = t; });
+    var T = topics.map(function (f) { return inst2(f, rng, ctx); });
+
+    // who talks about what: the hardest topic (the two-fact one first) is the liar's; topics past 3 become second claims
+    var target = Math.floor(rng() * 3), key = 0, order = T.map(function (_, k) { return k; });
+    T.forEach(function (x, k) { if (x.combo || (!T[key].combo && x.tier > T[key].tier)) key = k; });
+    if (mode !== "planted") {
+      var slot = mode === "liar" ? target : (target + 1 + Math.floor(rng() * 2)) % 3;
+      order.splice(order.indexOf(key), 1); order.splice(slot, 0, key);
+    }
+    var claims = [[order[0]], [order[1]], [order[2]]], who = shuffle([0, 1, 2], rng);
+    order.slice(3).forEach(function (k, j) { claims[who[j % 3]].push(k); });
+    var liars = mode === "liar" ? [target] : mode === "honest" ? [0, 1, 2].filter(function (k) { return k !== target; }) : [];
+    var lieOf = {};
+    var suspects = people.map(function (p, s) {
+      var parts = claims[s].map(function (k, j) {
+        var tp = T[k];
+        if (j === 0 && (liars.indexOf(s) >= 0 || (mode === "planted" && s === target))) { lieOf[s] = line(tp.lies, rng, avoid); return lieOf[s].say; }
+        return line(o.near && tp.near.length && rng() < 0.6 ? tp.near : tp.truths, rng, avoid);
+      });
+      if (parts.length > 1 && rng() < 0.5) parts.reverse(); // the lie isn't always the first thing they say
+      return { name: p.name, role: p.role, says: parts.join(" ") };
+    });
+
+    // clues in a shuffled order; the proof points at the clues of the liars' topics
+    var flat = [];
+    T.forEach(function (tp, k) { tp.clues.forEach(function (txt) { flat.push({ text: txt, k: k }); }); });
+    var perm = shuffle(flat.map(function (_, k) { return k; }), rng);
+    var clues = perm.map(function (k) { return flat[k].text; });
+    var at = function (k) { var out = []; perm.forEach(function (f, pos) { if (flat[f].k === k) out.push(pos); }); return out; };
+    var answer, proof, why;
+    if (mode === "planted") {
+      answer = at(claims[target][0])[0];
+      proof = [target];
+      why = "Everyone told the truth, so the fact “" + clues[answer] + "” must be fake. " + people[target].name + "'s story proves it.";
+    } else {
+      answer = target;
+      proof = [];
+      liars.forEach(function (s) { proof = proof.concat(at(claims[s][0])); });
+      proof.sort(num);
+      why = mode === "honest" ? people[target].name + " told the truth. " + liars.map(function (s) { return people[s].name + " lied: " + lieOf[s].why; }).join(" ") : lieOf[target].why;
+    }
+    return {
+      title: premise.title, setup: premise.setup, clues: clues, suspects: suspects, mode: mode,
+      answer: answer, proof: proof, alt: [], factIds: topics.map(byId), why: why,
+      motive: mode === "liar" && premise.motives ? pick(premise.motives, rng).replace(/\{name\}/g, people[target].name) : "",
+      twist: mode === "liar" ? null : pick(TWIST_LINES[mode], rng),
+      level: o.level || (mode === "liar" ? "easy" : "twist"), source: "generated"
+    };
+  }
+  // How hard each weekday is: an easy Monday up to a hard Saturday. Sunday is mastermind day.
+  var HEAT = [0, 1, 1, 2, 2, 3, 1];
+  function daySpecs(day) {
+    var h = HEAT[weekday(day)];
+    return [
+      { mode: "liar", level: "easy", clueCount: 3, maxTier: h >= 2 ? 2 : 1 },
+      { mode: "liar", level: "medium", clueCount: h ? 4 : 3, maxTier: 2 },
+      { mode: "liar", level: "medium", clueCount: 4, maxTier: 2, combo: h >= 2 },
+      { mode: "liar", level: "hard", clueCount: h >= 2 ? 5 : 4, maxTier: 3, combo: true, near: h >= 2 },
+      { mode: day % 2 ? "honest" : "planted", level: "twist", clueCount: h >= 2 ? 4 : 3, maxTier: 2 }
+    ];
+  }
+  var dayAvoid = {};
+  function buildDay2(day) {
+    var i = day - 1, s = seasonOf(day), pack = packFor(s);
+    var seed = function (slot) { return rngFrom("wl-s" + s + "-day-" + day + "-slot-" + slot); };
+    if (day > seasonStart(s)) buildDay(day - 1); // each day skips what the days before it in the season used
+    var avoid = day > seasonStart(s) ? copyAvoid(dayAvoid[day - 1]) : newAvoid();
+    var hand = {
+      2: CASES.medium[i] ? prepHand(CASES.medium[i], "medium", seed(2)) : null,
+      4: CASES.hard[i] ? prepHand(CASES.hard[i], "hard", seed(4)) : null,
+      5: CASES.twist[i] ? prepHand(CASES.twist[i], "twist", seed(5)) : null
+    };
+    Object.keys(hand).forEach(function (k) { if (hand[k]) hand[k].suspects.forEach(function (x) { avoid.names[x.name] = avoid.t + 1; }); });
+    var list = daySpecs(day).map(function (sp, k) {
+      return hand[k + 1] || generateCase2(seed(k + 1), Object.assign({ pack: pack, avoid: avoid }, sp));
+    });
+    dayAvoid[day] = avoid;
+    return list;
+  }
+
+  var dayCache = {}, dayFacts = {};
+  // From Daily #9 (Tue 3 Nov 2026) generated cases also skip the facts of the days before,
+  // in two-week blocks. Earlier days keep the cases players already saw.
+  var CHAIN_FROM = 9;
+  function factsBefore(day) {
+    var start = Math.max(CHAIN_FROM, day - (day - 1) % 14);
+    if (day <= start) return {};
+    buildDay(day - 1);
+    return Object.assign({}, dayFacts[day - 1]);
+  }
   function buildDay(day) {
     if (dayCache[day]) return dayCache[day];
+    if (day >= SEASON_ONE && packFor(seasonOf(day))) return (dayCache[day] = buildDay2(day));
     var i = day - 1;
     var seed = function (slot) { return rngFrom("wl-day-" + day + "-slot-" + slot); };
-    var avoid = { names: {}, premises: {}, facts: {} };
+    var avoid = { names: {}, premises: {}, facts: factsBefore(day) };
     var hand = {
       2: CASES.medium[i] ? prepHand(CASES.medium[i], "medium", seed(2)) : null,
       4: CASES.hard[i] ? prepHand(CASES.hard[i], "hard", seed(4)) : null,
@@ -597,6 +784,7 @@
       hand[4] || generateCase(seed(4), { mode: "liar", clueCount: 4, level: "hard", maxTier: 3, needTier: 3, avoid: avoid }),
       hand[5] || generateCase(seed(5), { mode: twistMode, clueCount: 3, level: "twist", maxTier: 2, avoid: avoid })
     ];
+    dayFacts[day] = avoid.facts;
     dayCache[day] = list;
     return list;
   }
@@ -614,9 +802,16 @@
     var round = Math.floor((ch - 1) / CHAPTERS.length);
     return CHAPTERS[(ch - 1) % CHAPTERS.length] + (round ? " " + roman(round + 1) : "");
   }
+  /* One new idea per chapter: 1 the basics, 2 stories with two claims, 3 lies that need two facts,
+     4 true stories that sound suspicious, then everything mixed. */
+  var CHAPTER_NEWS = [null,
+    null,
+    { icon: "💬", title: "Two claims, one lie", text: "From now on some stories say two things. One part can be true and the other a lie, so check every claim." },
+    { icon: "🧩", title: "Two facts, one proof", text: "Some lies only break when you put two facts together, like a start time and a running time. You'll need to tap both." },
+    { icon: "🤔", title: "Suspicious but true", text: "Some honest stories now sound fishy: a crab bought just before the market sold out. Only a broken fact makes a liar." }];
   function careerSpec(n) {
     var ch = chapterOf(n), k = (n - 1) % 10 + 1, twist = k === 5 || k === 10;
-    var s = { n: n, chapter: ch, slot: k, mode: "liar", clueCount: 3, maxTier: 1, needTier: 0, level: "easy" };
+    var s = { n: n, chapter: ch, slot: k, mode: "liar", clueCount: 3, maxTier: 1, needTier: 0, level: "easy", combo: false, near: false };
     if (twist) s.mode = (k === 5) === (ch % 2 === 1) ? "honest" : "planted";
     if (ch === 1) {
       s.maxTier = k >= 7 ? 2 : 1;
@@ -630,11 +825,17 @@
       s.maxTier = 3;
       s.clueCount = twist ? 4 : k <= 3 ? 4 : 5;
       s.needTier = !twist && (k === 4 || k === 7 || k === 9) ? 3 : 0;
+      s.combo = !!s.needTier;
+      s.near = ch >= 4 && !twist && k >= 6;
       s.level = twist ? "twist" : k >= 6 ? "hard" : "medium";
     }
-    // seconds to beat for the third star
-    s.par = 18 + s.clueCount * 7 + (twist ? 15 : 0) + (s.needTier ? 15 : 0);
+    // seconds to beat for the third star (6 of them for pointing at the proof)
+    s.par = 24 + s.clueCount * 7 + (twist ? 15 : 0) + (s.needTier ? 15 : 0) + (s.near ? 5 : 0);
     return s;
+  }
+  function careerOpts(s, avoid) {
+    return { pack: packFor(Math.max(1, seasonOf(dayNumber()))), avoid: avoid, mode: s.mode, level: s.level, clueCount: s.clueCount,
+      maxTier: s.maxTier, needTier: s.needTier, combo: s.combo, near: s.near };
   }
   var TUTORIAL = {
     title: "The Missing Cupcakes",
@@ -646,25 +847,41 @@
       { name: "Rosa", role: "Cook", says: "I locked the kitchen at three and went home with my umbrella." }
     ],
     answer: 0,
+    proof: [0],
     why: "It rained hard all afternoon, so there was no sunshine for Mia to play football in."
   };
-  var careerCache = {};
+  var careerCache = {}, careerFacts = {}, careerAvoid = newAvoid();
   function buildCareerLevel(n) {
     if (careerCache[n]) return careerCache[n];
+    if (n > 2) buildCareerLevel(n - 1); // build in order: each level skips the facts the levels before it used
     var s = careerSpec(n), c;
     if (n === 1) {
       c = prepHand(TUTORIAL, "easy", rngFrom("wl-career-1"));
+    } else if (packFor(1)) {
+      c = generateCase2(rngFrom("wl-career2-" + n), careerOpts(s, careerAvoid));
     } else {
       // walk through all story openers in a shuffled order, so they don't repeat for 50 cases
       var round = Math.floor((n - 2) / PREMISES.length);
       var premise = shuffle(PREMISES, rngFrom("wl-prem-" + round))[(n - 2) % PREMISES.length];
       c = generateCase(rngFrom("wl-career-" + n), {
         mode: s.mode, clueCount: s.clueCount, maxTier: s.maxTier, needTier: s.needTier, level: s.level, premise: premise,
-        avoid: { names: {}, premises: {}, facts: {} }
+        avoid: { names: {}, premises: {}, facts: careerFacts }
       });
     }
     c.spec = s;
     careerCache[n] = c;
+    return c;
+  }
+  /* A botched career case comes back as a fresh version: new facts, suspects and story. */
+  function careerRetry(n, k) {
+    var base = buildCareerLevel(n), s = base.spec, avoid = { names: {}, premises: {}, facts: {} };
+    (base.factIds || []).forEach(function (id) { avoid.facts[id] = 1; });
+    base.suspects.forEach(function (x) { avoid.names[x.name] = 1; });
+    avoid.premises[base.title] = 1;
+    var r = rngFrom("wl-career-" + n + "-retry-" + k);
+    var c = packFor(1) ? generateCase2(r, careerOpts(s, Object.assign(newAvoid(), avoid)))
+      : generateCase(r, { mode: s.mode, clueCount: s.clueCount, maxTier: s.maxTier, needTier: s.needTier, level: s.level, avoid: avoid });
+    c.spec = s;
     return c;
   }
 
@@ -672,11 +889,19 @@
   function endlessSpec(n) {
     var maxTier = n <= 5 ? 1 : n <= 15 ? 2 : 3;
     if (n % 5 === 0) return { mode: (n / 5) % 2 ? "honest" : "planted", clueCount: 3, level: "twist", maxTier: Math.min(2, maxTier) };
-    return { mode: "liar", clueCount: n <= 3 ? 3 : 4, level: n <= 3 ? "easy" : n <= 15 ? "medium" : "hard", maxTier: maxTier };
+    var combo = n >= 9 && n % 3 === 0;
+    return { mode: "liar", clueCount: n <= 3 ? 3 : combo && n >= 15 ? 5 : 4, level: n <= 3 ? "easy" : n <= 15 ? "medium" : "hard", maxTier: maxTier,
+      combo: combo, near: n >= 20 };
+  }
+  // A Rush case from the current season's templates (or the classic generator if there are none).
+  function rushCase(rng, n, avoid) {
+    var spec = endlessSpec(n), pack = packFor(Math.max(1, seasonOf(dayNumber())));
+    if (!pack) return generateCase(rng, Object.assign({}, spec, { avoid: avoid }));
+    return generateCase2(rng, Object.assign({ pack: pack, avoid: avoid }, spec));
   }
   function endlessSeconds(n) {
     var spec = endlessSpec(n), base = Math.max(22, 48 - Math.floor((n - 1) / 5) * 4);
-    return base + (spec.mode === "liar" ? 0 : 10) + (spec.maxTier === 3 ? 6 : 0);
+    return base + 6 + (spec.mode === "liar" ? 0 : 10) + (spec.maxTier === 3 ? 6 : 0); // 6 s for the proof
   }
 
   /* ---------- suspect portraits ----------
@@ -731,9 +956,18 @@
   var NIGHT_HOUR = 20;
   function buildNight(day) {
     var mode = ["liar", "honest", "liar", "planted"][day % 4];
+    if (day >= SEASON_ONE && packFor(seasonOf(day))) {
+      buildDay(day); // skips what that day's Daily used
+      return generateCase2(rngFrom("wl-s" + seasonOf(day) + "-night-" + day), {
+        pack: packFor(seasonOf(day)), avoid: copyAvoid(dayAvoid[day]), mode: mode, level: mode === "liar" ? "hard" : "twist",
+        clueCount: mode === "liar" ? 5 : 4, maxTier: 3, combo: mode === "liar", near: true
+      });
+    }
+    var facts = {};
+    if (day >= CHAIN_FROM) { buildDay(day); facts = Object.assign({}, dayFacts[day]); } // skip that day's Daily facts
     var c = generateCase(rngFrom("wl-night-" + day), {
       mode: mode, clueCount: mode === "liar" ? 5 : 4, maxTier: 3, needTier: mode === "liar" ? 3 : 0,
-      level: mode === "liar" ? "hard" : "twist", avoid: { names: {}, premises: {}, facts: {} }
+      level: mode === "liar" ? "hard" : "twist", avoid: { names: {}, premises: {}, facts: facts }
     });
     return c;
   }
@@ -773,8 +1007,75 @@
   // How many clues each trait gets (always 6 in total).
   var WEEK_SPLITS = [[3, 1, 1, 1], [2, 2, 1, 1], [2, 1, 1, 2], [1, 2, 1, 2]];
   var weekCache = {};
+  /* Season weeks (from Season 1): the suspects are 8 of the season's locals, and 2 of the 6 clues tie two traits
+     together ("if the mastermind came by car, they wore a grey coat", "came by bus or drinks tea"), so naming the
+     mastermind takes thinking, not just ticking. Every clue still rules out someone no other clue does. */
+  var IS = ["came by ", "drinks ", "writes with the ", "wore "], THEY = ["they came by ", "they drink ", "they write with the ", "they wore "];
+  function weekHolds(c, p) {
+    return c.t === "yes" ? p[c.a] === c.v : c.t === "no" ? p[c.a] !== c.v : c.t === "if" ? p[c.a] !== c.v || p[c.b] === c.w : p[c.a] === c.v || p[c.b] === c.w;
+  }
+  function weekText(c) {
+    var A = TRAITS[c.a];
+    if (c.t === "yes") return A.yes(A.vals[c.v]);
+    if (c.t === "no") return A.no(A.vals[c.v]);
+    if (c.t === "if") return "A witness is sure of one thing: if the mastermind " + IS[c.a] + A.vals[c.v] + ", " + THEY[c.b] + TRAITS[c.b].vals[c.w] + ".";
+    return "Two sightings, at least one right: the mastermind " + IS[c.a] + A.vals[c.v] + " or " + IS[c.b] + TRAITS[c.b].vals[c.w] + ".";
+  }
+  function tryWeek2(r, A) {
+    var simple = [], linked = [];
+    TRAITS.forEach(function (a, ai) { a.vals.forEach(function (_, v) { simple.push({ t: v === A[ai] ? "yes" : "no", a: ai, v: v }); }); });
+    TRAITS.forEach(function (a, ai) {
+      TRAITS.forEach(function (b, bi) {
+        if (ai === bi) return;
+        linked.push({ t: "if", a: ai, v: A[ai], b: bi, w: A[bi] }); // only with a true "if" part, so it can't mislead
+        if (ai < bi) a.vals.forEach(function (_, v) { b.vals.forEach(function (_, w) { if ((A[ai] === v) !== (A[bi] === w)) linked.push({ t: "or", a: ai, v: v, b: bi, w: w }); }); });
+      });
+    });
+    var l = shuffle(linked, r), pair = function (c) { return Math.min(c.a, c.b) + "-" + Math.max(c.a, c.b); };
+    var l2 = l.filter(function (c) { return pair(c) !== pair(l[0]); })[0]; // the two linked clues tie different traits
+    var clues = shuffle(simple, r).slice(0, 4).concat([l[0], l2]);
+    // every possible suspect: who breaks exactly one clue (one per clue), and one who breaks two
+    var only = clues.map(function () { return []; }), two = [];
+    for (var p0 = 0; p0 < 4; p0++) for (var p1 = 0; p1 < 3; p1++) for (var p2 = 0; p2 < 2; p2++) for (var p3 = 0; p3 < 3; p3++) {
+      var p = [p0, p1, p2, p3], broken = [];
+      clues.forEach(function (c, i) { if (!weekHolds(c, p)) broken.push(i); });
+      if (broken.length === 1) only[broken[0]].push(p); else if (broken.length === 2) two.push(p);
+    }
+    if (!two.length || only.some(function (l) { return !l.length; })) return null;
+    // simple clues on Monday and Tuesday, the linked ones later in the week
+    var order = shuffle([0, 1, 2, 3], r);
+    var days = order.slice(0, 2).concat(shuffle(order.slice(2).concat([4, 5]), r));
+    return { clues: days.map(function (i) { return clues[i]; }), people: only.map(function (l) { return pick(l, r); }).concat([pick(two, r), A]) };
+  }
+  function buildWeek2(w, pack) {
+    var r = rngFrom("wl-week2-" + w), A = TRAITS.map(function (a) { return Math.floor(r() * a.vals.length); }), got = null;
+    for (var k = 0; !got && k < 400; k++) got = tryWeek2(r, A);
+    if (!got) return null;
+    var order = shuffle(got.people.map(function (_, i) { return i; }), r);
+    var cast = pack.cast && pack.cast.length >= 8 ? shuffle(pack.cast, r) : null;
+    var names = shuffle(NAMES, r), roles = shuffle(ROLES, r);
+    var sus = order.map(function (pi, i) {
+      var t = got.people[pi];
+      return { name: cast ? cast[i][0] : names[i], role: cast ? cast[i][1] : roles[i], t: t, traits: t.map(function (v, ai) { return TRAITS[ai].short[v]; }) };
+    });
+    var ans = order.indexOf(got.people.length - 1), m = sus[ans];
+    var list = pack.weeks && pack.weeks.length ? pack.weeks : WEEK_CASES;
+    var story = list[(w - weekOf(SEASON_ONE)) % list.length];
+    return {
+      week: w, title: story.title, setup: story.setup, answer: ans, suspects: sus,
+      clues: got.clues.map(function (c) {
+        var out = [];
+        sus.forEach(function (s, si) { if (!weekHolds(c, s.t)) out.push(si); });
+        return { text: weekText(c), out: out, linked: c.t === "if" || c.t === "or" };
+      }),
+      why: m.name + " is the only one who fits every clue: came by " + TRAITS[0].vals[m.t[0]] + ", drinks " + TRAITS[1].vals[m.t[1]] +
+        ", writes with the " + TRAITS[2].vals[m.t[2]] + " and wore " + TRAITS[3].vals[m.t[3]] + "."
+    };
+  }
   function buildWeek(w) {
     if (weekCache[w]) return weekCache[w];
+    var pk = w >= weekOf(SEASON_ONE) ? packFor(seasonOf((w - 1) * 7 + 1)) : null;
+    if (pk && (weekCache[w] = buildWeek2(w, pk))) return weekCache[w];
     var r = rngFrom("wl-week-" + w);
     var A = TRAITS.map(function (a) { return Math.floor(r() * a.vals.length); });
     var split = pick(WEEK_SPLITS, r), clues = [], people = [];
@@ -829,6 +1130,78 @@
   }
   function save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* storage blocked: game still works */ } }
 
+  /* ---------- cases written by players ----------
+     The whole case travels inside the link (?w=...), so nothing is stored online and only people who get
+     the link can play it. Short keys: t title, s setup, f facts, p suspects [name, job, story], a the liar,
+     x the fact(s) that prove it, y the explanation, b who wrote it. */
+  var LIM = { t: [3, 40], s: [10, 160], f: [5, 110], n: [2, 16], r: [0, 24], q: [5, 160], y: [0, 220], b: [0, 16] };
+  function okText(x, k) { return typeof x === "string" && x.trim().length >= LIM[k][0] && x.length <= LIM[k][1]; }
+  function isIdx(i, n) { return typeof i === "number" && i % 1 === 0 && i >= 0 && i < n; }
+  // "" when the case is ready, otherwise what to fix (in the words the writer sees).
+  function checkWritten(w) {
+    if (!w || typeof w !== "object") return "This case is empty.";
+    if (!okText(w.t, "t")) return "Give your case a title (3 to 40 characters).";
+    if (!okText(w.s, "s")) return "Say what happened (10 to 160 characters).";
+    if (!Array.isArray(w.f) || w.f.length < 3 || w.f.length > 5) return "Write 3 to 5 facts.";
+    for (var i = 0; i < w.f.length; i++) if (!okText(w.f[i], "f")) return "Fact " + (i + 1) + " needs 5 to 110 characters.";
+    if (!Array.isArray(w.p) || w.p.length !== 3) return "A case needs 3 suspects.";
+    for (i = 0; i < 3; i++) {
+      var p = Array.isArray(w.p[i]) ? w.p[i] : [];
+      if (!okText(p[0], "n")) return "Suspect " + (i + 1) + " needs a name (2 to 16 characters).";
+      if (p[1] && !okText(p[1], "r")) return "Suspect " + (i + 1) + "'s job is too long.";
+      if (!okText(p[2], "q")) return "Suspect " + (i + 1) + " needs a story (5 to 160 characters).";
+    }
+    var names = w.p.map(function (p) { return p[0].trim().toLowerCase(); });
+    if (names[0] === names[1] || names[0] === names[2] || names[1] === names[2]) return "Give each suspect a different name.";
+    if (!isIdx(w.a, 3)) return "Choose which suspect is lying.";
+    if (!Array.isArray(w.x) || w.x.length < 1 || w.x.length > 2 || (w.x.length === 2 && w.x[0] === w.x[1]) ||
+      w.x.some(function (k) { return !isIdx(k, w.f.length); })) return "Tick the fact (or two facts) that the lie breaks.";
+    if (w.y && !okText(w.y, "y")) return "The explanation is too long.";
+    if (w.b && !okText(w.b, "b")) return "Your signature is too long.";
+    return "";
+  }
+  function toB64(bytes) {
+    var s = "";
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+  function fromB64(s) {
+    var b = atob(s.replace(/-/g, "+").replace(/_/g, "/")), out = new Uint8Array(b.length);
+    for (var i = 0; i < b.length; i++) out[i] = b.charCodeAt(i);
+    return out;
+  }
+  function squeeze(bytes, Stream) {
+    return new Response(new Blob([bytes]).stream().pipeThrough(new Stream("deflate-raw"))).arrayBuffer().then(function (ab) { return new Uint8Array(ab); });
+  }
+  // -> Promise of the link code: "z" + compressed (about half as long) where the browser can, "j" + plain otherwise.
+  function packWritten(w) {
+    var raw = new TextEncoder().encode(JSON.stringify(w));
+    if (typeof CompressionStream !== "function") return Promise.resolve("j" + toB64(raw));
+    return squeeze(raw, CompressionStream).then(function (z) { return "z" + toB64(z); }, function () { return "j" + toB64(raw); });
+  }
+  // -> Promise of the case, or null when the link is broken or not a valid case.
+  function unpackWritten(code) {
+    try {
+      if (!code || code.length > 9000) return Promise.resolve(null);
+      var kind = code.charAt(0), bytes = fromB64(code.slice(1));
+      var p = kind === "z" ? squeeze(bytes, DecompressionStream) : kind === "j" ? Promise.resolve(bytes) : Promise.reject(new Error("bad link"));
+      return p.then(function (b) { var w = JSON.parse(new TextDecoder().decode(b)); return checkWritten(w) ? null : w; }).catch(function () { return null; });
+    } catch (e) { return Promise.resolve(null); }
+  }
+  // A written case in the game's case shape, shuffled the same way for everyone with the same link.
+  function writtenCase(w, code) {
+    var r = rngFrom("written:" + code), sOrder = shuffle([0, 1, 2], r), cOrder = shuffle(w.f.map(function (_, i) { return i; }), r);
+    var t = function (s) { return String(s || "").replace(/\s+/g, " ").trim(); };
+    return {
+      title: t(w.t), setup: t(w.s), clues: cOrder.map(function (i) { return t(w.f[i]); }),
+      suspects: sOrder.map(function (i) { return { name: t(w.p[i][0]), role: t(w.p[i][1]) || "Suspect", says: t(w.p[i][2]) }; }),
+      mode: "liar", answer: sOrder.indexOf(w.a), alt: [],
+      proof: w.x.map(function (k) { return cOrder.indexOf(k); }).sort(num),
+      why: t(w.y) || t(w.p[w.a][0]) + "'s story can't be true with " + (w.x.length > 1 ? "those facts." : "that fact."),
+      twist: null, level: "friend", source: "friend", by: t(w.b) || "A friend"
+    };
+  }
+
   /* ---------- small helpers ---------- */
   function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -861,7 +1234,11 @@
     cfg: CFG, rngFrom: rngFrom, shuffle: shuffle, pick: pick,
     dayNumber: dayNumber, dateForDay: dateForDay, formatDate: formatDate, msToNextDay: msToNextDay,
     buildDay: buildDay, generateCase: generateCase, endlessSpec: endlessSpec, endlessSeconds: endlessSeconds,
-    careerSpec: careerSpec, buildCareerLevel: buildCareerLevel, chapterOf: chapterOf, chapterName: chapterName, clock: clock,
+    careerSpec: careerSpec, buildCareerLevel: buildCareerLevel, careerRetry: careerRetry, chapterOf: chapterOf, CHAPTER_NEWS: CHAPTER_NEWS,
+    generateCase2: generateCase2, rushCase: rushCase, newAvoid: newAvoid, packFor: packFor, seasonOf: seasonOf, seasonStart: seasonStart,
+    SEASON_ONE: SEASON_ONE, SEASON_DAYS: SEASON_DAYS, daySpecs: daySpecs,
+    checkWritten: checkWritten, packWritten: packWritten, unpackWritten: unpackWritten, writtenCase: writtenCase,
+    hash: function (s) { return hashString(String(s)).toString(36); }, chapterName: chapterName, clock: clock,
     avatar: avatar, load: load, save: save, esc: esc, fmtTime: fmtTime, fmtCountdown: fmtCountdown,
     track: track, siteUrl: siteUrl, FACTS: FACTS, PREMISES: PREMISES, CASES: CASES,
     weekOf: weekOf, weekday: weekday, buildWeek: buildWeek, buildNight: buildNight, NIGHT_HOUR: NIGHT_HOUR, TRAITS: TRAITS

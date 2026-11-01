@@ -1,10 +1,10 @@
 /* WHO'S LYING? — service worker: lets the game install as an app and play offline.
    Pages, scripts and styles: network first, so a new version shows up straight away.
    Fonts, sounds and images: cache first, they never change. Other sites are left alone. */
-var CACHE = "wl-v4";
+var CACHE = "wl-v5";
 var CORE = [
   "./", "index.html", "css/style.css", "manifest.webmanifest",
-  "js/config.js", "js/cases.js", "js/engine.js", "js/ads.js", "js/leaderboard.js",
+  "js/config.js", "js/cases.js", "js/seasons.js", "js/engine.js", "js/ads.js", "js/leaderboard.js",
   "js/platform.js", "js/progress.js", "js/audio.js", "js/fx.js", "js/game.js",
   "assets/favicon.svg", "assets/icon-192.png",
   "assets/fonts/big-shoulders-display-latin-900-normal.woff2", "assets/fonts/atkinson-hyperlegible-latin-400-normal.woff2"

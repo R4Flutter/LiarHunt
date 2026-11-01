@@ -21,7 +21,9 @@
       ? "<strong>The planted fact:</strong> " + esc(c.clues[c.answer])
       : "<strong>" + (c.mode === "honest" ? "The only honest one:" : "The liar:") + "</strong> " +
         esc(c.suspects[c.answer].name) + " (" + esc(c.suspects[c.answer].role) + ")";
-    return "<li><b>Case " + (i + 1) + ": " + esc(c.title) + "</b><span>" + esc(c.setup) + "</span><span>" + who + "</span><span>" + esc(c.why) + "</span></li>";
+    var proof = !(c.proof || []).length ? "" : "<span><strong>The proof:</strong> " + (c.mode === "planted" ? esc(c.suspects[c.proof[0]].name) + "'s story"
+      : c.proof.map(function (k) { return "“" + esc(c.clues[k]) + "”"; }).join(" + ")) + "</span>";
+    return "<li><b>Case " + (i + 1) + ": " + esc(c.title) + "</b><span>" + esc(c.setup) + "</span><span>" + who + "</span>" + proof + "<span>" + esc(c.why) + "</span></li>";
   }
 
   function row(d) {

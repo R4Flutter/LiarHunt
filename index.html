@@ -26,7 +26,7 @@
 <meta name="google-adsense-account" content="ca-pub-5463912491137261">
 <meta name="msvalidate.01" content="3F257D5771038F5E3291F29C6F86359F">
 <script type="application/ld+json">
-[{"@context":"https://schema.org","@type":"WebSite","name":"Who's Lying?","alternateName":"Liar Hunt","url":"https://liarhunt.com/"},
+[{"@context":"https://schema.org","@type":"WebSite","name":"Who's Lying?","alternateName":"Liar Hunt","url":"https://liarhunt.com/","sameAs":["https://www.instagram.com/liarhuntgame/"]},
 {"@context":"https://schema.org","@type":"VideoGame","name":"Who's Lying?","url":"https://liarhunt.com/","image":"https://liarhunt.com/assets/og-image.png","description":"A free daily detective puzzle game: read the facts, check every story and catch the liar.","genre":["Puzzle","Mystery"],"playMode":"SinglePlayer","gamePlatform":"Web browser","applicationCategory":"Game","operatingSystem":"Any","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}]
 </script>
 <!-- WEB-ONLY:END -->
@@ -94,6 +94,26 @@
               <button class="btn danger big wide" id="btn-daily" type="button">Play today's cases</button>
             </div>
           </article>
+          <!-- the two things to do: today's Daily, then Career -->
+          <div class="career-card" id="career-card">
+            <div class="career-in">
+              <p class="eyebrow" id="career-chapter">Chapter 1</p>
+              <h2 class="career-name" id="career-name">Rookie Beat</h2>
+              <div class="nodes" id="career-nodes"></div>
+              <button class="btn primary big wide" id="btn-play" type="button">Play case 1</button>
+              <button class="link-btn" id="btn-map" type="button">Career map</button>
+            </div>
+          </div>
+        </div>
+        <div class="hq-col">
+          <article class="season-card" id="season-card" aria-labelledby="season-title" hidden>
+            <div class="week-head"><p class="eyebrow" id="season-eyebrow">Season 1</p><span class="muted small" id="season-left"></span></div>
+            <h2 class="season-title" id="season-title"></h2>
+            <p class="season-sub" id="season-sub"></p>
+            <div class="season-track" id="season-track"></div>
+            <p class="muted small" id="season-next"></p>
+            <button class="btn ghost wide" id="btn-season" type="button" hidden>Season scoreboard</button>
+          </article>
           <article class="week-card" id="week-card" aria-labelledby="week-title">
             <div class="week-head"><p class="eyebrow">Case of the Week</p><span class="muted small" id="week-left"></span></div>
             <h2 class="week-title" id="week-title"></h2>
@@ -111,9 +131,11 @@
               <span class="mode-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg></span>
               <span class="mode-txt"><b>Rush</b><span id="rush-sub">Catch liars against the clock</span></span>
             </button>
+            <button class="mode-tile write web-only" id="tile-write" type="button">
+              <span class="mode-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg></span>
+              <span class="mode-txt"><b>Write a case</b><span>Hide one lie and send it to your friends</span></span>
+            </button>
           </div>
-        </div>
-        <div class="hq-col">
           <!-- WEB-ONLY:START -->
           <button class="league-card" id="league-card" type="button" hidden>
             <span class="league-emblem" id="league-emblem" aria-hidden="true"></span>
@@ -121,15 +143,6 @@
             <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
           </button>
           <!-- WEB-ONLY:END -->
-          <div class="career-card" id="career-card">
-            <div class="career-in">
-              <p class="eyebrow" id="career-chapter">Chapter 1</p>
-              <h2 class="career-name" id="career-name">Rookie Beat</h2>
-              <div class="nodes" id="career-nodes"></div>
-              <button class="btn primary big wide" id="btn-play" type="button">Play case 1</button>
-              <button class="link-btn" id="btn-map" type="button">Chapter map</button>
-            </div>
-          </div>
           <div class="missions" id="missions">
             <div class="missions-head"><h2>Today's missions</h2><span class="muted" id="missions-reset"></span></div>
             <ol class="mission-list" id="mission-list"></ol>
@@ -143,6 +156,18 @@
             <button class="chip-btn" id="btn-ach" type="button">Achievements</button>
             <button class="chip-btn" id="btn-stats" type="button">Stats</button>
           </nav>
+          <!-- WEB-ONLY:START -->
+          <nav class="modes socials" aria-label="Community">
+            <a class="mode-tile discord" href="https://discord.gg/bE6xY89cVB" target="_blank" rel="noopener">
+              <span class="mode-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20.32 4.37a19.8 19.8 0 0 0-4.89-1.52.07.07 0 0 0-.08.04c-.21.38-.44.87-.6 1.25a18.3 18.3 0 0 0-5.49 0 12.6 12.6 0 0 0-.62-1.25.08.08 0 0 0-.08-.04 19.7 19.7 0 0 0-4.88 1.52.07.07 0 0 0-.03.03C.53 9.05-.32 13.58.1 18.06a.08.08 0 0 0 .03.06 19.9 19.9 0 0 0 5.99 3.03.08.08 0 0 0 .08-.03c.46-.63.88-1.3 1.23-1.99a.08.08 0 0 0-.04-.1 13.1 13.1 0 0 1-1.87-.9.08.08 0 0 1-.01-.12l.37-.3a.07.07 0 0 1 .08-.01c3.93 1.8 8.18 1.8 12.06 0a.07.07 0 0 1 .08.01l.37.3a.08.08 0 0 1 0 .12c-.6.35-1.22.65-1.88.9a.08.08 0 0 0-.04.1c.36.7.78 1.36 1.23 1.99a.08.08 0 0 0 .08.03 19.8 19.8 0 0 0 6-3.03.08.08 0 0 0 .03-.06c.5-5.18-.84-9.67-3.55-13.66a.06.06 0 0 0-.03-.03zM8.02 15.33c-1.18 0-2.16-1.08-2.16-2.42 0-1.33.96-2.42 2.16-2.42 1.21 0 2.18 1.1 2.16 2.42 0 1.34-.96 2.42-2.16 2.42zm7.97 0c-1.18 0-2.15-1.08-2.15-2.42 0-1.33.95-2.42 2.15-2.42 1.21 0 2.18 1.1 2.16 2.42 0 1.34-.95 2.42-2.16 2.42z"/></svg></span>
+              <span class="mode-txt"><b>Discord</b><span>Talk cases with other detectives</span></span>
+            </a>
+            <a class="mode-tile insta" href="https://www.instagram.com/liarhuntgame/" target="_blank" rel="noopener">
+              <span class="mode-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r=".6"/></svg></span>
+              <span class="mode-txt"><b>Instagram</b><span>@liarhuntgame</span></span>
+            </a>
+          </nav>
+          <!-- WEB-ONLY:END -->
         </div>
       </div>
     </section>
@@ -182,6 +207,7 @@
             <p class="verdict-banner" id="verdict-banner" hidden></p>
             <div class="rewards" id="verdict-rewards"></div>
             <p class="why" id="why"></p>
+            <div class="proof-box" id="proof-box"></div>
             <p class="twist-reveal" id="twist-reveal" hidden></p>
             <div class="verdict-actions">
               <button class="btn primary wide" id="btn-next" type="button">Next case</button>
@@ -250,7 +276,7 @@
     <!-- CHAPTER MAP -->
     <section class="scr list-scr" id="scr-map" aria-labelledby="map-h" hidden>
       <div class="list-in">
-        <h2 class="page-h" id="map-h">Case files</h2>
+        <h2 class="page-h" id="map-h">Career map</h2>
         <p class="muted">Replay any solved case to earn more stars. Replays give XP but no coins.</p>
         <div class="chapters" id="chapters"></div>
       </div>
@@ -261,10 +287,10 @@
       <div class="list-in">
         <h2 class="page-h" id="shop-h">Shop</h2>
         <div class="free-coins" id="free-coins" hidden></div>
-        <h3 class="sec">Power-ups</h3>
-        <div class="shop-grid" id="shop-items"></div>
         <h3 class="sec">Desk themes</h3>
         <div class="shop-grid" id="shop-themes"></div>
+        <h3 class="sec">Power-ups</h3>
+        <div class="shop-grid" id="shop-items"></div>
       </div>
     </section>
 
@@ -299,6 +325,33 @@
         <h3 class="sec">Suspects <span class="muted small" id="wk-tip">Tap a suspect to cross them out</span></h3>
         <div class="wk-suspects" id="wk-suspects"></div>
       </div>
+    </section>
+
+    <!-- WRITE A CASE for friends: the case travels inside the link -->
+    <section class="scr list-scr" id="scr-write" aria-labelledby="write-h" hidden>
+      <form class="list-in write" id="write-form" novalidate autocomplete="off">
+        <h2 class="page-h" id="write-h">Write a case</h2>
+        <p class="muted">Make up a mystery, hide one lie in it and send it to your friends. The whole case lives in the link, so only the people you send it to can play it.</p>
+        <p><button type="button" class="link-btn" id="w-example">Fill in an example to see how it works</button></p>
+        <label class="field-label" for="w-t">Case title</label>
+        <input class="field" id="w-t" maxlength="40" placeholder="The Missing Birthday Cake">
+        <label class="field-label" for="w-s">What happened?</label>
+        <textarea class="field" id="w-s" maxlength="160" rows="2" placeholder="Someone ate half of Grandma's birthday cake before the party."></textarea>
+        <h3 class="sec">Facts the police checked <span class="muted small">3 to 5, all true</span></h3>
+        <ol class="w-list" id="w-facts"></ol>
+        <button type="button" class="btn small ghost" id="w-add">+ Add a fact</button>
+        <h3 class="sec">Suspects <span class="muted small">two tell the truth, one lies</span></h3>
+        <div class="w-sus" id="w-sus"></div>
+        <h3 class="sec">The proof <span class="muted small">the fact, or two facts, that the lie breaks</span></h3>
+        <div class="w-proof" id="w-proof"></div>
+        <label class="field-label" for="w-y">Explain it <span class="muted small">(they see this after they answer)</span></label>
+        <textarea class="field" id="w-y" maxlength="220" rows="2" placeholder="It rained all afternoon, so Sam couldn't have played under a cloudless sky."></textarea>
+        <label class="field-label" for="w-b">Sign it</label>
+        <input class="field" id="w-b" maxlength="16" placeholder="Your name">
+        <p class="field-error" id="w-error" role="alert" hidden></p>
+        <div class="row2"><button type="button" class="btn ghost" id="w-try">Try it</button><button type="submit" class="btn primary" id="w-send">Send to friends</button></div>
+        <p><button type="button" class="link-btn" id="w-clear">Start a new case</button></p>
+      </form>
     </section>
 
   </main>
@@ -354,17 +407,19 @@
     <button class="icon-btn dlg-close" type="button" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <h2 id="help-h">How to play</h2>
     <p>The police checked some <strong>facts</strong>. They're true. Then three suspects tell you their story.</p>
-    <p><strong>One story can't be true.</strong> Compare each one with the facts and tap the liar.</p>
+    <p><strong>One story can't be true.</strong> Compare each one with the facts and accuse the liar.</p>
+    <p><strong>Then prove it.</strong> Tap the fact the story breaks. Some lies only break when you put two facts together.</p>
     <h3>Twist cases</h3>
-    <p>Every 5th case changes the rules. Sometimes two people are lying and you must find the honest one. Sometimes everyone is honest and one fact is fake.</p>
+    <p>Every 5th case changes the rules. Sometimes two people are lying and you must find the honest one. Sometimes everyone is honest and one fact is fake: then the proof is the story that shows it.</p>
     <h3>Stars</h3>
     <ul class="legend">
-      <li><span class="star-ico on"></span><span class="star-ico on"></span><span class="star-ico on"></span> First try, no hint, under the target time</li>
-      <li><span class="star-ico on"></span><span class="star-ico on"></span><span class="star-ico"></span> First try</li>
-      <li><span class="star-ico on"></span><span class="star-ico"></span><span class="star-ico"></span> Solved after a wrong guess</li>
+      <li><span class="star-ico on"></span><span class="star-ico on"></span><span class="star-ico on"></span> No mistakes, no hint, under the target time</li>
+      <li><span class="star-ico on"></span><span class="star-ico on"></span><span class="star-ico"></span> No mistakes</li>
+      <li><span class="star-ico on"></span><span class="star-ico"></span><span class="star-ico"></span> One mistake: a wrong suspect or a wrong proof</li>
     </ul>
+    <p>Two mistakes botch the case. You get a new version of it to try again.</p>
     <h3>Modes</h3>
-    <p><strong>Daily Case:</strong> 5 cases a day, the same for everyone, one try each. <strong>Career:</strong> chapter after chapter of cases. <strong>Rush:</strong> catch as many liars as you can before you run out of lives. <strong>Night Shift:</strong> one hard bonus case every evening from 8 PM.</p>
+    <p><strong>Daily Case:</strong> 5 cases a day, the same for everyone, one try each. A wrong suspect or a wrong proof lets the liar walk. <strong>Career:</strong> chapter after chapter of cases. <strong>Rush:</strong> catch as many liars as you can before you run out of lives. <strong>Night Shift:</strong> one hard bonus case every evening from 8 PM.</p>
     <h3>Case of the Week</h3>
     <p>Each Daily from Monday to Saturday gives you one clue to a bigger case. On Sunday, use all 6 clues to name the mastermind. You get one try.</p>
     <h3>Streaks, shields and keys</h3>
@@ -382,6 +437,8 @@
     <h3>Daily Case: liars caught per day</h3>
     <div class="dist" id="stats-dist"></div>
     <dl class="stat-row" id="stats-row2"></dl>
+    <h3 id="stats-seasons-h" hidden>Seasons</h3>
+    <ul class="season-list" id="stats-seasons" hidden></ul>
     <h3 id="stats-badges-h" hidden>Leaderboard badges</h3>
     <p class="badges" id="stats-badges" hidden></p>
   </div>
@@ -427,6 +484,7 @@
       <button class="tab" type="button" role="tab" data-tab="today" aria-selected="true">Daily</button>
       <button class="tab" type="button" role="tab" data-tab="league" aria-selected="false">League</button>
       <button class="tab" type="button" role="tab" data-tab="friends" aria-selected="false">Friends</button>
+      <button class="tab" type="button" role="tab" data-tab="season" aria-selected="false">Season</button>
       <button class="tab" type="button" role="tab" data-tab="endless" aria-selected="false">Rush</button>
     </div>
     <div class="seg" id="board-seg" role="group" aria-label="Which day">
@@ -443,7 +501,7 @@
 <dialog id="dlg-name" aria-labelledby="name-h">
   <form class="dlg" id="name-form" method="dialog" novalidate>
     <h2 id="name-h">Join the leaderboard</h2>
-    <p>Pick a detective name. Other players will see it next to your score.</p>
+    <p id="name-why">Pick a detective name. Other players will see it next to your score.</p>
     <label class="field-label" for="name-input">Detective name</label>
     <input class="field" id="name-input" name="name" type="text" maxlength="16" autocomplete="nickname" autocapitalize="words" spellcheck="false" required>
     <p class="field-error" id="name-error" role="alert" hidden></p>
@@ -522,10 +580,21 @@
 
 <script src="js/config.js"></script>
 <script src="js/cases.js"></script>
+<script src="js/seasons.js"></script>
 <script src="js/engine.js"></script>
 <!-- WEB-ONLY:START -->
 <script src="js/ads.js"></script>
 <script src="js/leaderboard.js"></script>
+<script>
+  // Analytics: off until analytics.plausibleDomain is set in js/config.js. Events sent before the script loads are queued.
+  (function (domain) {
+    if (!domain) return;
+    window.plausible = window.plausible || function () { (window.plausible.q = window.plausible.q || []).push(arguments); };
+    var s = document.createElement("script");
+    s.defer = true; s.src = "https://plausible.io/js/script.js"; s.setAttribute("data-domain", domain);
+    document.head.appendChild(s);
+  })((window.WL_CONFIG.analytics || {}).plausibleDomain);
+</script>
 <!-- WEB-ONLY:END -->
 <script src="js/platform.js"></script>
 <script src="js/progress.js"></script>

@@ -56,11 +56,17 @@
       return r.arrayBuffer();
     }).then(decode);
   }
+  // The first tap only fetches the small sounds every case uses; the rest follow once the game is running.
+  var CORE = ["tap", "click", "stamp", "whoosh", "correct", "wrong"], asked = {};
+  function want(n) {
+    if (asked[n]) return;
+    asked[n] = 1;
+    fetchBuf(n).then(function (b) { A.buffers[n] = b; }, function () { /* keep synth fallback */ });
+  }
   function loadAll() {
     A.loaded = true;
-    Object.keys(SFX).forEach(function (n) {
-      fetchBuf(n).then(function (b) { A.buffers[n] = b; }, function () { /* keep synth fallback */ });
-    });
+    CORE.forEach(want);
+    setTimeout(function () { Object.keys(SFX).forEach(want); }, 6000);
   }
 
   /* ---------- synth fallbacks ---------- */
@@ -103,7 +109,7 @@
         if (opts.rate) s.playbackRate.value = opts.rate;
         s.connect(g); g.connect(A.sfxGain); s.start(A.ctx.currentTime + (opts.delay || 0));
         if (BIG[name]) duck(b.duration);
-      } else synth(name);
+      } else { want(name); synth(name); }
     } catch (e) { /* audio not available */ }
   }
   function duck(sec) {

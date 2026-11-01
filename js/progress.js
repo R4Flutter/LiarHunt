@@ -191,6 +191,8 @@
     return { stars: stars, prevStars: prev, coins: coins, xp: xp, combo: S.career.combo, mult: mult, replay: replay, chapterDone: chapterDone, chapter: ch, levelInfo: lvl, par: spec.par };
   }
   function careerWrong() { S.career.combo = 0; }
+  // Two mistakes: no stars, no coins, the level stays open. A little XP for trying.
+  function careerBotched() { S.career.combo = 0; addXp(5); return { xp: 5 }; }
 
   // Rush: one liar caught (combo = current run combo)
   function rushCatch(o) {
@@ -420,7 +422,7 @@
     ITEMS: ITEMS, THEMES: THEMES, LOGIN: LOGIN, CHEST: CHEST, COMEBACK: COMEBACK, MAX_SHIELDS: MAX_SHIELDS,
     streakDay: streakDay, coverStreak: coverStreak, comeback: comeback, nightDone: nightDone, mastermindDone: mastermindDone, count: count,
     addCoins: addCoins, grant: grant, addXp: addXp,
-    careerSolved: careerSolved, careerWrong: careerWrong,
+    careerSolved: careerSolved, careerWrong: careerWrong, careerBotched: careerBotched,
     rushCatch: rushCatch, rushEnd: rushEnd, dailyCase: dailyCase, dailyDone: dailyDone, comboMult: comboMult,
     ensureMissions: ensureMissions, missionText: missionText, claimMission: claimMission, chestReady: chestReady,
     claimChest: claimChest, missionsToClaim: missionsToClaim,

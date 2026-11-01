@@ -26,6 +26,12 @@ window.WL_CONFIG = {
     sfxVolume: 0.9
   },
 
+  analytics: {
+    // Your site's domain as added at plausible.io (for example "liarhunt.com").
+    // Leave "" to keep analytics off. The game's events are then sent to Plausible (web only).
+    plausibleDomain: ""
+  },
+
   crazygames: {
     // CrazyGames leaderboards are invite-only. If CrazyGames invites the game, paste the
     // Encryption Key from the developer portal here; Rush best scores will then be submitted.

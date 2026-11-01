@@ -17,6 +17,11 @@
     answer    index (0, 1 or 2) of the liar
               - mode "honest":  index of the ONLY honest suspect (the other two lie)
               - mode "planted": index of the FAKE clue (all three suspects tell the truth)
+    proof     what the player must tap after accusing, to prove it (indexes into the lists above)
+              - mode "liar":    the clue(s) that break the liar's story, e.g. [0] or [0, 2] when it takes two facts together
+              - mode "honest":  the clue(s) that break the two liars' stories
+              - mode "planted": the suspect whose (true) story shows the fake clue
+    alt       (optional) other sets of the same size that also prove it, e.g. [[1]]
     why       the explanation shown after the player answers
     twist     (optional) one extra line revealed after a twist case
 
@@ -40,6 +45,7 @@ window.WL_CASES = {
         { name: "Theo", role: "Night cleaner", says: "I start work at ten, so I wasn't even in the building at nine." }
       ],
       answer: 0,
+      proof: [0],
       why: "It rained hard from 6 PM to midnight. Victor could not have walked home under a sky full of stars at eight."
     },
     {
@@ -56,6 +62,7 @@ window.WL_CASES = {
         { name: "Lena", role: "Art collector", says: "I stood by the window and waited for the lights to come back." }
       ],
       answer: 1,
+      proof: [0],
       why: "There was no electricity from 8:30 to 9:30 PM. Ravi could not have used a microwave at nine."
     },
     {
@@ -72,6 +79,7 @@ window.WL_CASES = {
         { name: "Omar", role: "Building manager", says: "I spent the evening fixing the boiler in the basement." }
       ],
       answer: 1,
+      proof: [0],
       why: "The elevator has been broken since Monday, and the break-in was on Wednesday. Carla could not have ridden it up."
     },
     {
@@ -88,6 +96,7 @@ window.WL_CASES = {
         { name: "Dmitri", role: "Artist", says: "At four I was sitting in Café Rosa, drawing people walking by." }
       ],
       answer: 2,
+      proof: [0, 1],
       why: "Café Rosa is closed on Mondays, and the theft happened on a Monday. Dmitri could not have been sitting inside."
     },
     {
@@ -104,6 +113,7 @@ window.WL_CASES = {
         { name: "Sofia", role: "Receptionist", says: "I was at the front desk, checking in a family of five." }
       ],
       answer: 1,
+      proof: [1],
       why: "There is no signal or Wi-Fi in the hotel basement. Bruno could not have been on a video call down there."
     },
     {
@@ -120,6 +130,7 @@ window.WL_CASES = {
         { name: "Kofi", role: "Mrs. Kaur's nephew", says: "I visited my aunt at six and left before seven." }
       ],
       answer: 1,
+      proof: [1],
       why: "The wet paint had not one mark on it. If Zara had leaned on the wall for ten minutes, she would have left a big smudge."
     },
     {
@@ -136,6 +147,7 @@ window.WL_CASES = {
         { name: "Gwen", role: "Bartender", says: "I served drinks all night and never left the counter." }
       ],
       answer: 1,
+      proof: [0],
       why: "The card machine was broken all night, so Marco could not have paid with his card."
     },
     {
@@ -152,6 +164,7 @@ window.WL_CASES = {
         { name: "Esther", role: "Warehouse manager", says: "I took the long way round, over the New Bridge. It took forever." }
       ],
       answer: 0,
+      proof: [0],
       why: "The Old Bridge was closed all night, so Nadia could not have driven over it at ten."
     },
     {
@@ -168,6 +181,7 @@ window.WL_CASES = {
         { name: "Selin", role: "Member", says: "I swam twenty laps this morning before work. The water was cold!" }
       ],
       answer: 2,
+      proof: [0],
       why: "The pool has been empty all week. Selin could not have swum twenty laps this morning."
     },
     {
@@ -184,6 +198,7 @@ window.WL_CASES = {
         { name: "Mr. Grant", role: "Owner", says: "I slept straight through the night. Didn't hear a thing." }
       ],
       answer: 1,
+      proof: [1],
       why: "Rex didn't bark once all night, but Amara says she heard him barking like crazy at two."
     },
     {
@@ -200,6 +215,7 @@ window.WL_CASES = {
         { name: "Klaus", role: "Traveler", says: "My train was late, so I sat on a bench and read for an hour." }
       ],
       answer: 0,
+      proof: [0],
       why: "The station clock has been stuck at 6:00 since Sunday. Arjun could not have seen it showing 9:45 on Tuesday."
     },
     {
@@ -216,6 +232,7 @@ window.WL_CASES = {
         { name: "Duke", role: "Mechanic", says: "I was inside the cinema, watching the 11 PM horror film." }
       ],
       answer: 2,
+      proof: [0],
       why: "The last film started at 8 PM and the doors were locked at 10:15. There was no 11 PM film for Duke to watch."
     },
     {
@@ -232,6 +249,7 @@ window.WL_CASES = {
         { name: "June", role: "Librarian", says: "I helped set up the party room from four until five." }
       ],
       answer: 1,
+      proof: [0],
       why: "The library closed at 5 PM. Viktor could not have been reading there until seven."
     },
     {
@@ -248,6 +266,7 @@ window.WL_CASES = {
         { name: "Grace", role: "Night porter", says: "I sat at the front desk and answered calls all night." }
       ],
       answer: 1,
+      proof: [0],
       why: "The water was off from 6 PM to 6 AM. Elena could not have taken a shower at eleven."
     },
     {
@@ -264,6 +283,7 @@ window.WL_CASES = {
         { name: "Raj", role: "Studio boss", says: "I was at the airport, waiting for a flight to Delhi." }
       ],
       answer: 1,
+      proof: [0],
       why: "The internet and mobile data were down in the neighborhood from 7 to 10 PM. Mei could not have been live-streaming from home nearby."
     },
     {
@@ -280,6 +300,7 @@ window.WL_CASES = {
         { name: "Hassan", role: "Delivery boy", says: "I came by at three, saw the empty shelves and left." }
       ],
       answer: 1,
+      proof: [0],
       why: "The bakery sold everything by noon. Ivy could not have bought a fresh loaf at 4 PM."
     },
     {
@@ -296,6 +317,7 @@ window.WL_CASES = {
         { name: "Noah", role: "Student", says: "Because of the strike, I took the train and then walked." }
       ],
       answer: 1,
+      proof: [0],
       why: "There were no buses at all on Thursday because of the strike. Asha could not have taken the number 12."
     },
     {
@@ -312,6 +334,7 @@ window.WL_CASES = {
         { name: "Leo", role: "Shop owner", says: "I closed my shop at nine and drove home on a different road." }
       ],
       answer: 1,
+      proof: [0],
       why: "Every street light on Lake Road was broken. Fatima could not have seen anyone under bright street lights."
     },
     {
@@ -328,6 +351,7 @@ window.WL_CASES = {
         { name: "Ben", role: "Lawyer", says: "I stood outside in the cold for an hour, waiting to go back in." }
       ],
       answer: 1,
+      proof: [0],
       why: "The fire alarm rang loudly on every floor at 9 PM. Clara says she heard nothing unusual all evening."
     },
     {
@@ -344,6 +368,7 @@ window.WL_CASES = {
         { name: "Pia", role: "Receptionist", says: "I came by bike, so parking wasn't a problem." }
       ],
       answer: 1,
+      proof: [0],
       why: "The hotel parking lot was closed all day. Abdul could not have parked there."
     },
     {
@@ -360,6 +385,7 @@ window.WL_CASES = {
         { name: "Tara", role: "Guest", says: "I arrived at six, just before the road was blocked." }
       ],
       answer: 1,
+      proof: [0],
       why: "The only road was blocked by 7 PM. Marcus could not have driven up it at eight."
     },
     {
@@ -376,6 +402,7 @@ window.WL_CASES = {
         { name: "Sam", role: "Dishwasher", says: "I stood by the open back door, trying to cool down." }
       ],
       answer: 1,
+      proof: [0],
       why: "It was 37°C at midnight. Nobody was freezing that night, so Olga's story can't be true."
     },
     {
@@ -392,6 +419,7 @@ window.WL_CASES = {
         { name: "Ken", role: "Sailor", says: "I walked along the pier holding the rail. I could barely see my own hands." }
       ],
       answer: 0,
+      proof: [0, 1],
       why: "You could not see five meters in that fog. Arnav could not have clearly seen something 200 meters away."
     },
     {
@@ -408,6 +436,7 @@ window.WL_CASES = {
         { name: "Ade", role: "Delivery man", says: "I only went up to the fifth floor to deliver a parcel." }
       ],
       answer: 0,
+      proof: [0],
       why: "The roof door is always locked, and the only key was in Japan with Mr. Ito. Kemal says he found it open."
     },
     {
@@ -424,7 +453,127 @@ window.WL_CASES = {
         { name: "Rahul", role: "Barista", says: "I worked behind the counter until closing." }
       ],
       answer: 1,
+      proof: [0],
       why: "The 9:00 PM train from Riverside was cancelled, and it was the last one. Jae could not have arrived on it."
+    },
+    {
+      title: "The Silent Bell",
+      setup: "The charity collection box disappeared from St. Mark's church hall on Saturday evening.",
+      clues: [
+        "The church bell has been broken for a month and hasn't rung once.",
+        "The box was last seen on the hall table at 6:45 PM.",
+        "Choir practice ended at 6:30 PM."
+      ],
+      suspects: [
+        { name: "Grace", role: "Choir leader", says: "Practice finished at half past six and I went straight to the bus stop." },
+        { name: "Tobias", role: "Volunteer", says: "I left the hall when the bell rang at seven. The box was still on the table then." },
+        { name: "Hana", role: "Caretaker", says: "I locked up at eight. The hall was empty and the table was bare." }
+      ],
+      answer: 1,
+      proof: [0],
+      why: "The church bell has been broken for a month. Tobias couldn't have left the hall when it rang at seven."
+    },
+    {
+      title: "The Wrong Platform",
+      setup: "A violinist's case was taken from a bench at Northgate Station.",
+      clues: [
+        "Platform 2 was closed all day for repairs.",
+        "The case was on a bench on Platform 1 at 4:10 PM.",
+        "The 4:15 PM train left from Platform 1."
+      ],
+      suspects: [
+        { name: "Arjun", role: "Commuter", says: "I caught the 4:15 from Platform 1. The case was on the bench as I got on." },
+        { name: "Elif", role: "Florist", says: "I waited for my train on Platform 2. I never went near Platform 1." },
+        { name: "Marcus", role: "Ticket inspector", says: "I checked tickets on the 4:15 until it left." }
+      ],
+      answer: 1,
+      proof: [0],
+      why: "Platform 2 was closed all day for repairs. Elif couldn't have waited there for a train."
+    },
+    {
+      title: "No Bread Today",
+      setup: "Someone emptied the till at Rosa's Bakery early on Tuesday morning.",
+      clues: [
+        "The ovens were broken all day Tuesday. No bread was baked.",
+        "The till was full when Rosa closed at 7 PM on Monday.",
+        "The back door alarm was switched off at 5:40 AM on Tuesday."
+      ],
+      suspects: [
+        { name: "Dario", role: "Baker", says: "I came in at twenty to six and had the first hot loaves out by half past six." },
+        { name: "Inés", role: "Cleaner", says: "I mopped the shop floor after closing on Monday and was home by nine." },
+        { name: "Pablo", role: "Delivery driver", says: "I waited at the back door at six for bread that never came." }
+      ],
+      answer: 0,
+      proof: [0],
+      why: "The ovens were broken all day Tuesday and no bread was baked. Dario's hot loaves never existed."
+    },
+    {
+      title: "The Reading Room",
+      setup: "A laptop vanished from the reading room of the Elm Street library.",
+      clues: [
+        "The library's Wi-Fi was down from noon until closing.",
+        "The laptop was last seen at 2 PM.",
+        "The reading room was closed to the public from 3 PM to 4 PM for a school visit."
+      ],
+      suspects: [
+        { name: "Freya", role: "Student", says: "I sat in the reading room from two until three and left when the school group arrived." },
+        { name: "Rashid", role: "Retired teacher", says: "I spent the afternoon on the library Wi-Fi, video-calling my grandson." },
+        { name: "Nell", role: "Librarian", says: "I showed the school group around the reading room from three to four." }
+      ],
+      answer: 1,
+      proof: [0],
+      why: "The Wi-Fi was down from noon until closing. Rashid couldn't have spent the afternoon video-calling on it."
+    },
+    {
+      title: "Low Tide",
+      setup: "A sailing trophy was taken from the harbour club's display case on Friday night.",
+      clues: [
+        "From 9 PM to 11 PM the harbour was too shallow for any boat.",
+        "The display case was found open at 11:30 PM.",
+        "The club's terrace lights stayed on all night."
+      ],
+      suspects: [
+        { name: "Kenji", role: "Fisherman", says: "I sailed my boat into the harbour at ten and tied up by the club." },
+        { name: "Maeve", role: "Bar manager", says: "I closed the bar at eleven and wiped the terrace tables under the lights." },
+        { name: "Olu", role: "Sailor", says: "I waited on my boat outside the harbour until the water came back after eleven." }
+      ],
+      answer: 0,
+      proof: [0],
+      why: "From 9 PM to 11 PM the harbour was too shallow for boats. Kenji couldn't have sailed in at ten."
+    },
+    {
+      title: "Cup Final",
+      setup: "A signed football went missing from the stadium shop during the cup final.",
+      clues: [
+        "The match kicked off at 3 PM and finished at 4:50 PM.",
+        "The stadium shop was closed during the match and reopened at 5 PM.",
+        "The football was last seen in the shop window at 2:45 PM."
+      ],
+      suspects: [
+        { name: "Bea", role: "Season-ticket holder", says: "I watched every minute of the match from my seat." },
+        { name: "Callum", role: "Steward", says: "I stood at gate C for the whole match." },
+        { name: "Dmitri", role: "Shop assistant", says: "I sold scarves in the shop all through the second half." }
+      ],
+      answer: 2,
+      proof: [1],
+      why: "The shop was closed for the whole match and only reopened at 5 PM. Dmitri couldn't have sold scarves there during the second half."
+    },
+    {
+      title: "Thin Ice",
+      setup: "A bag of cash went missing from the ticket office at the Northside ice rink.",
+      clues: [
+        "The rink closed early, at 6 PM, for repairs to the ice.",
+        "The cash was counted at 5:30 PM and locked in the office.",
+        "The car park gate was locked at 6:15 PM."
+      ],
+      suspects: [
+        { name: "Lotte", role: "Skating coach", says: "I taught my seven o'clock class on the ice as usual." },
+        { name: "Ravi", role: "Cashier", says: "I counted the cash at half past five and locked the office." },
+        { name: "Jonah", role: "Driver", says: "I left the car park just before they locked the gate." }
+      ],
+      answer: 0,
+      proof: [0],
+      why: "The rink closed at 6 PM for repairs to the ice. Lotte couldn't have taught her seven o'clock class on it."
     }
   ],
 
@@ -443,6 +592,7 @@ window.WL_CASES = {
         { name: "Caleb", role: "Chef", says: "I was at my brother's birthday dinner from seven to ten." }
       ],
       answer: 1,
+      proof: [0, 1],
       why: "The film ended at 8:15 PM and the shop is a 30-minute walk away. Bianca could not have reached it before 8:45."
     },
     {
@@ -459,6 +609,7 @@ window.WL_CASES = {
         { name: "Sunil", role: "Cook", says: "I left at ten and spent the night at my cousin's place." }
       ],
       answer: 1,
+      proof: [0, 1],
       why: "Rita says she has no idea what was stolen, then names the pearl necklace. Only the family and the police knew that."
     },
     {
@@ -475,6 +626,7 @@ window.WL_CASES = {
         { name: "Owen", role: "Dog walker", says: "At 7:30 I was walking my dog with a flashlight." }
       ],
       answer: 1,
+      proof: [0],
       why: "The sun set at 6:15 PM. At 7:30 there was no bright sun, so Nell could not have seen sunglasses flash in it."
     },
     {
@@ -491,6 +643,7 @@ window.WL_CASES = {
         { name: "Yara", role: "Office worker", says: "I've never been inside. I just walk past it on my way to work." }
       ],
       answer: 1,
+      proof: [0, 2],
       why: "Today is Tuesday, so yesterday was Monday, and the museum is closed on Mondays. Xavier could not have visited."
     },
     {
@@ -507,6 +660,7 @@ window.WL_CASES = {
         { name: "Chloe", role: "Waiter", says: "I served Mr. Sato tea and toast. He pointed at the menu to order." }
       ],
       answer: 1,
+      proof: [0],
       why: "Mr. Sato speaks only Japanese. He could not have told Bastian anything in perfect English."
     },
     {
@@ -523,6 +677,7 @@ window.WL_CASES = {
         { name: "Iris", role: "Neighbor", says: "I was home all evening. My neighbor can confirm it." }
       ],
       answer: 1,
+      proof: [0, 1],
       why: "The film started at 7:30 PM and is 2 hours long, so it ended at 9:30, not 9:00. Hector's timing is wrong."
     },
     {
@@ -539,6 +694,7 @@ window.WL_CASES = {
         { name: "Leon", role: "Neighbor", says: "I never go into that house. Anyway, who hides papers behind a painting?" }
       ],
       answer: 2,
+      proof: [0, 1],
       why: "Only the professor and the police knew the papers were behind a painting. Leon says he never goes in, yet he knows the hiding place."
     },
     {
@@ -555,6 +711,7 @@ window.WL_CASES = {
         { name: "Otto", role: "Painter", says: "I left the beach at 2:55 and reached the school at 3:05 to pick up my son." }
       ],
       answer: 2,
+      proof: [0],
       why: "The drive takes 20 minutes and traffic was normal. Leaving the beach at 2:55, Otto could not have reached the school by 3:05."
     },
     {
@@ -571,6 +728,7 @@ window.WL_CASES = {
         { name: "Rhea", role: "Babysitter", says: "I was babysitting my sister's kids all night." }
       ],
       answer: 1,
+      proof: [1],
       why: "Paulina's leg has been in a cast for three weeks. Quentin could not have played football with her on Friday."
     },
     {
@@ -587,6 +745,7 @@ window.WL_CASES = {
         { name: "Victor", role: "Shop owner", says: "I saw Tess outside the shop yesterday, brushing her long red hair." }
       ],
       answer: 2,
+      proof: [1],
       why: "Tess cut her hair very short last month. Victor could not have seen her brushing long red hair yesterday."
     },
     {
@@ -603,6 +762,7 @@ window.WL_CASES = {
         { name: "Kai", role: "Gallery owner", says: "I closed the gallery at eight and went home." }
       ],
       answer: 1,
+      proof: [0, 1],
       why: "Ivan flew to Oslo on Friday and stayed there. Juno could not have had dinner with him in Lisbon on Saturday."
     },
     {
@@ -619,6 +779,7 @@ window.WL_CASES = {
         { name: "Ned", role: "Truck driver", says: "I park my truck there, but I wasn't working that night." }
       ],
       answer: 0,
+      proof: [0],
       why: "The camera only records in black and white. Lars could not have seen a bright green jacket on the footage."
     },
     {
@@ -635,6 +796,7 @@ window.WL_CASES = {
         { name: "Quinn", role: "Manager", says: "I was in my office upstairs on a long phone call." }
       ],
       answer: 1,
+      proof: [0],
       why: "Studio A is fully soundproof. Pavel could not have heard anything from the storage room."
     },
     {
@@ -651,6 +813,7 @@ window.WL_CASES = {
         { name: "Uma", role: "Piano teacher", says: "I was teaching a piano lesson from three to five." }
       ],
       answer: 1,
+      proof: [0, 1],
       why: "Sara paid at Fresh Mart at 4:00 PM, and it's a 40-minute drive away. Tobias could not have seen her outside the jewelry store at 4:10."
     },
     {
@@ -667,6 +830,7 @@ window.WL_CASES = {
         { name: "Xena", role: "Volunteer", says: "At noon I was judging the jam contest." }
       ],
       answer: 1,
+      proof: [1],
       why: "Touching peanuts makes Vikram's hands swell. If Wanda had really seen him carry the pie in his bare hands, they would not look totally fine."
     },
     {
@@ -683,6 +847,7 @@ window.WL_CASES = {
         { name: "Ari", role: "Cloakroom attendant", says: "I stayed at the cloakroom desk the whole time." }
       ],
       answer: 1,
+      proof: [0],
       why: "The show had no interval. Zoe could not have gone out during one."
     },
     {
@@ -699,6 +864,7 @@ window.WL_CASES = {
         { name: "Nora", role: "Teacher", says: "I was at the beach with my kids all Sunday." }
       ],
       answer: 1,
+      proof: [0],
       why: "Lena's only car has been at the garage since Saturday. Max could not have seen her driving it on Sunday."
     },
     {
@@ -715,6 +881,7 @@ window.WL_CASES = {
         { name: "Kian", role: "Repair shop owner", says: "I locked the shop at six and opened it at nine the next morning." }
       ],
       answer: 1,
+      proof: [0, 2],
       why: "Leo's only phone was locked in the repair shop all night. He could not have called Mina back on it at nine."
     },
     {
@@ -731,6 +898,8 @@ window.WL_CASES = {
         { name: "Rafa", role: "Cook", says: "Bruno cooked dinner for a big group at the restaurant on Wednesday night." }
       ],
       answer: 2,
+      proof: [0],
+      alt: [[1]],
       why: "The restaurant is closed on Wednesdays, and Bruno was in hospital all week. Rafa's story can't be true."
     },
     {
@@ -747,6 +916,7 @@ window.WL_CASES = {
         { name: "Ulrik", role: "Neighbor", says: "I walked past the garden at midnight. The ground was completely dry, no snow anywhere." }
       ],
       answer: 2,
+      proof: [0],
       why: "Snow fell from 11 PM to 1 AM. Ulrik could not have seen completely dry ground at midnight."
     },
     {
@@ -763,6 +933,7 @@ window.WL_CASES = {
         { name: "Dalia", role: "Cleaner", says: "I cleaned the kitchen from ten to two." }
       ],
       answer: 1,
+      proof: [0],
       why: "Biscuit was at the vet from 8 AM to 6 PM. Jules could not have seen him chewing anything at home at three."
     },
     {
@@ -779,6 +950,7 @@ window.WL_CASES = {
         { name: "Zainab", role: "Manager", says: "I left at 5:30, like always." }
       ],
       answer: 1,
+      proof: [2],
       why: "The only card swipe after 6 PM was Wren's. If Yosef had used his card at 6:55, it would be in the records."
     },
     {
@@ -795,6 +967,7 @@ window.WL_CASES = {
         { name: "Lily", role: "Student", says: "I finished my exam early and left the hall at 10:30." }
       ],
       answer: 2,
+      proof: [1],
       why: "No student was allowed to leave the exam hall early. Lily could not have left at 10:30."
     },
     {
@@ -811,6 +984,7 @@ window.WL_CASES = {
         { name: "Jasper", role: "DJ", says: "I stayed behind my DJ desk all night." }
       ],
       answer: 1,
+      proof: [2],
       why: "Hector was turned away at the door. Ines could not have chatted with him at the party."
     },
     {
@@ -827,7 +1001,128 @@ window.WL_CASES = {
         { name: "Felipe", role: "Tourist", says: "I climbed all 120 steps at noon. Great view, but I was out of breath." }
       ],
       answer: 1,
+      proof: [2],
       why: "There's no lift, and Mr. Okafor cannot climb stairs. Dana could not have seen him at the top."
+    },
+    {
+      title: "The First Bus",
+      setup: "A painting was swapped for a copy at the Linden Museum before it opened on Sunday.",
+      clues: [
+        "On Sundays the first bus from Hill Street leaves at 9:05 AM.",
+        "The bus ride from Hill Street to the museum takes 40 minutes.",
+        "The painting was swapped between 9:00 and 9:20 AM, during the guard's coffee break."
+      ],
+      suspects: [
+        { name: "Petra", role: "Curator", says: "I came in at nine, made the guard a coffee and went up to my office." },
+        { name: "Samir", role: "Cleaner", says: "I came in on the first bus from Hill Street and started cleaning at ten to ten." },
+        { name: "Ottilie", role: "Tour guide", says: "I caught the first bus from Hill Street and was at my desk by half past nine." }
+      ],
+      answer: 2,
+      proof: [0, 1],
+      why: "The first Sunday bus leaves Hill Street at 9:05 and takes 40 minutes, so it arrives at 9:45. Ottilie couldn't have caught it and been at her desk by half past nine."
+    },
+    {
+      title: "Room 412",
+      setup: "A diamond bracelet was taken from Room 412 at the Grand Weston hotel.",
+      clues: [
+        "The bracelet was in the room's safe, and the safe was opened with its code. It wasn't forced.",
+        "Mrs. Varga set the code to her birth year and told only her husband.",
+        "The police have only said that \"a bracelet was taken from the room\"."
+      ],
+      suspects: [
+        { name: "Bruno", role: "Night porter", says: "I carried their bags up at ten and left straight away." },
+        { name: "Corinne", role: "Housekeeper", says: "I cleaned 412 in the morning. I don't touch guests' safes." },
+        { name: "Felix", role: "Room service waiter", says: "I've never been near that safe. Anyone could guess a code like a birth year." }
+      ],
+      answer: 2,
+      proof: [1],
+      alt: [[2]],
+      why: "The police only said a bracelet was taken from the room. Felix knows it was in the safe and that the code was a birth year, which only Mrs. Varga and her husband knew."
+    },
+    {
+      title: "The Spare Key",
+      setup: "Rare coins disappeared from the locked back room of Hale's Antiques on Thursday.",
+      clues: [
+        "The back room has only two keys.",
+        "Mr. Hale had one key with him in Lisbon all week.",
+        "The other key was in the shop safe, and the safe's timer kept it shut from Wednesday evening to Friday morning."
+      ],
+      suspects: [
+        { name: "Ama", role: "Shop assistant", says: "I ran the shop on Thursday. I don't have a key, so I never went into the back room." },
+        { name: "Bram", role: "Furniture restorer", says: "I took the spare key out of the safe on Thursday morning to fetch my tools from the back room." },
+        { name: "Cleo", role: "Neighbour", says: "I popped in on Thursday afternoon to buy a vase and chatted with Ama." }
+      ],
+      answer: 1,
+      proof: [2],
+      why: "The spare key was in the safe, and the timer kept the safe shut from Wednesday evening to Friday morning. Bram couldn't have taken the key out on Thursday, so how did he get into the back room?"
+    },
+    {
+      title: "North of the River",
+      setup: "A van full of laptops was stolen from a car park on Market Street on Tuesday night.",
+      clues: [
+        "On Tuesday night it snowed heavily north of the river. South of the river it stayed dry.",
+        "Market Street is south of the river.",
+        "The van was taken between 10 PM and midnight."
+      ],
+      suspects: [
+        { name: "Iris", role: "Night nurse", says: "I drove home to the north side at eleven. The roads there were white with snow." },
+        { name: "Jasper", role: "Warehouse worker", says: "I parked on Market Street at ten. When I came back at midnight my car was buried in snow." },
+        { name: "Mateo", role: "Taxi driver", says: "I waited for fares at the station south of the river all night. Not a single snowflake." }
+      ],
+      answer: 1,
+      proof: [0, 1],
+      why: "It only snowed north of the river, and Market Street is south of it. Jasper's car couldn't have been buried in snow there."
+    },
+    {
+      title: "The Day Before",
+      setup: "A gold necklace was stolen from Mrs. Okafor's flat on Thursday the 14th.",
+      clues: [
+        "The farmers' market is held only on Saturdays.",
+        "The theft happened on Thursday the 14th.",
+        "The flat's door was opened with a key. It wasn't forced."
+      ],
+      suspects: [
+        { name: "Ngozi", role: "Niece", says: "I have a spare key, but I was at work all day on the 14th." },
+        { name: "Pieter", role: "Neighbour", says: "The day before the theft I bought her apples at the farmers' market and dropped them off." },
+        { name: "Rosa", role: "Cleaner", says: "I clean her flat on Fridays, so I wasn't there on Thursday." }
+      ],
+      answer: 1,
+      proof: [0, 1],
+      why: "The theft was on Thursday the 14th, so the day before was a Wednesday. The farmers' market only runs on Saturdays, so Pieter couldn't have bought apples there."
+    },
+    {
+      title: "The Tokyo Call",
+      setup: "Someone moved money out of a small company's account from the office computer on Monday evening.",
+      clues: [
+        "Tokyo is 8 hours ahead of the office's time.",
+        "The Tokyo office is open from 9 AM to 6 PM, Tokyo time.",
+        "The money was moved at 9 PM on Monday, office time."
+      ],
+      suspects: [
+        { name: "Haruto", role: "Accountant", says: "From nine to ten on Monday evening I was on the phone with the Tokyo office's front desk." },
+        { name: "Selma", role: "Office manager", says: "I left at six and went to my daughter's school concert." },
+        { name: "Tunde", role: "IT technician", says: "I updated the servers in the basement until eight, then went home." }
+      ],
+      answer: 0,
+      proof: [0, 1],
+      why: "At 9 PM office time it was 5 AM in Tokyo, and the Tokyo office doesn't open until 9 AM. Haruto couldn't have been on the phone with its front desk."
+    },
+    {
+      title: "The Causeway",
+      setup: "Rare seabird eggs were stolen from the nature reserve on Gull Island on Saturday evening.",
+      clues: [
+        "High tide on Saturday was at 6 PM.",
+        "The causeway to Gull Island is under water from two hours before high tide until two hours after.",
+        "The eggs were still in the nest at 3 PM, when the warden checked."
+      ],
+      suspects: [
+        { name: "Una", role: "Warden", says: "I checked the nest at three and walked back across the causeway at half past three." },
+        { name: "Viktor", role: "Birdwatcher", says: "I walked over the causeway at half past five to watch the gulls come in." },
+        { name: "Wren", role: "Kayaker", says: "I paddled around the island at high tide and never landed." }
+      ],
+      answer: 1,
+      proof: [0, 1],
+      why: "High tide was at 6 PM, so the causeway was under water from 4 PM to 8 PM. Viktor couldn't have walked across it at half past five."
     }
   ],
 
@@ -847,6 +1142,7 @@ window.WL_CASES = {
         { name: "Mona", role: "Physio", says: "When the lights died, I waited in my car until the rain stopped." }
       ],
       answer: 2,
+      proof: [0, 1],
       why: "Mona told the truth. Kofi couldn't polish anything under bright lights after 9 PM, and Luis couldn't walk home dry at ten in heavy rain.",
       twist: "Two liars, one story. Kofi and Luis were in it together."
     },
@@ -865,6 +1161,7 @@ window.WL_CASES = {
         { name: "Pia", role: "Niece", says: "I saw my aunt lock the drawer around eight." }
       ],
       answer: 1,
+      proof: [0],
       why: "Everyone told the truth. Nina used the garden gate all evening, so the gate was not locked.",
       twist: "The locked-gate story was planted so nobody would suspect someone came in from the garden."
     },
@@ -883,6 +1180,7 @@ window.WL_CASES = {
         { name: "Cyrus", role: "Porter", says: "I walked up the stairs to the fourth floor and was out of breath." }
       ],
       answer: 2,
+      proof: [0, 1],
       why: "Cyrus told the truth. The elevator was broken all day, so Arvid lied, and the roads were covered in snow, so Bea lied.",
       twist: "Arvid and Bea made up matching alibis. Neither one held up."
     },
@@ -901,6 +1199,7 @@ window.WL_CASES = {
         { name: "Fynn", role: "Guest", says: "The jewels were still there when I walked past at 9:30." }
       ],
       answer: 0,
+      proof: [0],
       why: "Everyone told the truth. Dev spent the evening watching the stars, so it could not have rained all evening.",
       twist: "The rain story was planted so muddy footprints would point at the gardener."
     },
@@ -919,6 +1218,7 @@ window.WL_CASES = {
         { name: "Isla", role: "Guide", says: "I left when the gallery closed at six and took the 7 PM train." }
       ],
       answer: 2,
+      proof: [0, 1],
       why: "Isla told the truth. The gallery closed at 6 PM, so Greta lied, and the last train left at 7 PM, so Hamid lied."
     },
     {
@@ -936,6 +1236,7 @@ window.WL_CASES = {
         { name: "Leon", role: "Photographer", says: "I saw the laptop on the desk at 8:05." }
       ],
       answer: 1,
+      proof: [0],
       why: "Everyone told the truth. Jun printed his article at seven, so the printer was not broken.",
       twist: "The broken-printer note was planted to make Jun's alibi look false."
     },
@@ -954,6 +1255,7 @@ window.WL_CASES = {
         { name: "Oskar", role: "Keeper", says: "I stayed after closing to feed the animals." }
       ],
       answer: 2,
+      proof: [0, 1],
       why: "Oskar told the truth. The water was off all day, so Mo lied, and the zoo closed at 5 PM, so Nadia lied."
     },
     {
@@ -971,6 +1273,7 @@ window.WL_CASES = {
         { name: "Ray", role: "Doorman", says: "At nine I heard someone running out of the lobby." }
       ],
       answer: 1,
+      proof: [0],
       why: "Everyone told the truth. Pablo served drinks until eleven, so the bar did not close at 8 PM.",
       twist: "Someone wanted the bar to look empty at nine. It was full of witnesses."
     },
@@ -989,6 +1292,7 @@ window.WL_CASES = {
         { name: "Uri", role: "Neighbor", says: "The alarm woke me at two, so I called the police." }
       ],
       answer: 2,
+      proof: [0, 1],
       why: "Uri told the truth. The back door is bricked up, so Sana lied, and the sky was clear with a bright moon, so Tariq lied."
     },
     {
@@ -1006,6 +1310,7 @@ window.WL_CASES = {
         { name: "Xia", role: "Neighbor", says: "I live on the twelfth floor too. I was out all afternoon." }
       ],
       answer: 0,
+      proof: [0],
       why: "Everyone told the truth. Vera rode the elevator at three, so it was not broken all day.",
       twist: "The out-of-order story was planted so nobody would ask who used the elevator."
     },
@@ -1024,6 +1329,7 @@ window.WL_CASES = {
         { name: "Amos", role: "Guest", says: "I sat between two candles and could barely see my plate." }
       ],
       answer: 2,
+      proof: [0, 1],
       why: "Amos told the truth. Dinner was at 8 PM sharp, so Yann lied, and the power was out during dinner, so Zola lied."
     },
     {
@@ -1041,6 +1347,7 @@ window.WL_CASES = {
         { name: "Dagny", role: "Grandmother", says: "I saw the painting in the hallway at eleven." }
       ],
       answer: 0,
+      proof: [0],
       why: "Everyone told the truth. Bina was awake all night and the dog never barked, so the barking story is fake.",
       twist: "The barking story sent everyone looking for a stranger. The thief lived in the house."
     },
@@ -1059,6 +1366,7 @@ window.WL_CASES = {
         { name: "Gwen", role: "Fan", says: "I bought my ticket a month ago and danced in the front row all night." }
       ],
       answer: 2,
+      proof: [0, 1],
       why: "Gwen told the truth. Tickets were sold out weeks before, so Edda lied, and nobody got in without a ticket, so Faro lied."
     },
     {
@@ -1076,6 +1384,7 @@ window.WL_CASES = {
         { name: "Juno", role: "Night guard", says: "I heard glass smashing at eleven." }
       ],
       answer: 0,
+      proof: [0],
       why: "Everyone told the truth. Hilde walked home in a T-shirt on a warm night, so it did not snow heavily.",
       twist: "The snow story was planted to explain away a lack of footprints."
     },
@@ -1094,6 +1403,7 @@ window.WL_CASES = {
         { name: "Mira", role: "Marina keeper", says: "I locked the gate at eight and went home." }
       ],
       answer: 2,
+      proof: [0, 1],
       why: "Mira told the truth. The gate was locked at 8 PM, so Kaya lied, and thick fog hid everything, so Luca lied."
     },
     {
@@ -1111,6 +1421,7 @@ window.WL_CASES = {
         { name: "Pari", role: "Reader", says: "I saw the book on its shelf at 4 PM." }
       ],
       answer: 1,
+      proof: [0],
       why: "Everyone told the truth. Nell has her own key, so the librarian is not the only one with a key.",
       twist: "Someone wanted the librarian to take the blame."
     },
@@ -1129,6 +1440,7 @@ window.WL_CASES = {
         { name: "Sol", role: "Stall holder", says: "I sold umbrellas on Saturday. Best day ever." }
       ],
       answer: 2,
+      proof: [0, 1],
       why: "Sol told the truth. The market only runs on Saturdays, so Quinn lied, and it rained all day, so Remy lied."
     },
     {
@@ -1146,6 +1458,7 @@ window.WL_CASES = {
         { name: "Valo", role: "Steward", says: "At eleven I saw the conductor with his bag." }
       ],
       answer: 2,
+      proof: [0],
       why: "Everyone told the truth. Tova couldn't sleep because the lights in coach C were bright, so they were not off.",
       twist: "The dark-coach story was planted so the thief could say nobody saw a thing."
     },
@@ -1164,6 +1477,7 @@ window.WL_CASES = {
         { name: "Yasmin", role: "Dishwasher", says: "It was so hot that I stood by the open fridge to cool down." }
       ],
       answer: 2,
+      proof: [0, 1],
       why: "Yasmin told the truth. The gas was off all day, so Wiebke lied, and it was 35°C, so Xander lied."
     },
     {
@@ -1181,6 +1495,7 @@ window.WL_CASES = {
         { name: "Bryn", role: "Cleaner", says: "At 9:30 the sculpture was still there." }
       ],
       answer: 0,
+      proof: [0],
       why: "Everyone told the truth. Zed picked Ms. Maddox up from her flight, so it was not cancelled.",
       twist: "The cancelled flight made it look like Ms. Maddox was stuck abroad. She was home all along."
     },
@@ -1199,6 +1514,7 @@ window.WL_CASES = {
         { name: "Ebba", role: "Cleaner", says: "I was scrubbing the empty pool at five." }
       ],
       answer: 2,
+      proof: [0, 1],
       why: "Ebba told the truth. The pool was drained, so Cleo lied, and the office was locked at 6 PM, so Dario lied."
     },
     {
@@ -1216,6 +1532,7 @@ window.WL_CASES = {
         { name: "Hana", role: "Neighbor", says: "I saw the statue covered in snow at nine." }
       ],
       answer: 1,
+      proof: [0],
       why: "Everyone told the truth. Fumi walked across the snowy garden at eleven, so there were footprints the next morning.",
       twist: "Someone swept the snow and then planted the no-footprints story."
     },
@@ -1234,6 +1551,7 @@ window.WL_CASES = {
         { name: "Kemi", role: "Assistant", says: "On Thursday the studio still smelled of fresh white paint." }
       ],
       answer: 2,
+      proof: [0, 1],
       why: "Kemi told the truth. The studio was sealed on Wednesday, so Ilsa lied, and the walls were painted white on Tuesday, so Jakob lied."
     },
     {
@@ -1251,6 +1569,7 @@ window.WL_CASES = {
         { name: "Nils", role: "Audience member", says: "I saw the brooch on Mrs. Black's dress during the first act." }
       ],
       answer: 0,
+      proof: [0],
       why: "Everyone told the truth. Lior made a phone call from his seat, so phones do work inside the opera house.",
       twist: "The no-signal story was planted so the thief's partner could claim she never got a call."
     },
@@ -1269,8 +1588,143 @@ window.WL_CASES = {
         { name: "Rufus", role: "Officer", says: "The door was locked when I knocked on Tuesday, so I left." }
       ],
       answer: 2,
+      proof: [1],
       why: "Rufus told the truth. The code was changed on Monday, so Ozzy lied, and only the chief knows the new code, so Petra lied.",
       twist: "Two officers, one lie each. They were working together."
+    },
+    {
+      mode: "planted",
+      title: "The 6:10 to Lindhurst",
+      setup: "A briefcase of contracts vanished from the waiting room at Lindhurst Station on Monday evening.",
+      clues: [
+        "The 6:10 PM train to Lindhurst ran on time.",
+        "The waiting room's camera was switched off for repairs on Monday.",
+        "The briefcase was left on a bench at 6:30 PM."
+      ],
+      suspects: [
+        { name: "Agnes", role: "Lawyer", says: "My 6:10 train was fifty minutes late, so I didn't reach Lindhurst until seven." },
+        { name: "Basil", role: "Station cleaner", says: "The camera repairman was up a ladder in the waiting room all evening." },
+        { name: "Cora", role: "Commuter", says: "I put my briefcase down on a bench at half past six to buy a coffee." }
+      ],
+      answer: 0,
+      proof: [0],
+      why: "Everyone told the truth. Agnes's 6:10 train was fifty minutes late, so the fact \"the 6:10 PM train ran on time\" was fake.",
+      twist: "Someone planted the \"on time\" report so their own story about being on that train would hold up."
+    },
+    {
+      mode: "honest",
+      title: "The Rooftop Party",
+      setup: "A camera was stolen from a rooftop party at the Larkin Hotel.",
+      clues: [
+        "The hotel's lifts were switched off from 10 PM to 11 PM for safety checks.",
+        "A storm hit at 10:30 PM and the party moved inside.",
+        "The camera was last seen on the roof at 10:15 PM."
+      ],
+      suspects: [
+        { name: "Dara", role: "DJ", says: "At half past ten I packed my decks into the lift and rode down to the lobby." },
+        { name: "Eamon", role: "Guest", says: "I stayed on the roof until eleven. The sky was clear all night." },
+        { name: "Femi", role: "Waiter", says: "When the storm hit, I carried trays down the stairs for half an hour." }
+      ],
+      answer: 2,
+      proof: [0, 1],
+      why: "Femi told the truth. The lifts were off from 10 to 11 PM, so Dara didn't ride one down at half past ten, and the storm hit at 10:30, so Eamon didn't see a clear sky.",
+      twist: "Dara and Eamon had matching stories. The storm washed both of them away."
+    },
+    {
+      mode: "planted",
+      title: "The Closed Kitchen",
+      setup: "A chef's knife roll worth thousands went missing from Café Lune.",
+      clues: [
+        "The back door was locked at 10 PM on Sunday.",
+        "The café's kitchen was closed all day on Sunday.",
+        "The knife roll was last seen on Sunday afternoon."
+      ],
+      suspects: [
+        { name: "Gilles", role: "Chef", says: "On Sunday I cooked lunch for forty people in that kitchen." },
+        { name: "Hanne", role: "Dishwasher", says: "I washed up until half past nine and left by the front door." },
+        { name: "Ivo", role: "Owner", says: "I locked the back door at ten, like every night." }
+      ],
+      answer: 1,
+      proof: [0],
+      why: "Everyone told the truth. Gilles cooked lunch for forty people in the kitchen on Sunday, so the fact \"the kitchen was closed all day on Sunday\" was fake.",
+      twist: "The \"closed kitchen\" story was planted so the police wouldn't ask who was cooking there that day."
+    },
+    {
+      mode: "honest",
+      title: "The Long Lunch",
+      setup: "Plans for a new phone were leaked from Brightline's office on Wednesday.",
+      clues: [
+        "The office printer was out of toner all day Wednesday.",
+        "The plans were emailed out at 1:15 PM.",
+        "From 1 PM to 2 PM the office was empty: the whole team was at a lunch across the street."
+      ],
+      suspects: [
+        { name: "Jin", role: "Designer", says: "At a quarter past one I was at my desk, printing the plans for a meeting." },
+        { name: "Kiri", role: "Engineer", says: "I skipped the team lunch and worked alone in the office all afternoon." },
+        { name: "Lucas", role: "Manager", says: "I paid for the team lunch at the restaurant across the street." }
+      ],
+      answer: 2,
+      proof: [2],
+      why: "Lucas told the truth. The office was empty from 1 to 2 PM and the printer had no toner, so Jin wasn't printing at his desk at 1:15, and Kiri wasn't working alone in the office all afternoon.",
+      twist: "Jin and Kiri both put themselves in an office that was empty. Each was covering for the other."
+    },
+    {
+      mode: "planted",
+      title: "Snowed Out",
+      setup: "Someone let the air out of the tires of every bus in the school car park over the weekend.",
+      clues: [
+        "The school car park's gate was locked all weekend.",
+        "No snow fell anywhere in town over the weekend.",
+        "The flat tires were found on Monday at 7 AM."
+      ],
+      suspects: [
+        { name: "Oona", role: "Bus driver", says: "I found the flat tires at seven on Monday morning." },
+        { name: "Piet", role: "Caretaker", says: "I checked the gate on Saturday and on Sunday. It stayed locked." },
+        { name: "Quinn", role: "Student", says: "On Sunday I built a snowman in the park with my little brother." }
+      ],
+      answer: 1,
+      proof: [2],
+      why: "Everyone told the truth. Quinn built a snowman on Sunday, so the fact \"no snow fell over the weekend\" was fake.",
+      twist: "Fresh snow would have shown footprints to the buses. The \"no snow\" story was planted so nobody would look for them."
+    },
+    {
+      mode: "honest",
+      title: "The Concert Hall",
+      setup: "A cello was swapped for a cheap copy during the Philharmonic's Friday concert.",
+      clues: [
+        "The concert ran from 7:30 PM to 9:45 PM with no interval.",
+        "The stage door was locked during the concert.",
+        "Before every concert the orchestra's phones are switched off and locked away."
+      ],
+      suspects: [
+        { name: "Rafa", role: "Violinist", says: "During the interval I slipped out of the stage door for some air." },
+        { name: "Sana", role: "Cellist", says: "Halfway through the concert I texted my sister from the stage." },
+        { name: "Tomas", role: "Usher", says: "I stood at the back of the hall for the whole concert." }
+      ],
+      answer: 2,
+      proof: [0, 2],
+      alt: [[1, 2]],
+      why: "Tomas told the truth. There was no interval and the stage door was locked, so Rafa didn't slip out, and the phones were locked away, so Sana didn't text from the stage.",
+      twist: "Two musicians, two invented moments. Swapping a cello takes more than one pair of hands."
+    },
+    {
+      mode: "planted",
+      title: "The Silent Alarm",
+      setup: "Jewels disappeared from the window of Marlow & Sons on Saturday night.",
+      clues: [
+        "The window display was full when the shop closed at 6 PM.",
+        "The street lights worked all night.",
+        "The shop's alarm didn't go off on Saturday night."
+      ],
+      suspects: [
+        { name: "Uma", role: "Neighbour", says: "The shop's alarm woke me at two and rang for twenty minutes." },
+        { name: "Vince", role: "Shop assistant", says: "I locked up at six. The window display was full." },
+        { name: "Willa", role: "Taxi driver", says: "I drove down that street at three. It was bright as day under the street lights." }
+      ],
+      answer: 2,
+      proof: [0],
+      why: "Everyone told the truth. Uma heard the shop's alarm ring at two, so the fact \"the alarm didn't go off\" was fake.",
+      twist: "The \"silent alarm\" story was planted so nobody would ask who switched it off at twenty past two."
     }
   ]
 };
