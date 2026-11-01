@@ -273,7 +273,33 @@ Ads use the same placements as on CrazyGames (section 3), plus **side ads**: on 
 
 ---
 
-## 7. Add your own cases
+## 7. Analytics (free, optional)
+
+The game already sends events (`WL.track(...)`) for the things worth measuring: first case done, case 5 done, daily finished, share clicked, challenge opened, return visit. They go nowhere until you switch analytics on.
+
+**Umami Cloud (free, recommended).**
+
+1. Sign up at [umami.is](https://umami.is) (the Hobby plan is $0, up to 100k events a month).
+2. Add a website: domain `liarhunt.com`, name it whatever you like.
+3. Open the website → **Edit** → **Tracking code**. Copy the **Website ID** (a UUID).
+4. Paste it into `js/config.js`:
+
+   ```js
+   analytics: {
+     umami: { websiteId: "YOUR-UUID-HERE", ... },
+     ...
+   }
+   ```
+
+5. Deploy. Open the site, play one case, and the visitor appears on Umami's dashboard straight away.
+
+**Why the extra settings:** Umami counts every pageview, every event *and* every stored property against its free quota, so `propKeys` (which properties are allowed) and `maxProps` (how many per event) keep the numbers small. Set `props: false` to send event names only, which is the cheapest way to run. `plausibleDomain` is kept as a paid fallback: put Plausible's site domain there and leave `umami.websiteId` empty to switch.
+
+To check the wiring after changing anything: `node tools/check-analytics.mjs`.
+
+---
+
+## 8. Add your own cases
 
 Open `js/cases.js`. The lists `medium`, `hard` and `twist` feed Daily cases 2, 4 and 5. Day 1 uses the first item of each list, and so on. The generator fills in when a list runs out. Career and Rush always use the generator.
 

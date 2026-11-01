@@ -1217,11 +1217,31 @@
     var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
     return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") + ":" + String(sec).padStart(2, "0");
   }
-  /* Analytics hook: forwards to Google Analytics (gtag) or Plausible if you add one. */
+  /* Analytics hook: sends every event to Umami (free) or Plausible, whichever is set in js/config.js.
+     Umami counts every pageview, event and stored property against its monthly quota, so only a
+     few useful properties travel with each event (see analytics.propKeys and analytics.maxProps). */
+  var AN = CFG.analytics || {};
   function track(name, data) {
     try {
       if (typeof window.gtag === "function") window.gtag("event", name, data || {});
-      if (typeof window.plausible === "function") window.plausible(name, { props: data || {} });
+      var d; // undefined when there is nothing worth sending
+      if (AN.props !== false && data) {
+        var keys = AN.propKeys, out = {}, n = 0, max = AN.maxProps || 2;
+        for (var k in data) {
+          if (!Object.prototype.hasOwnProperty.call(data, k)) continue;
+          if (keys && keys.indexOf(k) < 0) continue;
+          if (n >= max) break;
+          out[k] = data[k]; n++;
+        }
+        if (n) d = out;
+      }
+      if (window.umami && typeof window.umami.track === "function") window.umami.track(name, d);
+      else if (window.WLAnalytics && window.WLAnalytics.queue) {
+        var q = window.WLAnalytics.queue;
+        if (q.length > 200) q.shift(); // a blocked tracker must not grow forever
+        q.push([name, d]);
+      }
+      if (typeof window.plausible === "function") window.plausible(name, { props: d || {} });
     } catch (e) { /* ignore */ }
   }
   function siteUrl() {

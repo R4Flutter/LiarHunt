@@ -586,14 +586,35 @@
 <script src="js/ads.js"></script>
 <script src="js/leaderboard.js"></script>
 <script>
-  // Analytics: off until analytics.plausibleDomain is set in js/config.js. Events sent before the script loads are queued.
-  (function (domain) {
-    if (!domain) return;
-    window.plausible = window.plausible || function () { (window.plausible.q = window.plausible.q || []).push(arguments); };
-    var s = document.createElement("script");
-    s.defer = true; s.src = "https://plausible.io/js/script.js"; s.setAttribute("data-domain", domain);
-    document.head.appendChild(s);
-  })((window.WL_CONFIG.analytics || {}).plausibleDomain);
+  // Analytics: off until you set an ID in js/config.js. Umami Cloud is free (100k events a
+  // month); Plausible is the paid fallback. Events fired before the tracker loads are queued
+  // and sent the moment it arrives.
+  (function (A) {
+    if (!A) return;
+    var q = [];
+    window.WLAnalytics = { queue: q };
+    function flush() {
+      var u = window.umami;
+      if (!u || typeof u.track !== "function") return false;
+      for (var i = 0; i < q.length; i++) { try { u.track(q[i][0], q[i][1]); } catch (e) { /* ignore */ } }
+      q.length = 0;
+      return true;
+    }
+    window.WLAnalytics.flush = flush;
+    if (A.umami && A.umami.websiteId) {
+      var s = document.createElement("script");
+      s.defer = true; s.src = A.umami.scriptUrl || "https://cloud.umami.is/script.js";
+      s.setAttribute("data-website-id", A.umami.websiteId);
+      if (A.umami.domains) s.setAttribute("data-domains", A.umami.domains);
+      s.onload = flush;
+      document.head.appendChild(s);
+    } else if (A.plausibleDomain) {
+      window.plausible = window.plausible || function () { (window.plausible.q = window.plausible.q || []).push(arguments); };
+      var p = document.createElement("script");
+      p.defer = true; p.src = "https://plausible.io/js/script.js"; p.setAttribute("data-domain", A.plausibleDomain);
+      document.head.appendChild(p);
+    }
+  })(window.WL_CONFIG.analytics);
 </script>
 <!-- WEB-ONLY:END -->
 <script src="js/platform.js"></script>

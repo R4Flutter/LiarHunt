@@ -27,9 +27,27 @@ window.WL_CONFIG = {
   },
 
   analytics: {
-    // Your site's domain as added at plausible.io (for example "liarhunt.com").
-    // Leave "" to keep analytics off. The game's events are then sent to Plausible (web only).
-    plausibleDomain: ""
+    // Privacy-friendly analytics. Free option first: Umami Cloud, $0 up to 100k events a month.
+    // Sign up at umami.is, add the site "liarhunt.com", open it, and paste the Website ID here.
+    // Leave "" to keep analytics off.
+    umami: {
+      websiteId: "",
+      scriptUrl: "https://cloud.umami.is/script.js",
+      // Only count the real domain, so previews and localhost don't pollute the numbers.
+      domains: "liarhunt.com,www.liarhunt.com"
+    },
+
+    // Paid fallback: Plausible (30-day free trial, then $9/month). Put its site domain here
+    // and leave umami.websiteId empty to use it instead.
+    plausibleDomain: "",
+
+    // Umami counts every pageview, every event AND every stored property against its free
+    // quota, so only a few useful properties are sent: at most maxProps per event, and only
+    // the keys listed in propKeys. Set props to false to send event names only.
+    props: true,
+    maxProps: 2,
+    propKeys: ["level", "case", "stars", "wrong", "hint", "correct", "score", "day", "kind", "type",
+      "catchup", "replay", "seconds", "days", "days_away", "day_of_play", "days_played", "rank", "clues", "method"]
   },
 
   crazygames: {
