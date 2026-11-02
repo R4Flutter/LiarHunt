@@ -1338,7 +1338,7 @@
     return said.map(function (i) { return '<p class="pb-said"><b>' + esc(c.suspects[i].name) + " said</b> <q>" + esc(c.suspects[i].says) + "</q></p>"; }).join("") +
       '<p class="pb-but">' + (c.mode === "planted" ? "But the planted fact said" : facts.length > 1 ? "But the facts say" : "But the fact says") + "</p>" +
       '<ul class="pb-facts">' + facts.map(function (i) { return "<li>" + esc(c.clues[i]) + "</li>"; }).join("") + "</ul>" +
-      '<p class="pb-so">' + esc(c.why) + "</p>" +
+      (facts.some(function (i) { return c.clues[i] === c.why; }) ? "" : '<p class="pb-so">' + esc(c.why) + "</p>") + // some explanations are just the fact again
       (c.motive ? '<p class="pb-motive"><b>Motive</b> ' + esc(c.motive) + "</p>" : "");
   }
 
@@ -3600,7 +3600,7 @@
   function bootFailed(e) {
     console.warn("[save] couldn't load progress", e);
     var b = $("boot");
-    b.innerHTML = '<span class="boot-title">Liar<span class="q">Hunt</span></span>' +
+    b.innerHTML = '<img class="boot-ico" src="assets/icon-192.png" alt="" width="192" height="192"><span class="boot-title">Liar<span class="q">Hunt</span></span>' +
       '<p class="boot-note">Can\'t connect. Your progress is saved online, so the game needs the internet to start.</p>' +
       '<button class="btn primary" type="button" id="boot-retry">Try again</button>';
     b.removeAttribute("aria-hidden"); b.setAttribute("role", "alert");

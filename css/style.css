@@ -132,6 +132,7 @@ button { font: inherit; color: inherit; }
 a { color: inherit; }
 p { margin: 0; }
 :focus-visible { outline: 3px solid var(--needle); outline-offset: 2px; }
+[tabindex="-1"]:focus { outline: none; } /* headings the game moves focus to for screen readers: no ring for everyone else */
 .muted { color: var(--pencil); }
 .small { font-size: var(--s-1); }
 
@@ -236,7 +237,7 @@ p { margin: 0; }
   border: 2px solid var(--ink); border-radius: 99px; background: var(--surface); color: var(--ink);
   padding: 0.2rem 0.75rem 0.2rem 0.5rem; font-weight: 700; font-variant-numeric: tabular-nums; min-height: 2.3rem;
 }
-.coins b { min-width: 2.2ch; text-align: right; }
+.coins b { min-width: 2.2ch; text-align: center; }
 .stage { flex: 1; min-height: 0; position: relative; }
 .scr { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .scr:focus { outline: none; }
@@ -484,7 +485,7 @@ button.clue:not(:disabled):hover { filter: brightness(0.96); }
 @keyframes starpop { from { transform: scale(0.2) rotate(-40deg); opacity: 0; } to { transform: none; opacity: 1; } }
 .verdict-banner { background: var(--ink); color: var(--paper); font-family: var(--display); font-weight: 900; font-size: 1.3rem; padding: 0.3rem 0.7rem; border-radius: var(--r); justify-self: start; }
 .why { line-height: 1.45; }
-.proof-box { display: grid; gap: 0.35rem; border-left: 4px solid var(--needle); padding: 0.1rem 0 0.1rem 0.75rem; line-height: 1.4; }
+.proof-box { display: grid; gap: 0.35rem; padding: 0.6rem 0.75rem; line-height: 1.4; border-radius: 10px; border: 2px solid color-mix(in srgb, var(--needle) 30%, transparent); background: color-mix(in srgb, var(--needle) 5%, var(--surface)); }
 .proof-box:empty { display: none; }
 .pb-said q { font-style: italic; }
 .pb-but, .pb-said b, .pb-motive b { font-family: var(--display); font-weight: 800; font-size: 1.05rem; letter-spacing: 0.02em; }
@@ -505,12 +506,13 @@ button.clue:not(:disabled):hover { filter: brightness(0.96); }
 .res-title { margin: -0.4rem 0 0; font-family: var(--display); font-weight: 900; font-size: 3.4rem; line-height: 0.9; text-wrap: balance; }
 #res-body { display: grid; gap: 0.7rem; justify-items: start; }
 .res-grid { display: flex; gap: 0.45rem; }
-.res-grid span { width: 2.8rem; height: 2.8rem; display: grid; place-items: center; background: none; }
-.res-grid svg { width: 100%; height: 100%; fill: none; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; overflow: visible; }
-.res-grid .cell-g svg { stroke: var(--ok); }
-.res-grid .cell-y svg { stroke: var(--hint); }
-.res-grid .cell-r svg { stroke: var(--needle); }
-.res-grid .cell-n::before { content: ""; width: 24%; height: 24%; border-radius: 50%; background: var(--grid-strong); } /* not played yet */
+/* each result is a filled tile, like the week's day tiles: green tick, amber tick (hint used), red cross; empty outline = not played yet */
+.res-grid span { width: 2.8rem; height: 2.8rem; display: grid; place-items: center; border-radius: 22%; border: 2px solid var(--grid-strong); background: var(--paper); }
+.res-grid :is(.cell-g, .cell-y, .cell-r) { color: var(--surface); }
+.res-grid .cell-g { background: var(--ok); border-color: var(--ok); }
+.res-grid .cell-y { background: var(--hint); border-color: var(--hint); }
+.res-grid .cell-r { background: var(--needle); border-color: var(--needle); }
+.res-grid svg { width: 66%; height: 66%; fill: none; stroke: currentColor; stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; overflow: visible; }
 .res-big { font-family: var(--display); font-weight: 900; font-size: 6rem; line-height: 0.85; }
 .res-line { font-size: var(--s1); }
 .res-line strong { font-variant-numeric: tabular-nums; }
@@ -696,6 +698,7 @@ dialog::backdrop { background: var(--scrim); }
   position: fixed; inset: 0; z-index: 100; display: grid; place-content: center; justify-items: center; gap: 1rem;
   background: var(--paper); transition: opacity 0.35s ease;
 }
+.boot-ico { width: 5.5rem; height: 5.5rem; border-radius: 22%; border: 2px solid var(--ink); box-shadow: 0 3px 0 var(--ink); margin-bottom: -0.25rem; }
 .boot-title { font-family: var(--display); font-weight: 900; font-size: 3.2rem; line-height: 1; }
 .boot-bar { width: 12rem; height: 0.5rem; border: 2px solid var(--ink); border-radius: 99px; overflow: hidden; }
 .boot-bar span { display: block; height: 100%; width: 40%; background: var(--needle); animation: bootbar 1s ease-in-out infinite alternate; }
@@ -825,8 +828,6 @@ dialog[open] { animation: dlgin 0.24s cubic-bezier(0.2, 1.25, 0.4, 1) both; }
 .week-card {
   border: 2px solid var(--ink); border-radius: var(--r); background: var(--surface); padding: 0.8rem 0.95rem 0.95rem;
   display: grid; gap: 0.55rem; box-shadow: 0 3px 0 var(--ink);
-  background-image: linear-gradient(90deg, var(--tag) 0 0.45rem, transparent 0.45rem);
-  padding-left: 1.25rem;
 }
 .week-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
 .week-title { margin: -0.3rem 0 0; font-family: var(--display); font-weight: 900; font-size: 1.85rem; line-height: 1; text-wrap: balance; }
@@ -903,7 +904,7 @@ a.mode-tile { text-decoration: none; }
 .vs-side.win { background: color-mix(in srgb, var(--ok) 16%, var(--surface)); box-shadow: inset 0 0 0 2px var(--ok); }
 .vs-x { font-family: var(--display); font-weight: 900; font-size: 1.35rem; color: var(--needle); }
 .vs-side .res-grid, .file .res-grid { gap: 0.2rem; }
-.vs-side .res-grid span, .file .res-grid span { width: 1.05rem; height: 1.05rem; }
+.vs-side .res-grid span, .file .res-grid span { width: 1.15rem; height: 1.15rem; border-width: 1.5px; }
 .res-extra { display: grid; gap: 0.5rem; }
 .res-extra:empty { display: none; }
 .next-card { display: flex; align-items: center; gap: 0.7rem; border: 2px solid var(--ink); border-radius: var(--r); background: var(--surface); padding: 0.6rem 0.7rem; box-shadow: 0 2px 0 var(--ink); }
@@ -1107,7 +1108,7 @@ html.game body {
 /* career story lines */
 .career-story, .chapter-story { color: var(--pencil); font-size: var(--s-1); line-height: 1.45; max-width: 62ch; text-wrap: pretty; }
 .career-story { margin-top: -0.25rem; }
-.story-beat { border-left: 4px solid var(--gold); padding: 0.1rem 0 0.1rem 0.75rem; line-height: 1.45; font-style: italic; }
+.story-beat { padding: 0.55rem 0.75rem; border-radius: 10px; background: color-mix(in srgb, var(--gold) 12%, var(--surface)); line-height: 1.45; font-style: italic; }
 /* career track: the cases hang on one thread */
 .career-card .nodes { background: linear-gradient(var(--grid-strong), var(--grid-strong)) center / 100% 2px no-repeat; }
 /* HQ: today's Daily is a case folder, with a tab and, once done, a rubber stamp */

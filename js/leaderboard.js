@@ -58,9 +58,8 @@
     if (readyP) return readyP;
     if (provider === "demo") { uid = demoId(); readyP = Promise.resolve(uid); return readyP; }
     if (provider !== "firebase") return Promise.reject(new Error("Leaderboard is off"));
-    readyP = loadScript(SDK + "firebase-app-compat.js")
-      .then(function () { return loadScript(SDK + "firebase-auth-compat.js"); })
-      .then(function () { return loadScript(SDK + "firebase-firestore-compat.js"); })
+    // all three download at once; async = false still runs them in this order
+    readyP = Promise.all(["app", "auth", "firestore"].map(function (n) { return loadScript(SDK + "firebase-" + n + "-compat.js"); }))
       .then(function () {
         var firebase = window.firebase;
         if (!firebase.apps.length) firebase.initializeApp(fb);
@@ -219,7 +218,20 @@
     load: function () {
       return ready().then(function () {
         if (provider === "demo") { var d = demoAcc().save; return d && d.uid === uid ? d : null; }
-        return playerRef().get().then(function (s) { return s.exists ? s.data() : null; });
+        // One plain request (same security rules) instead of the SDK's get(), which first opens a streaming
+        // channel: several round trips that kept the loading screen up for seconds on slow connections.
+        return window.firebase.auth().currentUser.getIdToken().then(function (tok) {
+          return fetch("https://firestore.googleapis.com/v1/projects/" + fb.projectId + "/databases/(default)/documents/players/" + uid,
+            { headers: { Authorization: "Bearer " + tok }, cache: "no-store" });
+        }).then(function (r) {
+          if (r.status === 404) return null;
+          return r.json().then(function (j) {
+            var st = j && j.error && j.error.status;
+            if (!r.ok) throw err(st ? String(st).toLowerCase().replace(/_/g, "-") : "unavailable", (j.error && j.error.message) || "Couldn't load the save");
+            var f = j.fields || {}, num = function (v) { return v ? +(v.integerValue || v.doubleValue || 0) : 0; };
+            return { data: f.data && f.data.stringValue, xp: num(f.xp), rev: num(f.rev) };
+          });
+        });
       });
     },
     // Saves the game. rev = the revision this device loaded. force: overwrite whatever is there. -> Promise of the new rev
