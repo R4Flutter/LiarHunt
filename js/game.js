@@ -558,7 +558,7 @@
   function goHQ() {
     if (cloud.reload) { reloadWith("Your newer progress from another device is here."); return; }
     stopClock(); hideConfirm();
-    if (run && run.prog) { run.prog.elapsed = run.elapsed; persist(); }
+    if (run && run.prog) { saveElapsed(); persist(); }
     if (run && (run.kind === "career" || run.kind === "night")) saveMemo();
     if (run && run.kind === "rush" && !run.over) { run.over = true; P.rushEnd(run.score); persist(); }
     if (room) leaveRoom(); // going back to HQ leaves a live room
@@ -669,7 +669,12 @@
   $("dlg-login").addEventListener("cancel", function (e) { e.preventDefault(); claimLogin(false); });
 
   /* ---------- clock ---------- */
-  var clock = { running: false, raf: 0, last: 0, lastTickSec: -1, sinceSave: 0 };
+  var clock = { running: false, raf: 0, last: 0, lastTickSec: -1, sinceSave: 0, hiddenAt: 0 };
+  // The Daily and Rush have leaderboards, so they count real time: switching tabs or opening Settings
+  // doesn't stop their clock. Time away still counts, up to AWAY_MAX a go.
+  var AWAY_MAX = 120000; // ponytail: 2 min cap, so a phone call doesn't wreck a run but thinking off-screen still costs
+  function realClock() { return !!run && (run.kind === "daily" || run.kind === "replay" || run.kind === "rush"); }
+  function counting() { return clock.running && run && !paused.ad && !run.revealed && !run.coachHold && !run.hold; }
   function startClock() {
     clock.running = true; clock.last = performance.now(); clock.lastTickSec = -1;
     if (!clock.raf) clock.raf = requestAnimationFrame(tick);
@@ -677,8 +682,9 @@
   function stopClock() { clock.running = false; }
   function tick(now) {
     clock.raf = 0;
-    var dt = Math.min(250, now - clock.last); clock.last = now;
-    if (clock.running && run && !paused.ad && !paused.hidden && !run.revealed && !run.coachHold && !run.hold && !document.querySelector("dialog[open]")) {
+    var real = realClock(), dt = now - clock.last; clock.last = now;
+    if (!real) dt = Math.min(250, dt);
+    if (counting() && !paused.hidden && (real || !document.querySelector("dialog[open]"))) {
       run.caseElapsed += dt;
       if (run.kind === "rush") {
         // one clock for the whole run; catches add time
@@ -702,20 +708,27 @@
       } else {
         run.elapsed += dt; clock.sinceSave += dt;
         $("rec-time").textContent = WL.fmtTime(run.elapsed);
-        if (clock.sinceSave > 4000) { clock.sinceSave = 0; run.prog.elapsed = run.elapsed; persist(); }
+        if (clock.sinceSave > 4000) { clock.sinceSave = 0; saveElapsed(); persist(); }
       }
     }
     if (clock.running) clock.raf = requestAnimationFrame(tick);
   }
+  // A Daily case left open (tab closed, HQ, reload) carries the time it was left at, so coming back adds the time away.
+  function saveElapsed() { run.prog.elapsed = run.elapsed; run.prog.at = run.revealed ? 0 : Date.now(); }
   document.addEventListener("visibilitychange", function () {
     paused.hidden = document.hidden;
     if (document.hidden) {
-      if (run && run.prog) { run.prog.elapsed = run.elapsed; persist(); }
+      clock.hiddenAt = performance.now();
+      if (run && run.prog) { saveElapsed(); persist(); }
       if (run && (run.kind === "career" || run.kind === "night")) saveMemo();
       traces.forEach(function (t) { if (t.active) { t.stop(); t.wasActive = true; } });
       Plat.flush();
       cloudFlush();
     } else {
+      if (realClock() && counting() && clock.hiddenAt) {
+        var away = Math.min(AWAY_MAX, performance.now() - clock.hiddenAt);
+        if (run.kind === "rush") run.time -= away; else run.elapsed += away;
+      }
       clock.last = performance.now();
       traces.forEach(function (t) { if (t.wasActive) { t.wasActive = false; t.start(); } });
     }
@@ -754,7 +767,8 @@
     var catchup = replay && mode !== "practice" && !!S.unlocked[day];
     var prog = progressFor(day, catchup);
     if (prog.done) { showDailyResults(day, prog, replay, null, catchup); return; }
-    run = { kind: replay ? "replay" : "daily", catchup: catchup, day: day, cases: WL.buildDay(day), prog: prog, idx: prog.results.length, elapsed: prog.elapsed || 0 };
+    var away = prog.at ? Math.min(AWAY_MAX, Math.max(0, Date.now() - prog.at)) : 0; // a case left open counts the time away
+    run = { kind: replay ? "replay" : "daily", catchup: catchup, day: day, cases: WL.buildDay(day), prog: prog, idx: prog.results.length, elapsed: (prog.elapsed || 0) + away };
     run.c = run.cases[run.idx];
     WL.track(replay ? "replay_start" : "daily_start", { day: day, case: run.idx + 1 });
     show("case");
@@ -889,7 +903,7 @@
       $("case-kicker").textContent = "Written by " + c.by + " · One try";
     } else {
       setHud("Daily #" + run.day + (run.catchup ? " catch-up" : run.kind === "replay" ? " practice" : ""), "Case " + (run.idx + 1) + " of 5");
-      $("case-kicker").textContent = LEVEL[c.level] || "Case";
+      $("case-kicker").textContent = (LEVEL[c.level] || "Case") + " · One try";
     }
     $("case-title").textContent = c.title;
     $("case-setup").textContent = c.setup;
@@ -1154,7 +1168,8 @@
     list.forEach(function (e, k) { e.classList.toggle("is-picked", k === i); e.setAttribute("aria-pressed", k === i ? "true" : "false"); });
     Snd.play("tap");
     var name = c.mode === "planted" ? "" : c.suspects[i].name;
-    $("accuse-q").textContent = c.mode === "liar" ? "Is " + name + " the liar?" : c.mode === "honest" ? "Is " + name + " the only honest one?" : "Is this fact fake?";
+    $("accuse-q").textContent = (c.mode === "liar" ? "Is " + name + " the liar?" : c.mode === "honest" ? "Is " + name + " the only honest one?" : "Is this fact fake?") +
+      (run.kind === "career" || run.kind === "rush" ? "" : " One try."); // a wrong pick ends the case here
     $("btn-accuse").textContent = c.mode === "liar" ? "Accuse " + name : c.mode === "honest" ? name + " is honest" : "It's fake";
     $("tools").hidden = true; $("confirm").hidden = false;
     if (run.coachStep === 2) hideCoach();
@@ -1229,10 +1244,10 @@
     else reveal(false, "proof");
   }
   // Career: the first mistake (wrong suspect or wrong proof) costs stars, the second botches the case.
+  // The tutorial case (Case 1 with the coach) can't be failed: a wrong guess only crosses that option out.
   function mistake(pick) {
-    var c = run.c, el = $("clues"), msg;
-    run.wrong++;
-    P.careerWrong();
+    var c = run.c, el = $("clues"), msg, learning = run.n === 1 && !S.settings.tutorialDone;
+    if (!learning) { run.wrong++; P.careerWrong(); }
     if (run.wrong >= 2) { reveal(false, "botched"); return; }
     if (pick >= 0) {
       act(["c", pick]);
@@ -1245,7 +1260,7 @@
       cancelPick();
     }
     Snd.play("wrong"); FX.shake(el); gameTrace.spike(true);
-    toast(msg + " Careful: one more mistake botches the case.", "", 3200);
+    toast(msg + (learning ? " Try again: check each story against the facts." : " Careful: one more mistake botches the case."), "", 3200);
     saveMemo(); renderMeta(); renderTools(); renderStarsLive();
   }
   // how: "ok", "pick" (wrong suspect), "proof" (right suspect, wrong proof), "timeout", "botched"
@@ -1413,7 +1428,7 @@
   }
   function verdictDaily(correct, how) {
     var c = run.c, code = correct ? (run.hint ? "y" : "g") : "r";
-    run.prog.results.push(code); run.prog.hints.push(run.hint); run.prog.elapsed = run.elapsed; run.prog.cur = null;
+    run.prog.results.push(code); run.prog.hints.push(run.hint); run.prog.elapsed = run.elapsed; run.prog.cur = null; run.prog.at = 0;
     var r = P.dailyCase({ correct: correct, hint: run.hint, twist: c.mode !== "liar", replay: run.kind === "replay", catchup: run.catchup });
     persist();
     var last = run.prog.results.length >= run.cases.length;
@@ -3555,11 +3570,36 @@
     if (!S.settings.tutorialDone && S.tot.solved === 0) { startCareer(1); return; }
     goHQ();
   }
+  // A brand-new visitor has nothing to load. Firebase keeps its sign-in in this IndexedDB database, so when
+  // it's missing (and there's no save on the device) nobody has played in this browser yet.
+  function newVisitor() {
+    if (!lbOn() || LB.provider !== "firebase" || CFG.movedTo || /[?&]restore=/.test(bootSearch) || Object.keys(Plat.load()).length) return Promise.resolve(false);
+    if (!window.indexedDB || !indexedDB.databases) return Promise.resolve(false); // can't tell: load as before
+    return indexedDB.databases().then(function (l) { return !l.some(function (d) { return d.name === "firebaseLocalStorageDb"; }); }, function () { return false; });
+  }
+  // The background load for a new visitor finished: their account is ready, so their game starts saving to it.
+  function cloudReady(found) {
+    cloud.busy = false;
+    if (cloud.rev > 0 && (found.xp || 0) >= (S.xp || 0)) { // this browser had a game after all, and it got further
+      hideCoach(); stopClock(); run = null;
+      loadState(found); goHQ(); toast("Welcome back! Your progress is loaded.", "gold", 3600);
+      return;
+    }
+    if (started()) { S.sync.dirty = true; cloudFlush(); }
+  }
   function boot() {
     if (Plat.isCrazy()) document.documentElement.classList.add("cg");
     var fontsReady = document.fonts && document.fonts.ready ? Promise.race([document.fonts.ready, new Promise(function (r) { setTimeout(r, 1500); })]) : Promise.resolve();
+    var later = null; // a new visitor's save load, running in the background
     Plat.init().then(function () {
       Plat.loadingStart(); // the SDK only accepts calls once init has finished
+      return newVisitor();
+    }).then(function (fresh) {
+      if (fresh) {
+        cloud.busy = true; // nothing reaches the account until the background load has decided
+        later = loadSave().then(null, function (e) { console.warn("[save] playing on this device for now", e); return null; });
+        return Plat.load();
+      }
       return loadSave().catch(function (e) { bootFailed(e); throw "offline"; });
     }).then(function (data) {
       loadState(data);
@@ -3590,6 +3630,7 @@
         if (S.settings.playerName) resolveLeague().then(function () { return refreshLeague(true); }).catch(function () { /* offline */ });
       }
       persist();
+      if (later) later.then(function (d) { if (d) cloudReady(d); else cloud.busy = false; }); // offline: keeps saving on this device
     }).catch(function (e) {
       if (e === "offline") return;
       console.error(e);

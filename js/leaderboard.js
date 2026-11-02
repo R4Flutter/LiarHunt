@@ -101,9 +101,9 @@
   function demoStore() { try { return JSON.parse(localStorage.getItem(DEMO_KEY)) || { scores: {}, endless: {} }; } catch (e) { return { scores: {}, endless: {} }; } }
   function demoSave(s) { try { localStorage.setItem(DEMO_KEY, JSON.stringify(s)); } catch (e) { /* ignore */ } }
 
-  /* ---------- filler detectives ----------
-     A crew of made-up regulars, so a board is never empty. Seeded by the day (or season), so every
-     player sees the same ones and ranks stay put. They are sharp but slow: a clean, quick run beats them. */
+  /* ---------- demo detectives ----------
+     Made-up players for the ?lb=demo preview only (the board says "demo" there). Real boards show real
+     players only: no fake names in ranks, totals or top-10 rewards. Seeded by the day (or season). */
   var BOT_NAMES = ["Sherlock_K", "NoirNeha", "AgentOmar", "Miss Marple", "TruthSeeker", "Kenji.D", "LieDetector", "Amara77", "Inspector V",
     "Detective Li", "CaseClosed", "Priya_P", "Sam Spade", "ColdCase", "Zara Q", "Hiro", "Lucía", "Femi", "Astrid", "Rafael",
     "SharpEyes", "Watson2", "Nadia", "Poirot_fan", "Arjun", "Jonas", "Mei", "Diego", "Ingrid", "Kwame"];
@@ -124,10 +124,13 @@
     endless: function (a, b) { return b.best - a.best; },
     season: function (a, b) { return b.pts - a.pts || a.timeMs - b.timeMs; }
   };
-  function withBots(kind, key) { return function (rows) { return rows.concat(bots(kind, key)).sort(ORDER[kind]).slice(0, LIMIT); }; }
-  // The real standing { rank, total }, counting the filler detectives too.
+  function withBots(kind, key) {
+    return function (rows) { return provider !== "demo" ? rows : rows.concat(bots(kind, key)).sort(ORDER[kind]).slice(0, LIMIT); };
+  }
+  // The standing { rank, total }; the demo preview counts its made-up players too.
   function plusBots(kind, key, me) {
     return function (st) {
+      if (provider !== "demo") return st;
       var list = bots(kind, key);
       return { rank: st.rank + list.filter(function (b) { return ORDER[kind](b, me) < 0; }).length, total: st.total + list.length };
     };
