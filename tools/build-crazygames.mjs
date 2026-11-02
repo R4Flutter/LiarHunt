@@ -13,7 +13,7 @@ import { execSync } from "node:child_process";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const out = join(root, "dist", "crazygames");
-const zipPath = join(root, "dist", "whos-lying-crazygames.zip");
+const zipPath = join(root, "dist", "liarhunt-crazygames.zip");
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 

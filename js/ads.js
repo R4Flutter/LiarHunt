@@ -1,5 +1,5 @@
 /*
-  WHO'S LYING? — ads
+  LIARHUNT — ads
   One small layer so the game never talks to an ad network directly.
     WLAds.interstitial(type, name)  full-screen ad at a natural break   -> Promise<void>
     WLAds.rewarded(name)            player chooses to watch for a reward -> Promise<boolean> (true = reward earned)

@@ -1,5 +1,5 @@
 /*
-  WHO'S LYING? — platform layer
+  LIARHUNT — platform layer
   The game talks only to WLPlat. It works out where it's running:
 
   "crazygames"  The CrazyGames build (tools/build-crazygames.mjs adds the SDK).

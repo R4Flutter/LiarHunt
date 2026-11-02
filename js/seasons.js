@@ -1,5 +1,5 @@
 /*
-  WHO'S LYING? — seasons
+  LIARHUNT — seasons
   ----------------------
   A season lasts 4 weeks, Monday to Sunday. Season 1 starts with Daily #15 (Monday 9 November 2026).
   Each season brings its own case templates: a town, a cast of locals who keep turning up, story openers

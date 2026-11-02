@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// WHO'S LYING? leaderboard rules.
+// LIARHUNT leaderboard rules.
 // Paste this into Firebase console > Firestore Database > Rules, then click Publish.
 // They allow reading the leaderboard, and block impossible or duplicate scores.
 

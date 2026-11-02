@@ -1,4 +1,4 @@
-/* WHO'S LYING? — styles
+/* LIARHUNT — styles
    Layout: a full-screen detective desk on polygraph chart paper. A strip-chart recorder tops every case;
    on wide screens the facts sit left and the suspects right, so a case fits a 16:9 frame without page scrolling. */
 
@@ -222,7 +222,9 @@ p { margin: 0; }
 .brand {
   background: none; border: 0; padding: 0.2rem 0; cursor: pointer; white-space: nowrap; color: var(--ink);
   font-family: var(--display); font-weight: 900; font-size: 1.55rem; line-height: 1; letter-spacing: 0.01em;
+  display: inline-flex; align-items: center;
 }
+.brand-ico { width: 1.5em; height: 1.5em; flex: none; margin-right: 0.35em; }
 .brand .q, .boot-title .q { color: var(--needle); }
 .hud-back { margin-left: -0.5rem; }
 .hud-title { min-width: 0; display: grid; line-height: 1.05; }

@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "Who's Lying?",
-  "short_name": "Who's Lying",
+  "name": "LiarHunt",
+  "short_name": "LiarHunt",
   "description": "A daily detective game. Five short cases, one lie in each. New cases every day.",
   "start_url": "./",
   "scope": "./",

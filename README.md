@@ -1,4 +1,4 @@
-# Who's Lying?
+# LiarHunt
 
 **Play it: https://liarhunt.com**
 
@@ -145,7 +145,7 @@ Needs Node.js 18+:
 node tools/build-crazygames.mjs
 ```
 
-This makes `dist/whos-lying-crazygames.zip` (about 1.3 MB, 39 files). Upload that zip. The build:
+This makes `dist/liarhunt-crazygames.zip` (about 1.3 MB, 39 files). Upload that zip. The build:
 - adds the CrazyGames SDK v3
 - sends ads, saves, the mute setting, the username and invite links through the SDK
 - removes everything CrazyGames doesn't allow: AdSense, the Firebase leaderboard, WhatsApp/X buttons, links to other pages
@@ -165,20 +165,20 @@ This makes `dist/whos-lying-crazygames.zip` (about 1.3 MB, 39 files). Upload tha
 ### Submit it
 
 1. Sign up at https://developer.crazygames.com and click **Add game**.
-2. Upload `dist/whos-lying-crazygames.zip`. Choose **HTML5**.
+2. Upload `dist/liarhunt-crazygames.zip`. Choose **HTML5**.
 3. Turn on **Progress Save** (Data module) in the submission form.
 4. Orientation: **Both** (it works in landscape and portrait). Mobile: **Yes**.
 5. Upload the covers and preview videos from the store-assets pack.
 6. Paste the title, description, controls and tags below.
 7. Use the **Preview** tool and play a full case, a Rush run and the Daily.
 
-**Title:** Who's Lying?
+**Title:** LiarHunt
 
 **Short description:**
 Catch the liar! Read the facts, compare three stories and tap the suspect whose story can't be true.
 
 **Description:**
-Who's Lying? is a detective puzzle game for sharp eyes. In every case, the police checked a few facts and three suspects tell you where they were. One of them is lying. Find the story that can't be true and stamp it LIAR.
+LiarHunt is a detective puzzle game for sharp eyes. In every case, the police checked a few facts and three suspects tell you where they were. One of them is lying. Find the story that can't be true and stamp it LIAR.
 
 Climb through career chapters from Rookie Beat to Final Verdict, earn 3 stars by solving fast without hints, and watch out for twist cases where two people lie, or everyone tells the truth and a fact was planted. Race the clock in Rush mode, build combos for bonus coins, and come back for 5 new Daily Cases every day.
 

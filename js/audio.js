@@ -1,5 +1,5 @@
 /*
-  WHO'S LYING? — sound effects and background music
+  LIARHUNT — sound effects and background music
   Files live in assets/audio/. If one is missing, a small built-in synth sound
   plays instead, so the game never goes silent.
   Mute rules: the player's own switches, the platform's mute setting

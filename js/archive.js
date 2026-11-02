@@ -1,4 +1,4 @@
-/* WHO'S LYING? — past cases page */
+/* LIARHUNT — past cases page */
 (function () {
   "use strict";
   var WL = window.WL, esc = WL.esc;

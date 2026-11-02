@@ -1,5 +1,5 @@
 /*
-  WHO'S LYING? — progression and rewards
+  LIARHUNT — progression and rewards
   Pure game rules, no screens: levels and titles, coins, stars, combo,
   power-ups, the shop, daily missions, the 7-day login calendar and achievements.
   The game screens (game.js) call these and show the results.

@@ -1,5 +1,5 @@
 /*
-  WHO'S LYING? — visual effects
+  LIARHUNT — visual effects
   Confetti, floating "+20" numbers, screen shake, counting numbers and the
   detective badge drawing. Everything respects "reduce motion".
 */

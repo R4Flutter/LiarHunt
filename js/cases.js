@@ -1,5 +1,5 @@
 /*
-  WHO'S LYING? — hand-written case library
+  LIARHUNT — hand-written case library
   -----------------------------------------
   These cases feed the daily game. Each day uses:
     slot 2 -> medium[day - 1]

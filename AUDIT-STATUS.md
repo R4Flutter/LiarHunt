@@ -1,4 +1,4 @@
-# Who's Lying? — audit remediation status
+# LiarHunt — audit remediation status
 
 **Audit:** "Who's Lying? product audit" (1 Nov 2026, live site at commit `bb4c529`)
 **Checked against:** working tree on `season-1-and-audit-fixes` (HEAD `53fd10c` + 446 uncommitted lines) and the live site `https://liarhunt.com`

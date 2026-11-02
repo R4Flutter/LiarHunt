@@ -1,5 +1,5 @@
 /*
-  WHO'S LYING? — engine
+  LIARHUNT — engine
   Shared by the game (index.html) and the past-cases page (archive.html).
   - seeded random numbers (everyone gets the same daily cases)
   - day numbers and dates

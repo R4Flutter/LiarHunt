@@ -1,5 +1,5 @@
 /*
-  WHO'S LYING? — leaderboard + top-100 rewards
+  LIARHUNT — leaderboard + top-100 rewards
   Backend: Firebase (Firestore + anonymous sign-in), free plan is plenty.
   Switched on by pasting your Firebase web config into js/config.js (see README).
   Add ?lb=demo to the address to try the leaderboard with demo players (nothing is uploaded).

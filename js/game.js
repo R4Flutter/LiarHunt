@@ -1,5 +1,5 @@
 /*
-  WHO'S LYING? — the game screens
+  LIARHUNT — the game screens
   Modes:
     Career  endless chapters of 10 cases, stars, combo streak, chapter rewards
     Daily   5 cases a day, the same for everyone, one try each, share grid
@@ -1751,7 +1751,7 @@
   function challengeCode(day, p) { return day + "." + p.results.join("") + "." + Math.round(p.elapsed / 1000) + "." + (myName() || "A friend"); }
   function dailyShareText(day, p, replay, rank) {
     var grid = p.results.map(function (r) { return GRID[r]; }).join("");
-    var lines = [(CFG.siteName || "Who's Lying?") + " #" + day + (replay ? " (replay)" : ""), grid + " " + scoreOf(p.results) + "/5  ⏱️ " + WL.fmtTime(p.elapsed)];
+    var lines = [(CFG.siteName || "LiarHunt") + " #" + day + (replay ? " (replay)" : ""), grid + " " + scoreOf(p.results) + "/5  ⏱️ " + WL.fmtTime(p.elapsed)];
     var st = dailyStreak(), stand = !replay && S.lb.stand && S.lb.stand.day === day ? S.lb.stand : null;
     if (!replay && st > 1) lines.push("🔥 " + st + "-day streak");
     if (stand && stand.total >= RANK_MIN) lines.push("🕵️ Top " + Math.max(1, Math.ceil((100 * stand.rank) / stand.total)) + "% today");
@@ -1761,7 +1761,7 @@
     return lines.join("\n");
   }
   function rushShareText(score) {
-    var lines = [(CFG.siteName || "Who's Lying?") + " Rush 🕵️", "I caught " + score + " liar" + (score === 1 ? "" : "s") + " in a row. Can you beat that?"];
+    var lines = [(CFG.siteName || "LiarHunt") + " Rush 🕵️", "I caught " + score + " liar" + (score === 1 ? "" : "s") + " in a row. Can you beat that?"];
     var u = Plat.shareLink({ mode: "rush" }); if (u) lines.push(u);
     return lines.join("\n");
   }
@@ -2530,7 +2530,7 @@
   function groupBusy(on) { $("group-create").disabled = on; $("group-join").disabled = on; }
   function inviteGroup(g) {
     WL.track("group_invite", {});
-    shareOut("Join my Who's Lying? group “" + g.name + "” and let's compare our daily detective results! 🕵️\n" + Plat.shareLink({ g: g.code }) + "\nGroup code: " + g.code);
+    shareOut("Join my LiarHunt group “" + g.name + "” and let's compare our daily detective results! 🕵️\n" + Plat.shareLink({ g: g.code }) + "\nGroup code: " + g.code);
   }
   function leaveGroup(g) {
     showNotice({ icon: "👋", title: "Leave " + g.name + "?", text: "You can join again later with the code " + g.code + ".", yes: "Leave", no: "Stay",
@@ -2864,7 +2864,7 @@
       var u = Plat.shareLink({ w: code });
       if (!u) { toast("Case links can't be shared from here."); return; }
       WL.track("write_send", { facts: w.f.length, proof: w.x.length, length: u.length });
-      shareOut("🕵️ I wrote a Who's Lying? case for you: “" + w.t + "”.\nOne of three suspects is lying. Can you catch them, and prove it?\n" + u,
+      shareOut("🕵️ I wrote a LiarHunt case for you: “" + w.t + "”.\nOne of three suspects is lying. Can you catch them, and prove it?\n" + u,
         "Link copied. Paste it to a friend!");
     });
   });
@@ -3072,7 +3072,7 @@
     var k = b.dataset.room, d = room.data;
     if (k === "invite") {
       WL.track("room_invite", {});
-      shareOut("🕵️ Join my live Who's Lying? room! We all get the same cases at the same time. Can you catch the liars faster than me?\n" +
+      shareOut("🕵️ Join my live LiarHunt room! We all get the same cases at the same time. Can you catch the liars faster than me?\n" +
         Plat.shareLink({ room: room.code }) + "\nRoom code: " + room.code, "Link copied. Send it to your friends!");
     } else if (k === "start") LB.rooms.update(room.code, { state: "play", round: 1, roundAt: true }).catch(function (er) { toast(esc(LB.friendlyError(er))); });
     else if (k === "next") { room.moving = d.seed + d.round; LB.rooms.update(room.code, d.round < d.rounds ? { round: d.round + 1, roundAt: true } : { state: "end" }); }
@@ -3081,7 +3081,7 @@
     else if (k === "leave") { leaveRoom(); goHQ(); }
     else if (k === "share") {
       var list = roomRanked(), i = list.map(function (x) { return x.id; }).indexOf(room.me), me = list[i];
-      shareOut("🕵️ I came " + (i === 0 ? "first" : "#" + (i + 1)) + " of " + list.length + " in a live Who's Lying? room, with " + (me ? me.score : 0) + " points.\nPlay with us next time: " + Plat.shareLink({}));
+      shareOut("🕵️ I came " + (i === 0 ? "first" : "#" + (i + 1)) + " of " + list.length + " in a live LiarHunt room, with " + (me ? me.score : 0) + " points.\nPlay with us next time: " + Plat.shareLink({}));
     }
   });
 
@@ -3102,20 +3102,20 @@
   function updateRemLink() {
     var d = remStart(), end = new Date(d.getTime() + 5 * 60000), url = remUrl(), tz = "";
     try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (e) { /* ignore */ }
-    $("rem-google").href = "https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + encodeURIComponent("🕵️ New Who's Lying? cases") +
+    $("rem-google").href = "https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + encodeURIComponent("🕵️ New LiarHunt cases") +
       "&details=" + encodeURIComponent("5 new cases are waiting. Keep your streak alive: " + url) +
       "&dates=" + calDate(d) + "/" + calDate(end) + "&recur=" + encodeURIComponent("RRULE:FREQ=DAILY") + (tz ? "&ctz=" + encodeURIComponent(tz) : "");
   }
   function downloadIcs() {
     var d = remStart(), url = remUrl(), now = new Date();
-    var ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Who's Lying//Daily reminder//EN", "CALSCALE:GREGORIAN", "BEGIN:VEVENT",
-      "UID:whoslying-" + now.getTime() + "@whoslying", "DTSTAMP:" + now.toISOString().replace(/[-:]/g, "").replace(/\.\d+/, ""),
-      "DTSTART:" + calDate(d), "DURATION:PT5M", "RRULE:FREQ=DAILY", "SUMMARY:🕵️ New Who's Lying? cases",
+    var ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//LiarHunt//Daily reminder//EN", "CALSCALE:GREGORIAN", "BEGIN:VEVENT",
+      "UID:liarhunt-" + now.getTime() + "@liarhunt", "DTSTAMP:" + now.toISOString().replace(/[-:]/g, "").replace(/\.\d+/, ""),
+      "DTSTART:" + calDate(d), "DURATION:PT5M", "RRULE:FREQ=DAILY", "SUMMARY:🕵️ New LiarHunt cases",
       "DESCRIPTION:5 new cases are waiting. Keep your streak alive: " + url, "URL:" + url,
-      "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:New Who's Lying? cases", "TRIGGER:PT0M", "END:VALARM", "END:VEVENT", "END:VCALENDAR"].join("\r\n");
+      "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:New LiarHunt cases", "TRIGGER:PT0M", "END:VALARM", "END:VEVENT", "END:VCALENDAR"].join("\r\n");
     var a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
-    a.download = "whos-lying-reminder.ics";
+    a.download = "liarhunt-reminder.ics";
     document.body.appendChild(a); a.click();
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
     reminderSet("ics");
@@ -3603,7 +3603,7 @@
   function bootFailed(e) {
     console.warn("[save] couldn't load progress", e);
     var b = $("boot");
-    b.innerHTML = '<span class="boot-title">Who\'s Lying<span class="q">?</span></span>' +
+    b.innerHTML = '<span class="boot-title">Liar<span class="q">Hunt</span></span>' +
       '<p class="boot-note">Can\'t connect. Your progress is saved online, so the game needs the internet to start.</p>' +
       '<button class="btn primary" type="button" id="boot-retry">Try again</button>';
     b.removeAttribute("aria-hidden"); b.setAttribute("role", "alert");

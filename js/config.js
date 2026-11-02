@@ -1,10 +1,10 @@
 /*
-  WHO'S LYING? — settings
+  LIARHUNT — settings
   This is the only file you need to edit before going live.
 */
 window.WL_CONFIG = {
   // Your game's name, shown in share messages.
-  siteName: "Who's Lying?",
+  siteName: "LiarHunt",
 
   // Your real web address, with https:// and no slash at the end.
   // It goes into every shared result, so friends get a link they can tap.
