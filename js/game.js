@@ -24,7 +24,7 @@
   var mq = function (q) { return window.matchMedia ? window.matchMedia(q) : { matches: false, addEventListener: function () {} }; };
   var reduceMotion = mq("(prefers-reduced-motion: reduce)").matches;
   var coarse = mq("(pointer: coarse)").matches;
-  var GRID = { g: "🟩", y: "🟨", r: "🟥" };
+  var GRID = { g: "✅", y: "☑️", r: "❌" }; // ☑️: caught with a hint
   var LEVEL = { easy: "Easy case", medium: "Medium case", hard: "Hard case", twist: "Twist case" };
   var DAILY_TITLES = ["Every liar walked free.", "Rough day at the office.", "The liars won this round.", "Not bad, detective.", "Sharp eyes.", "Perfect. Nobody fooled you."];
   var CAUGHT = ["Caught!", "Got them!", "Case closed!", "Nailed it!", "Busted!"];
@@ -50,9 +50,14 @@
   function persist() { if (cloud.gone) return; if (!cloud.on) Plat.save(S); cloudDirty(); }
   function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
   function scoreOf(results) { return results.filter(function (r) { return r !== "r"; }).length; }
+  // A tick for each liar caught (amber if a hint helped), a cross for a miss, an empty slot for a case not played yet.
+  var TICK = '<path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/>', MARK = { g: TICK, y: TICK, r: '<path pathLength="1" d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>' };
   function cells(results, total) {
     var out = "";
-    for (var i = 0; i < (total || results.length); i++) out += '<span class="cell-' + (results[i] || "n") + '"></span>';
+    for (var i = 0; i < (total || results.length); i++) {
+      var r = results[i] || "n";
+      out += '<span class="cell-' + r + '">' + (MARK[r] ? '<svg viewBox="0 0 24 24" aria-hidden="true">' + MARK[r] + "</svg>" : "") + "</span>";
+    }
     return out;
   }
   function stars(n, of) {
@@ -295,7 +300,6 @@
     var li = P.levelInfo(S.xp);
     $("player-badge").innerHTML = FX.badge(li.level, li.tier, 64);
     $("player-name").textContent = playerName();
-    $("name-hint").hidden = !!(myName() || !S.settings.tutorialDone);
     var av = $("player-avatar");
     if (user && user.profilePictureUrl) { av.src = user.profilePictureUrl; av.hidden = false; } else av.hidden = true;
     var nt = P.nextTitle(li.level);
@@ -1992,7 +1996,7 @@
     if (showBadges) {
       $("stats-badges").innerHTML = S.lb.badges.length
         ? order.map(function (b) { return '<span class="badge-chip">' + b.icon + " " + esc(b.name) + " ×" + counts[b.icon] + "</span>"; }).join("")
-        : "No badges yet. Finish in a day's top 100 to win one.";
+        : "No badges yet. Finish in a day's top 10 to win one.";
     }
   }
 
@@ -2072,7 +2076,7 @@
   document.addEventListener("scroll", placeCoach, true);
 
   /* ---------- web leaderboard (Firebase) ---------- */
-  var nameCb = null, boardTab = "today", boardDay = "today", boardTok = 0;
+  var nameCb = null, boardTab = "today", boardTok = 0;
   function bestBadge() {
     var order = (LB.TIERS || []).map(function (t) { return t.icon; }), best = "", bi = 99;
     S.lb.badges.forEach(function (b) { var i = order.indexOf(b.icon); if (i >= 0 && i < bi) { bi = i; best = b.icon; } });
@@ -2123,14 +2127,14 @@
   function showRankCard(rank, stand) {
     var tier = rank ? LB.tierFor(rank) : null;
     var head = stand && stand.total >= RANK_MIN ? "You're <strong>#" + stand.rank + "</strong> of " + stand.total + " detectives today: " + pctText(stand) + "."
-      : rank ? "You're <strong>#" + rank + "</strong> on today's leaderboard so far." : "You're not in today's top 100 yet.";
+      : rank ? "You're <strong>#" + rank + "</strong> on today's leaderboard so far." : "You're not in today's top 10 yet.";
     var sub = rank ? "Ranks lock in once the day ends everywhere. Hold your spot to win " + (tier ? tier.icon + " " + tier.name : "a badge") + " and a free Magnifier."
-      : "Catch more liars, or catch them faster, to climb. The top 100 each day win a badge and a free Magnifier.";
+      : "Catch more liars, or catch them faster, to climb. The top 10 each day win a badge and a free Magnifier.";
     rankCard('<p class="rank-head">' + head + '</p><p class="rank-sub">' + sub + '</p><button class="btn ghost wide" type="button" id="rank-view">View leaderboard</button>');
     $("rank-view").addEventListener("click", function () { openBoard("today"); });
   }
   function joinCard(text, onJoined) {
-    rankCard('<p class="rank-head">' + text + '</p><p class="rank-sub">The top 100 each day win a badge and a free Magnifier.</p><button class="btn primary wide" type="button" id="rank-join">Join the leaderboard</button>');
+    rankCard('<p class="rank-head">' + text + '</p><p class="rank-sub">The top 10 each day win a badge and a free Magnifier.</p><button class="btn primary wide" type="button" id="rank-join">Join the leaderboard</button>');
     $("rank-join").addEventListener("click", function () { askName(onJoined); });
   }
   function postEndless(onDone) {
@@ -2154,40 +2158,36 @@
   }
   function loadBoard() {
     [].forEach.call(document.querySelectorAll("#dlg-board .tab"), function (t) { t.setAttribute("aria-selected", t.dataset.tab === boardTab ? "true" : "false"); });
-    [].forEach.call(document.querySelectorAll("#board-seg button"), function (b) { b.setAttribute("aria-pressed", b.dataset.day === boardDay ? "true" : "false"); });
-    $("board-seg").hidden = boardTab !== "today";
     $("board-head").hidden = true;
     var tok = ++boardTok;
     if (boardTab === "league") { loadLeague(tok); return; }
     if (boardTab === "friends") { loadFriends(tok); return; }
     if (boardTab === "season") { loadSeason(tok); return; }
-    var list = $("board-list"), tab = boardTab === "today" ? boardDay : boardTab, day = tab === "yesterday" ? TODAY - 1 : TODAY;
+    var list = $("board-list"), tab = boardTab;
     $("board-note").textContent = tab === "endless" ? "The longest Rush runs of all time."
-      : tab === "today" ? "Daily #" + TODAY + ". Ranks lock in once the day ends everywhere. The top 100 win a badge."
-      : "Daily #" + day + ". Final ranks. The top 100 won a badge and a free Magnifier.";
-    if (tab === "yesterday" && day < 1) { list.innerHTML = '<li class="board-empty">No yesterday yet. Daily #1 is today.</li>'; renderBoardMe(null); return; }
+      : "Daily #" + TODAY + ". Ranks lock in once the day ends everywhere. The top 10 win a badge.";
     list.innerHTML = '<li class="board-empty">Loading...</li>';
-    (tab === "endless" ? LB.topEndless() : LB.topDaily(day)).then(function (rows) {
+    (tab === "endless" ? LB.topEndless() : LB.topDaily(TODAY)).then(function (rows) {
       if (tok !== boardTok) return;
-      if (rows.length < RANK_MIN) { // an almost empty board says nobody plays, so it waits until it has people on it
-        list.innerHTML = '<li class="board-empty">' + warming(rows.length, tab === "endless" ? "have a Rush run on the board" : "have finished Daily #" + day) + "</li>";
-      } else list.innerHTML = boardRows(rows, function (r) {
+      list.innerHTML = boardRows(rows, function (r) {
         return tab === "endless" ? '<span class="b-score">' + r.best + "</span>" : '<span class="b-score">' + r.score + '/5</span><span class="b-time">' + WL.fmtTime(r.timeMs) + "</span>";
       });
       renderBoardMe(rows);
     }).catch(function (e) { if (tok === boardTok) list.innerHTML = '<li class="board-empty">' + esc(LB.friendlyError(e)) + "</li>"; });
   }
-  function warming(n, what) {
-    return "<b>" + n + " detective" + (n === 1 ? "" : "s") + "</b> " + (n === 1 ? what.replace(/^have/, "has") : what) + " so far. The board opens at " + RANK_MIN +
-      ". Send today's cases to a friend to fill it up!";
-  }
+  // The top 3 stand on a podium (CSS puts 2nd left, 1st in the middle); 4th to 10th follow as rows.
   function boardRows(rows, score) {
+    if (!rows.length) return '<li class="board-empty">Nobody on the board yet. Be the first!</li>';
     var me = LB.myId();
-    return rows.map(function (r, i) {
-      var mine = r.uid === me;
-      return '<li class="board-row' + (mine ? " me" : "") + '"><span class="b-rank">' + (i + 1) + '</span><span class="b-name">' +
-        (r.badge ? '<span class="b-badge" aria-hidden="true">' + esc(r.badge) + "</span>" : "") + (r.name ? esc(r.name) : '<span class="muted">Unnamed detective</span>') +
-        (mine ? " <em>(you)</em>" : "") + "</span>" + score(r) + "</li>";
+    function who(r) { return (r.name ? esc(r.name) : '<span class="muted">Unnamed detective</span>') + (r.uid === me ? " <em>(you)</em>" : ""); }
+    var pod = rows.slice(0, 3).map(function (r, i) {
+      return '<div class="pod p' + (i + 1) + (r.uid === me ? " me" : "") + '"><span class="pod-face face">' + WL.avatar(r.name || "Detective") +
+        '<b class="pod-medal" aria-hidden="true">' + LB.TIERS[i].icon + '</b></span><span class="pod-name">' + who(r) + '</span><span class="pod-score">' + score(r) +
+        '</span><span class="pod-block"><span class="sr">Number </span>' + (i + 1) + "</span></div>";
+    }).join("");
+    return '<li class="podium">' + pod + "</li>" + rows.slice(3).map(function (r, i) {
+      return '<li class="board-row' + (r.uid === me ? " me" : "") + '" style="--i:' + i + '"><span class="b-rank">' + (i + 4) + '</span><span class="b-name">' +
+        (r.badge ? '<span class="b-badge" aria-hidden="true">' + esc(r.badge) + "</span>" : "") + who(r) + "</span>" + score(r) + "</li>";
     }).join("");
   }
   /* ---------- season scoreboard (web) ---------- */
@@ -2212,8 +2212,7 @@
     list.innerHTML = '<li class="board-empty">Loading...</li>';
     syncSeason().catch(function () { return null; }).then(function () { return LB.seasonTop(SEASON); }).then(function (rows) {
       if (tok !== boardTok) return;
-      list.innerHTML = rows.length < RANK_MIN ? '<li class="board-empty">' + warming(rows.length, "are on the season scoreboard") + "</li>"
-        : boardRows(rows, function (r) { return '<span class="b-score">' + r.pts + '</span><span class="b-time">' + r.days + (r.days === 1 ? " day" : " days") + "</span>"; });
+      list.innerHTML = boardRows(rows, function (r) { return '<span class="b-score">' + r.pts + '</span><span class="b-time">' + r.days + (r.days === 1 ? " day" : " days") + "</span>"; });
       renderBoardMe(rows);
     }).catch(function (e) { if (tok === boardTok) list.innerHTML = '<li class="board-empty">' + esc(LB.friendlyError(e)) + "</li>"; });
   }
@@ -2227,9 +2226,8 @@
       return;
     }
     var rank = rows ? rankOf(rows) : 0;
-    box.innerHTML = "<p>Playing as <strong>" + esc(S.settings.playerName) + "</strong>" + (rank ? ", ranked <strong>#" + rank + "</strong>" : "") +
-      '. <button class="link-btn" type="button" id="board-rename">Change name</button></p>';
-    $("board-rename").addEventListener("click", function () { askName(function () { loadBoard(); }); });
+    if (rank && rank <= 3) setTimeout(function () { FX.confetti({ count: 70 }); }, 800); // you're on the podium
+    box.innerHTML = "<p>Playing as <strong>" + esc(S.settings.playerName) + "</strong>" + (rank ? ", ranked <strong>#" + rank + "</strong>" : "") + ".</p>";
   }
   function checkRewards() {
     if (!LB.enabled() || !S.settings.playerName) return;
@@ -2250,8 +2248,8 @@
     won.sort(function (a, b) { return a.rank - b.rank; });
     var top = won[0];
     $("reward-badge").textContent = top.tier.icon;
-    $("reward-h").textContent = top.rank === 1 ? "Number one detective!" : "You made the top 100!";
-    $("reward-text").textContent = "You finished #" + top.rank + " on Daily #" + top.day + (won.length > 1 ? ", and made the top 100 on " + (won.length - 1) + " more day" + (won.length > 2 ? "s" : "") : "") + ".";
+    $("reward-h").textContent = top.rank === 1 ? "Number one detective!" : "You made the top 10!";
+    $("reward-text").textContent = "You finished #" + top.rank + " on Daily #" + top.day + (won.length > 1 ? ", and made the top 10 on " + (won.length - 1) + " more day" + (won.length > 2 ? "s" : "") : "") + ".";
     $("reward-list").innerHTML = won.map(function (w) { return "<li>" + w.tier.icon + " " + esc(w.tier.name) + " badge for Daily #" + w.day + "</li>"; }).join("") +
       "<li>" + won.length + " free Magnifier" + (won.length > 1 ? "s" : "") + "</li><li>Your best badge now shows next to your name</li>";
     WL.track("reward_won", { rank: top.rank });
@@ -2260,7 +2258,6 @@
   }
   if ($("dlg-board")) {
     [].forEach.call(document.querySelectorAll("#dlg-board .tab"), function (t) { t.addEventListener("click", function () { Snd.play("click"); boardTab = t.dataset.tab; loadBoard(); }); });
-    $("board-seg").addEventListener("click", function (e) { var b = e.target.closest("[data-day]"); if (b) { boardDay = b.dataset.day; loadBoard(); } });
     $("name-form").addEventListener("submit", function (e) {
       e.preventDefault();
       var first = !S.settings.playerName;

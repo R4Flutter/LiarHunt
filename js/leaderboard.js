@@ -1,5 +1,5 @@
 /*
-  LIARHUNT — leaderboard + top-100 rewards
+  LIARHUNT — leaderboard + top-10 rewards
   Backend: Firebase (Firestore + anonymous sign-in), free plan is plenty.
   Switched on by pasting your Firebase web config into js/config.js (see README).
   Add ?lb=demo to the address to try the leaderboard with demo players (nothing is uploaded).
@@ -7,7 +7,7 @@
   WLLB.enabled()                      is the leaderboard switched on?
   WLLB.submitDaily(entry)             post today's result      -> Promise
   WLLB.submitEndless(entry)           post an endless best     -> Promise
-  WLLB.topDaily(day) / topEndless()   top 100 lists            -> Promise<rows>
+  WLLB.topDaily(day) / topEndless()   top 10 lists             -> Promise<rows>
   WLLB.myId()                         this player's id (after the first call)
   WLLB.rewardsFor(days, history)      finished days -> ranks   -> Promise<[{day, rank}]>
 */
@@ -19,15 +19,14 @@
   try { if (new URLSearchParams(location.search).get("lb") === "demo") provider = "demo"; } catch (e) { /* ignore */ }
 
   var SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
-  var LIMIT = 100;
+  var LIMIT = 10; // the board shows the top 10, and they win the badges
   var db = null, uid = null, readyP = null;
 
   var TIERS = [
     { max: 1, icon: "🥇", name: "Chief Inspector" },
     { max: 2, icon: "🥈", name: "Inspector" },
     { max: 3, icon: "🥉", name: "Sergeant" },
-    { max: 10, icon: "🎖️", name: "Detective" },
-    { max: 100, icon: "🏅", name: "Sharp Eye" }
+    { max: 10, icon: "🎖️", name: "Detective" }
   ];
   function tierFor(rank) {
     for (var i = 0; i < TIERS.length; i++) if (rank >= 1 && rank <= TIERS[i].max) return TIERS[i];
@@ -96,24 +95,44 @@
 
   /* ---------- demo backend (local only, clearly labelled in the UI) ---------- */
   var DEMO_KEY = "whoslying:lbdemo";
-  var DEMO_NAMES = ["Sherlock_K", "NoirNeha", "AgentOmar", "Miss Marple", "TruthSeeker", "Kenji.D", "LieDetector", "Amara77", "Inspector V",
-    "Detective Li", "CaseClosed", "Priya_P", "Sam Spade", "ColdCase", "Zara Q", "Hiro", "Lucía", "Femi", "Astrid", "Rafael",
-    "SharpEyes", "Watson2", "Nadia", "Poirot_fan", "Arjun", "Jonas", "Mei", "Diego", "Ingrid", "Kwame"];
   function demoId() {
     try { var id = localStorage.getItem(DEMO_KEY + ":id"); if (!id) { id = "demo-" + Math.random().toString(36).slice(2, 10); localStorage.setItem(DEMO_KEY + ":id", id); } return id; }
     catch (e) { return "demo-me"; }
   }
   function demoStore() { try { return JSON.parse(localStorage.getItem(DEMO_KEY)) || { scores: {}, endless: {} }; } catch (e) { return { scores: {}, endless: {} }; } }
   function demoSave(s) { try { localStorage.setItem(DEMO_KEY, JSON.stringify(s)); } catch (e) { /* ignore */ } }
-  function demoRivals(day) {
-    var r = window.WL.rngFrom("lbdemo-" + day), out = [];
-    for (var i = 0; i < DEMO_NAMES.length; i++) {
-      var score = 5 - Math.floor(Math.pow(r(), 1.7) * 4);
-      out.push({ uid: "rival" + i, name: DEMO_NAMES[i], badge: i < 3 ? TIERS[i].icon : r() < 0.2 ? TIERS[4].icon : "", day: day, score: score, timeMs: Math.round(55000 + r() * 160000) });
+
+  /* ---------- filler detectives ----------
+     A crew of made-up regulars, so a board is never empty. Seeded by the day (or season), so every
+     player sees the same ones and ranks stay put. They are sharp but slow: a clean, quick run beats them. */
+  var BOT_NAMES = ["Sherlock_K", "NoirNeha", "AgentOmar", "Miss Marple", "TruthSeeker", "Kenji.D", "LieDetector", "Amara77", "Inspector V",
+    "Detective Li", "CaseClosed", "Priya_P", "Sam Spade", "ColdCase", "Zara Q", "Hiro", "Lucía", "Femi", "Astrid", "Rafael",
+    "SharpEyes", "Watson2", "Nadia", "Poirot_fan", "Arjun", "Jonas", "Mei", "Diego", "Ingrid", "Kwame"];
+  function bots(kind, key) {
+    var W = window.WL, r = W.rngFrom("bots-" + kind + "-" + key), names = BOT_NAMES.slice(), out = [];
+    var played = kind === "season" ? Math.max(0, Math.min(W.SEASON_DAYS, W.dayNumber() - (W.SEASON_ONE + (key - 1) * W.SEASON_DAYS) + 1)) : 0;
+    for (var i = 0; i < 12; i++) {
+      var b = { uid: "bot-" + i, name: names.splice(Math.floor(r() * names.length), 1)[0], badge: r() < 0.3 ? TIERS[Math.floor(r() * TIERS.length)].icon : "" };
+      if (kind === "daily") { b.day = key; b.score = 5 - Math.floor(Math.pow(r(), 1.4) * 4); b.timeMs = Math.round(75000 + r() * 180000); }
+      else if (kind === "endless") b.best = Math.round(3 + Math.pow(r(), 1.5) * 30);
+      else { b.days = Math.round(played * (0.5 + r() * 0.5)); b.pts = Math.round(b.days * (3 + r() * 1.6)); b.timeMs = b.days * Math.round(90000 + r() * 120000); }
+      if (kind !== "season" || b.days) out.push(b);
     }
     return out;
   }
-  function sortDaily(rows) { return rows.sort(function (a, b) { return b.score - a.score || a.timeMs - b.timeMs; }); }
+  var ORDER = {
+    daily: function (a, b) { return b.score - a.score || a.timeMs - b.timeMs; },
+    endless: function (a, b) { return b.best - a.best; },
+    season: function (a, b) { return b.pts - a.pts || a.timeMs - b.timeMs; }
+  };
+  function withBots(kind, key) { return function (rows) { return rows.concat(bots(kind, key)).sort(ORDER[kind]).slice(0, LIMIT); }; }
+  // The real standing { rank, total }, counting the filler detectives too.
+  function plusBots(kind, key, me) {
+    return function (st) {
+      var list = bots(kind, key);
+      return { rank: st.rank + list.filter(function (b) { return ORDER[kind](b, me) < 0; }).length, total: st.total + list.length };
+    };
+  }
 
   /* ---------- counting (Firestore REST: the compat SDK can't count) ---------- */
   function demoOff() { var e = new Error("demo"); e.code = "demo"; return Promise.reject(e); }
@@ -448,29 +467,25 @@
         if (provider === "demo") {
           var s = demoStore(), mine = [];
           Object.keys(s.scores).forEach(function (k) { if (s.scores[k].day === day) mine.push(s.scores[k]); });
-          return sortDaily(demoRivals(day).concat(mine)).slice(0, LIMIT);
+          return mine;
         }
         return db.collection("scores").where("day", "==", day).orderBy("score", "desc").orderBy("timeMs", "asc").limit(LIMIT).get()
           .then(function (snap) { return snap.docs.map(function (d) { return d.data(); }); });
-      });
+      }).then(withBots("daily", day));
     },
 
     topEndless: function () {
       return ready().then(function () {
-        if (provider === "demo") {
-          var s = demoStore(), r = window.WL.rngFrom("lbdemo-endless");
-          var rows = DEMO_NAMES.map(function (n, i) { return { uid: "rival" + i, name: n, badge: i < 2 ? TIERS[i].icon : "", best: Math.round(4 + r() * 40) }; });
-          Object.keys(s.endless).forEach(function (k) { rows.push(s.endless[k]); });
-          return rows.sort(function (a, b) { return b.best - a.best; }).slice(0, LIMIT);
-        }
+        if (provider === "demo") { var s = demoStore(); return Object.keys(s.endless).map(function (k) { return s.endless[k]; }); }
         return db.collection("endless").orderBy("best", "desc").limit(LIMIT).get()
           .then(function (snap) { return snap.docs.map(function (d) { return d.data(); }); });
-      });
+      }).then(withBots("endless", 0));
     },
 
     /* Rank among everyone who posted today: { rank, total } */
     dailyStanding: function (day, score, timeMs) {
-      return standing("scores", [["day", day]], "score", score, Math.max(20000, Math.round(timeMs)));
+      var t = Math.max(20000, Math.round(timeMs));
+      return standing("scores", [["day", day]], "score", score, t).then(plusBots("daily", day, { score: score, timeMs: t }));
     },
     // Everyone's Daily result is posted (without a name until they join), so counts and percentiles are real.
     // This puts the name on today's result once they join.
@@ -501,9 +516,11 @@
       if (provider !== "firebase") return demoOff();
       return ready().then(function () {
         return db.collection("seasons").where("season", "==", season).orderBy("pts", "desc").orderBy("timeMs", "asc").limit(LIMIT).get();
-      }).then(function (snap) { return snap.docs.map(function (d) { return d.data(); }); });
+      }).then(function (snap) { return snap.docs.map(function (d) { return d.data(); }); }).then(withBots("season", season));
     },
-    seasonStanding: function (season, pts, timeMs) { return standing("seasons", [["season", season]], "pts", pts, timeMs); },
+    seasonStanding: function (season, pts, timeMs) {
+      return standing("seasons", [["season", season]], "pts", pts, timeMs).then(plusBots("season", season, { pts: pts, timeMs: timeMs }));
+    },
 
     LEAGUES: LEAGUES,
     leagueMove: leagueMove,

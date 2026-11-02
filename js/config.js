@@ -40,7 +40,7 @@ window.WL_CONFIG = {
 
   leaderboard: {
     // Paste your Firebase web app config here to switch on the leaderboard and
-    // top-100 rewards (README, step "Switch on the leaderboard"). It looks like:
+    // top-10 rewards (README, step "Switch on the leaderboard"). It looks like:
     // firebase: { apiKey: "AIza...", authDomain: "your-app.firebaseapp.com", projectId: "your-app", appId: "1:123:web:abc" }
     // This key is safe to publish: the security rules in firebase/firestore.rules protect the data.
     // Until then the leaderboard stays hidden. Add ?lb=demo to the address to preview it with demo players.

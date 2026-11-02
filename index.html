@@ -73,7 +73,7 @@
             <button class="player-open" id="btn-profile" type="button" aria-label="Open your profile">
               <span class="player-badge" id="player-badge"></span>
               <span class="player-info">
-                <span class="player-name"><img class="player-avatar" id="player-avatar" alt="" hidden><span id="player-name">Detective</span><span class="name-hint" id="name-hint" hidden>Add your name</span></span>
+                <span class="player-name"><img class="player-avatar" id="player-avatar" alt="" hidden><span id="player-name">Detective</span></span>
                 <span class="player-title" id="player-title">Rookie</span>
                 <span class="xpbar" role="progressbar" id="xpbar" aria-valuemin="0"><span id="xpfill"></span></span>
                 <span class="xp-text" id="xp-text"></span>
@@ -552,10 +552,6 @@
       <button class="tab" type="button" role="tab" data-tab="season" aria-selected="false">Season</button>
       <button class="tab" type="button" role="tab" data-tab="endless" aria-selected="false">Rush</button>
     </div>
-    <div class="seg" id="board-seg" role="group" aria-label="Which day">
-      <button type="button" data-day="today" aria-pressed="true">Today</button>
-      <button type="button" data-day="yesterday" aria-pressed="false">Yesterday</button>
-    </div>
     <div class="board-head" id="board-head" hidden></div>
     <p class="board-note" id="board-note"></p>
     <ol class="board" id="board-list" aria-live="polite"></ol>
@@ -578,7 +574,7 @@
 <dialog id="dlg-reward" aria-labelledby="reward-h">
   <div class="dlg center">
     <p class="reward-badge" id="reward-badge" aria-hidden="true"></p>
-    <h2 id="reward-h">You made the top 100!</h2>
+    <h2 id="reward-h">You made the top 10!</h2>
     <p id="reward-text"></p>
     <ul class="reward-list" id="reward-list"></ul>
     <button class="btn primary wide" type="button" data-close>Nice!</button>

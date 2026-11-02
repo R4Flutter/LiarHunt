@@ -505,7 +505,12 @@ button.clue:not(:disabled):hover { filter: brightness(0.96); }
 .res-title { margin: -0.4rem 0 0; font-family: var(--display); font-weight: 900; font-size: 3.4rem; line-height: 0.9; text-wrap: balance; }
 #res-body { display: grid; gap: 0.7rem; justify-items: start; }
 .res-grid { display: flex; gap: 0.45rem; }
-.res-grid span { width: 2.8rem; height: 2.8rem; border-radius: 6px; border: 2px solid var(--ink); }
+.res-grid span { width: 2.8rem; height: 2.8rem; display: grid; place-items: center; background: none; }
+.res-grid svg { width: 100%; height: 100%; fill: none; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; overflow: visible; }
+.res-grid .cell-g svg { stroke: var(--ok); }
+.res-grid .cell-y svg { stroke: var(--hint); }
+.res-grid .cell-r svg { stroke: var(--needle); }
+.res-grid .cell-n::before { content: ""; width: 24%; height: 24%; border-radius: 50%; background: var(--grid-strong); } /* not played yet */
 .res-big { font-family: var(--display); font-weight: 900; font-size: 6rem; line-height: 0.85; }
 .res-line { font-size: var(--s1); }
 .res-line strong { font-variant-numeric: tabular-nums; }
@@ -711,7 +716,7 @@ body:not(.booting) .boot { opacity: 0; pointer-events: none; }
 .tab[aria-selected="true"] { background: var(--ink); color: var(--paper); }
 .board-note { color: var(--pencil); font-size: var(--s-1); }
 .demo-note { border: 2px dashed var(--needle); border-radius: var(--r); padding: 0.45rem 0.6rem; font-size: var(--s-1); }
-.board { list-style: none; margin: 0; padding: 0; display: grid; max-height: min(42vh, 420px); overflow-y: auto; border-top: 2px solid var(--ink); }
+.board { list-style: none; margin: 0; padding: 0; display: grid; max-height: min(70vh, 640px); overflow-y: auto; border-top: 2px solid var(--ink); }
 .board-row { display: grid; grid-template-columns: 2.4rem 1fr auto auto; gap: 0.6rem; align-items: center; padding: 0.45rem 0.2rem; border-bottom: 1px solid var(--grid-strong); font-variant-numeric: tabular-nums; }
 .board-row.me { background: var(--tag); color: var(--tag-ink); }
 .b-rank { font-family: var(--display); font-weight: 900; font-size: 1.2rem; text-align: center; }
@@ -725,6 +730,28 @@ body:not(.booting) .boot { opacity: 0; pointer-events: none; }
 .board-row.me .b-time { color: inherit; }
 .board-empty { padding: 1rem 0.2rem; color: var(--pencil); }
 .board-me { display: grid; gap: 0.45rem; }
+/* top 3 on a podium: 2nd, 1st, 3rd from the left */
+.podium { display: flex; align-items: flex-end; justify-content: center; gap: 0.45rem; padding: 1.1rem 0.3rem 0; border-bottom: 2px solid var(--ink); }
+.pod { flex: 1 1 0; min-width: 0; max-width: 9rem; display: grid; justify-items: center; gap: 0.15rem; text-align: center; font-variant-numeric: tabular-nums; }
+.pod.p1 { order: 2; } .pod.p2 { order: 1; } .pod.p3 { order: 3; }
+.pod-face { position: relative; width: 3.3rem; height: 3.3rem; border: 2px solid var(--ink); border-radius: 50%; background: var(--surface); }
+.pod-face svg { width: 100%; height: 100%; border-radius: 50%; display: block; }
+.pod.p1 .pod-face { width: 4.3rem; height: 4.3rem; border-color: var(--gold); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 40%, transparent); }
+.pod-medal { position: absolute; right: -0.4rem; bottom: -0.3rem; font-size: 1.3rem; line-height: 1; font-weight: 400; }
+.pod-name { max-width: 100%; margin-top: 0.2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; font-size: var(--s-1); }
+.pod-name em { font-style: normal; font-weight: 400; }
+.pod.me .pod-name { color: var(--needle); }
+.pod-score { display: flex; flex-wrap: wrap; gap: 0 0.35rem; align-items: baseline; justify-content: center; }
+.pod-score .b-time { min-width: 0; text-align: center; }
+.pod-block {
+  width: 100%; height: 3.4rem; margin-top: 0.3rem; display: grid; place-items: center; transform-origin: bottom;
+  border: 2px solid var(--ink); border-bottom: 0; border-radius: 9px 9px 0 0; background: color-mix(in srgb, var(--grid-strong) 55%, var(--surface));
+  font-family: var(--display); font-weight: 900; font-size: 1.7rem; color: var(--ink);
+}
+.pod.p1 .pod-block { height: 4.8rem; background: var(--gold); color: #1b1a17; font-size: 2.3rem; }
+.pod.p3 .pod-block { height: 2.6rem; background: color-mix(in srgb, #c27c3e 45%, var(--surface)); }
+.podium ~ .board-row:not(.me) .b-rank { color: var(--pencil); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .field-label { font-weight: 700; }
 .field { width: 100%; min-height: 2.9rem; padding: 0.5rem 0.7rem; font: inherit; font-size: var(--s1); border: 2px solid var(--ink); border-radius: var(--r); background: var(--paper); color: var(--ink); }
 .field-error { color: var(--needle); font-weight: 700; }
@@ -792,7 +819,7 @@ dialog[open] { animation: dlgin 0.24s cubic-bezier(0.2, 1.25, 0.4, 1) both; }
 .today-sub strong { color: var(--ink); font-variant-numeric: tabular-nums; }
 .today-meta { font-weight: 700; font-size: var(--s-1); background: var(--tag); color: var(--tag-ink); border-radius: 8px; padding: 0.4rem 0.65rem; line-height: 1.4; }
 .res-grid.small { gap: 0.3rem; }
-.res-grid.small span { width: 1.55rem; height: 1.55rem; border-radius: 5px; }
+.res-grid.small span { width: 1.55rem; height: 1.55rem; }
 
 /* ---------- HQ: Case of the Week ---------- */
 .week-card {
@@ -876,7 +903,7 @@ a.mode-tile { text-decoration: none; }
 .vs-side.win { background: color-mix(in srgb, var(--ok) 16%, var(--surface)); box-shadow: inset 0 0 0 2px var(--ok); }
 .vs-x { font-family: var(--display); font-weight: 900; font-size: 1.35rem; color: var(--needle); }
 .vs-side .res-grid, .file .res-grid { gap: 0.2rem; }
-.vs-side .res-grid span, .file .res-grid span { width: 1.05rem; height: 1.05rem; border-width: 1.5px; border-radius: 3px; }
+.vs-side .res-grid span, .file .res-grid span { width: 1.05rem; height: 1.05rem; }
 .res-extra { display: grid; gap: 0.5rem; }
 .res-extra:empty { display: none; }
 .next-card { display: flex; align-items: center; gap: 0.7rem; border: 2px solid var(--ink); border-radius: var(--r); background: var(--surface); padding: 0.6rem 0.7rem; box-shadow: 0 2px 0 var(--ink); }
@@ -1103,10 +1130,6 @@ html.game body {
 }
 .player-open:hover { background: color-mix(in srgb, var(--surface) 75%, transparent); }
 .player-title, .xp-text, .xpbar { display: block; }
-.name-hint {
-  flex: none; font-family: var(--body); font-size: 0.72rem; font-weight: 700; line-height: 1.3; letter-spacing: 0;
-  color: var(--needle); border: 1.5px dashed var(--needle); border-radius: 99px; padding: 0.05rem 0.5rem; margin-left: 0.15rem;
-}
 /* profile: an ID card */
 .profile-dlg { width: min(34rem, calc(100% - 28px)); }
 .id-card {
@@ -1375,6 +1398,74 @@ button.clue:active:not(:disabled), .suspect-wrap .suspect:active:not(:disabled) 
 #res-body .res-grid span:nth-child(5) { animation-delay: 0.36s; }
 @keyframes flipin { from { opacity: 0; transform: perspective(240px) rotateX(-90deg); } }
 
+/* ticks and crosses draw themselves, one after another */
+.res-grid path { stroke-dasharray: 1; animation: markdraw 0.42s var(--ease-out) 0.12s backwards; }
+.res-grid span:nth-child(2) path { animation-delay: 0.2s; }
+.res-grid span:nth-child(3) path { animation-delay: 0.28s; }
+.res-grid span:nth-child(4) path { animation-delay: 0.36s; }
+.res-grid span:nth-child(5) path { animation-delay: 0.44s; }
+@keyframes markdraw { from { stroke-dashoffset: 1; } }
+
+/* leaderboard: the podium rises, the top 3 drop onto it, 1st place gets a ring and a swinging medal, then the rest slide in */
+.pod-block { animation: podrise 0.5s cubic-bezier(0.2, 1.25, 0.4, 1) backwards; }
+.pod.p3 .pod-block { animation-delay: 0.08s; }
+.pod.p1 .pod-block { animation-delay: 0.16s; }
+.pod > :not(.pod-block) { animation: poddrop 0.45s cubic-bezier(0.2, 1.5, 0.4, 1) 0.3s backwards; }
+.pod.p3 > :not(.pod-block) { animation-delay: 0.38s; }
+.pod.p1 > :not(.pod-block) { animation-delay: 0.48s; }
+@keyframes podrise { from { transform: scaleY(0); } }
+@keyframes poddrop { from { opacity: 0; transform: translateY(-16px) scale(0.85); } }
+.pod.p1 .pod-face::after {
+  content: ""; position: absolute; inset: -5px; border-radius: 50%; border: 2px solid var(--gold); pointer-events: none;
+  animation: ringout 2.2s ease-out 1s infinite backwards;
+}
+@keyframes ringout { from { transform: scale(0.92); opacity: 0.9; } to { transform: scale(1.4); opacity: 0; } }
+.pod.p1 .pod-medal { transform-origin: 50% 10%; animation: medalswing 3s ease-in-out 1.1s infinite; }
+@keyframes medalswing { 0%, 40%, 100% { transform: none; } 10% { transform: rotate(16deg); } 20% { transform: rotate(-11deg); } 30% { transform: rotate(5deg); } }
+.board-row { animation: rowin 0.3s var(--ease-out) calc(var(--i, 0) * 45ms) backwards; }
+.podium ~ .board-row { animation-delay: calc(0.55s + var(--i, 0) * 45ms); }
+@keyframes rowin { from { opacity: 0; transform: translateX(-12px); } }
+
+/* every dialog's contents arrive a beat apart, after the dialog itself */
+dialog[open] .dlg > * { animation: dealin 0.26s var(--ease-out) 0.04s backwards; }
+dialog[open] .dlg > :nth-child(2) { animation-delay: 0.07s; }
+dialog[open] .dlg > :nth-child(3) { animation-delay: 0.1s; }
+dialog[open] .dlg > :nth-child(4) { animation-delay: 0.13s; }
+dialog[open] .dlg > :nth-child(5) { animation-delay: 0.16s; }
+dialog[open] .dlg > :nth-child(n+6) { animation-delay: 0.19s; }
+dialog[open] .reward-badge { animation: badgein 0.6s cubic-bezier(0.2, 1.5, 0.4, 1) 0.1s backwards; }
+dialog[open] .dlg > .notice-icon { animation: badgein 0.55s cubic-bezier(0.2, 1.5, 0.4, 1) both; }
+:is(.reward-list, .shop-grid) > * { animation: dealin 0.28s var(--ease-out) 0.15s backwards; }
+:is(.reward-list, .shop-grid) > :nth-child(2) { animation-delay: 0.2s; }
+:is(.reward-list, .shop-grid) > :nth-child(3) { animation-delay: 0.25s; }
+:is(.reward-list, .shop-grid) > :nth-child(4) { animation-delay: 0.3s; }
+:is(.reward-list, .shop-grid) > :nth-child(n+5) { animation-delay: 0.35s; }
+.dist-bar { transform-origin: left; animation: barin 0.5s var(--ease-out) 0.15s backwards; }
+@keyframes barin { from { transform: scaleX(0); } }
+
+/* HQ: the week's slots and the career stops pop in after their card */
+.scr.hq:not([hidden]) :is(.week-slots li, .nodes > *) { animation: popin 0.32s cubic-bezier(0.2, 1.6, 0.4, 1) 0.3s backwards; }
+.scr.hq:not([hidden]) :is(.week-slots li, .nodes > *):nth-child(2) { animation-delay: 0.34s; }
+.scr.hq:not([hidden]) :is(.week-slots li, .nodes > *):nth-child(3) { animation-delay: 0.38s; }
+.scr.hq:not([hidden]) :is(.week-slots li, .nodes > *):nth-child(4) { animation-delay: 0.42s; }
+.scr.hq:not([hidden]) :is(.week-slots li, .nodes > *):nth-child(5) { animation-delay: 0.46s; }
+.scr.hq:not([hidden]) :is(.week-slots li, .nodes > *):nth-child(6) { animation-delay: 0.5s; }
+.scr.hq:not([hidden]) :is(.week-slots li, .nodes > *):nth-child(n+7) { animation-delay: 0.54s; }
+@keyframes popin { from { opacity: 0; transform: scale(0.6); } }
+
+/* the logo icon spins in, and tilts when you point at it */
+.brand:not([hidden]) .brand-ico { animation: iconin 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) backwards; }
+.brand-ico { transition: transform 0.25s cubic-bezier(0.2, 1.5, 0.4, 1); }
+@media (hover: hover) { .brand:hover .brand-ico { transform: rotate(-8deg) scale(1.1); } }
+@keyframes iconin { from { opacity: 0; transform: scale(0.4) rotate(-25deg); } }
+.boot-title { animation: dealin 0.4s var(--ease-out) backwards; }
+
+/* the case you're on breathes; small buttons and tabs give under your finger */
+.pips span.now { animation: nowbeat 1.6s ease-in-out infinite; }
+@keyframes nowbeat { 50% { transform: scale(1.1); } }
+.icon-btn, .tab, .seg button { transition: transform 0.12s var(--ease-out), background-color 0.18s ease, color 0.18s ease; }
+:is(.icon-btn, .tab, .seg button):active:not(:disabled) { transform: scale(0.94); }
+
 /* dialogs: the dim backdrop fades in, and where the browser supports it the dialog fades out instead of vanishing */
 dialog[open]::backdrop { animation: fadein 0.2s ease-out backwards; }
 @supports (overlay: auto) {
@@ -1416,3 +1507,9 @@ html:not(.game) main { flex: 1; padding-block: 24px 40px; }
 .foot { padding-block: 18px calc(22px + env(safe-area-inset-bottom, 0px)); border-top: 2px solid var(--ink); display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: var(--s-1); color: var(--pencil); }
 .foot a { color: var(--pencil); }
 .foot .spacer { flex: 1; }
+html:not(.game) :is(.screen, .prose, .days) > * { animation: dealin 0.3s var(--ease-out) backwards; }
+html:not(.game) :is(.screen, .prose, .days) > :nth-child(2) { animation-delay: 0.05s; }
+html:not(.game) :is(.screen, .prose, .days) > :nth-child(3) { animation-delay: 0.1s; }
+html:not(.game) :is(.screen, .prose, .days) > :nth-child(4) { animation-delay: 0.15s; }
+html:not(.game) :is(.screen, .prose, .days) > :nth-child(5) { animation-delay: 0.2s; }
+html:not(.game) :is(.screen, .prose, .days) > :nth-child(n+6) { animation-delay: 0.25s; }

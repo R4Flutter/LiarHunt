@@ -65,7 +65,7 @@ js/progress.js             levels, coins, stars, missions, login calendar, shop,
 js/game.js                 all the screens
 js/platform.js             web vs CrazyGames: ads, saves, mute, username, invite links
 js/audio.js, js/fx.js      sound and visual effects
-js/leaderboard.js          web leaderboard, top-100 rewards, rank, weekly leagues, friend groups (Firebase)
+js/leaderboard.js          web leaderboard, top-10 rewards, rank, weekly leagues, friend groups (Firebase)
 js/ads.js                  web ads (none / demo / AdSense)
 assets/                    sounds, music, fonts, icons
 sw.js                      offline play + app install (web only)
@@ -228,7 +228,7 @@ firebase deploy --only firestore,auth
 
 To see or delete scores (for example a cheater), open **Firestore Database → Data** in the console.
 
-Daily top-100 players get a badge (🥇 🥈 🥉 🎖️ 🏅) and a prize hint once the day's ranks lock in (38 hours after it starts). If you change `launchDate`, change the `dayStart` line in `firebase/firestore.rules` too, and pick a **Monday**: weeks (Case of the Week, leagues) run from Daily #1, so #1 has to be a Monday.
+Daily top-10 players get a badge (🥇 🥈 🥉 🎖️) and a prize hint once the day's ranks lock in (38 hours after it starts). If you change `launchDate`, change the `dayStart` line in `firebase/firestore.rules` too, and pick a **Monday**: weeks (Case of the Week, leagues) run from Daily #1, so #1 has to be a Monday.
 
 **Push notifications** are the next step up from the calendar reminder. They need a Firebase Cloud Messaging key and a small scheduled job (a GitHub Actions cron works on the free plan) that sends "New cases are ready" each morning.
 
