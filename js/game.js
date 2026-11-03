@@ -1,12 +1,11 @@
 /*
   LIARHUNT — the game screens
   Modes:
-    Career  endless chapters of 10 cases, stars, combo streak, chapter rewards
+    Career  Book 1, The Black Ledger: one story in 30 missions (js/book.js plays it, js/book1.js holds it)
+    Train   the training case every new player starts with, with the coach
     Daily   5 cases a day, the same for everyone, one try each, share grid
     Rush    unlimited cases against the clock, 3 lives, one continue per run
-    Night   one hard bonus case each evening from 8 PM
-    Week    the Case of the Week: a clue from each Daily, the mastermind on Sunday
-  Also: headquarters (HQ), case files (catch up with Case Keys), chapter map, shop,
+  Also: headquarters (HQ), case files (catch up with Case Keys), the Book map, shop,
   achievements, missions, login rewards, streak shields, comeback gifts, friend
   challenges, level-ups, tutorial, and (web only) the Firebase leaderboard,
   weekly leagues, friend groups, reminders and app install.
@@ -15,12 +14,12 @@
   "use strict";
   var WL = window.WL, P = window.WLP, Plat = window.WLPlat, Snd = window.WLAudio, FX = window.WLFX;
   var LB = window.WLLB || { enabled: function () { return false; } };
+  var Book = window.WLBook;
   var CFG = WL.cfg, esc = WL.esc;
   function $(id) { return document.getElementById(id); }
   var TODAY = WL.dayNumber();
   var WEEK = WL.weekOf(TODAY), WDAY = WL.weekday(TODAY);
   var DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-  var CLUE_COST = 80;
   var mq = function (q) { return window.matchMedia ? window.matchMedia(q) : { matches: false, addEventListener: function () {} }; };
   var reduceMotion = mq("(prefers-reduced-motion: reduce)").matches;
   var coarse = mq("(pointer: coarse)").matches;
@@ -71,19 +70,13 @@
   function web() { return Plat.allowExternal(); }
   function lbOn() { return LB.enabled() && web(); }
   function dayName(d) { return DAY_NAMES[WL.weekday(d)]; }
-  function weekDay(i) { return (WEEK - 1) * 7 + 1 + i; }
-  // A day's weekly clue is yours once you finish that day's Daily (on the day or as a catch-up) or buy it.
-  // Days before a player's first visit come free ("what the squad found so far"), so newcomers can still solve the week.
-  function clueOpen(i) { var h = S.history[weekDay(i)]; return !!(h && !h.replay) || !!S.arc.bought[i] || weekDay(i) < S.firstDay; }
-  // New players meet the modes one at a time: Rush on day 2, Night Shift on day 3, leagues in week 2 (or sooner if they play a lot).
+  // New players meet the modes one at a time: Rush on day 2, leagues in week 2 (or sooner if they play a lot).
   function unlocked(what) {
     var days = TODAY - S.firstDay;
     if (what === "rush") return days >= 1 || S.tot.solved >= 10;
-    if (what === "night") return days >= 2 || S.tot.dailyDone >= 3;
     if (what === "league") return days >= 7 || S.tot.dailyDone >= 5;
     return true;
   }
-  function cluesOpen() { var n = 0; for (var i = 0; i < 6; i++) if (clueOpen(i)) n++; return n; }
   function myName() { return (user && user.username) || S.settings.playerName || ""; }
 
   /* ---------- polygraph trace (canvas) ---------- */
@@ -256,7 +249,7 @@
   }
 
   /* ---------- screens + HUD ---------- */
-  var SCREENS = ["hq", "case", "results", "map", "shop", "ach", "files", "week", "write", "room"];
+  var SCREENS = ["hq", "case", "book", "results", "map", "shop", "ach", "files", "write", "room"];
   function show(name) {
     screen = name;
     SCREENS.forEach(function (n) { $("scr-" + n).hidden = n !== name; });
@@ -275,16 +268,15 @@
   var CAL_SVG = '<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>';
   var HUD_ICO = {
     daily: CAL_SVG, replay: CAL_SVG, results: '<svg viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7"/></svg>',
-    career: '<svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>',
+    train: '<svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>',
+    book: '<svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5M9 8h7M9 11.5h5"/></svg>',
     rush: '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg>',
-    night: '<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
     room: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3.5 19.5c0-3.2 2.5-5.5 5.5-5.5s5.5 2.3 5.5 5.5M15 14.2c2.9 0 5.2 1.9 5.2 4.8"/></svg>',
     friend: PENCIL_SVG, write: PENCIL_SVG,
     map: '<svg viewBox="0 0 24 24"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>',
     shop: '<svg viewBox="0 0 24 24"><path d="M5 8h14l-1.2 12H6.2z"/><path d="M9 10V6a3 3 0 0 1 6 0v4"/></svg>',
     ach: '<svg viewBox="0 0 24 24"><circle cx="12" cy="15" r="5"/><path d="M8.6 10.7L6 3h4l2 4 2-4h4l-2.6 7.7"/></svg>',
-    files: '<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
-    week: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M12 12v9"/></svg>'
+    files: '<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>'
   };
   function setHud(main, sub) {
     $("hud-main").textContent = main || ""; $("hud-sub").textContent = sub || "";
@@ -318,20 +310,10 @@
 
     renderToday();
     renderSeason();
-    renderWeekCard();
-    renderNightTile();
     $("rush-sub").textContent = !unlocked("rush") ? "Opens tomorrow, or after 10 solved cases" : S.endless.best > 0 ? "Your best: " + S.endless.best + " liars" : "Catch liars against the clock";
     $("tile-rush").classList.toggle("locked", !unlocked("rush"));
-    $("tile-night").classList.toggle("locked", !unlocked("night"));
-    if (!unlocked("night")) { $("night-sub").textContent = "Opens on your third day, or after 3 Dailies"; $("night-flag").hidden = true; }
 
-    var lvl = S.career.level, ch = WL.chapterOf(lvl);
-    $("career-chapter").textContent = "Career · Chapter " + ch;
-    $("career-name").textContent = WL.chapterName(ch);
-    $("career-story").textContent = WL.chapterStory(ch).intro;
-    $("career-nodes").innerHTML = chapterNodes(ch, false);
-    var spec = WL.careerSpec(lvl);
-    $("btn-play").textContent = (lvl === 1 ? "Start case 1" : "Play case " + lvl) + (spec.mode !== "liar" ? " · Twist" : "");
+    Book.renderCard();
 
     renderMissions();
     $("btn-board").hidden = !lbOn();
@@ -395,33 +377,6 @@
     $("today-meta").hidden = !meta.length;
     $("today-meta").innerHTML = meta.join("<br>");
     if ($("btn-yesterday")) $("btn-yesterday").addEventListener("click", function () { Snd.play("click"); openFinale(TODAY - 1); });
-  }
-  function renderWeekCard() {
-    var k = WL.buildWeek(WEEK), a = S.arc;
-    $("week-title").textContent = k.title;
-    var slots = "";
-    for (var i = 0; i < 7; i++) {
-      var d = weekDay(i), cls, label;
-      if (i === 6) {
-        cls = a.done ? (a.correct ? "got" : "miss") : WDAY === 6 ? "now star" : "star";
-        label = "Sunday: the mastermind" + (a.done ? (a.correct ? ", caught" : ", escaped") : WDAY === 6 ? ", open now" : "");
-        slots += '<li class="' + cls + '" aria-label="' + label + '"><span>★</span><b>Sun</b></li>';
-        continue;
-      }
-      var open = clueOpen(i);
-      cls = open ? "got" : d < TODAY ? "miss" : d === TODAY ? "now" : "";
-      label = DAY_NAMES[i] + ": " + (open ? "clue found" : d < TODAY ? "clue missed" : d === TODAY ? "today" : "coming");
-      slots += '<li class="' + cls + '" aria-label="' + label + '"><span>' + (open ? "✓" : d < TODAY ? "✕" : "") + "</span><b>" + DAY_NAMES[i].slice(0, 3) + "</b></li>";
-    }
-    $("week-slots").innerHTML = slots;
-    var n = cluesOpen(), sub;
-    if (a.done) sub = a.correct ? "You caught the mastermind. A new case starts Monday." : "The mastermind got away this time. A new case starts Monday.";
-    else if (WDAY === 6) sub = "<strong>Name the mastermind today!</strong> You have " + n + " of 6 clues.";
-    else sub = n + " of 6 clues. Each Daily you finish adds one. Name the mastermind on Sunday.";
-    $("week-sub").innerHTML = sub;
-    $("week-left").textContent = WDAY === 6 ? "Last day" : (7 - WDAY) + " days left";
-    $("btn-week").className = "btn wide " + (WDAY === 6 && !a.done ? "danger" : "ghost");
-    $("btn-week").textContent = WDAY === 6 && !a.done ? "Name the mastermind" : "Open the case board";
   }
   /* ---------- seasons: 4 weeks each, with their own cases (js/seasons.js) ----------
      The season score is the liars caught in that season's Dailies, played on the day (catch-ups and practice don't count),
@@ -497,21 +452,6 @@
       }
     }
   }
-  function msToNight() { var n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate(), WL.NIGHT_HOUR) - n; }
-  function nightState() {
-    if (S.night.day === TODAY && S.night.done) return S.night.correct ? "solved" : "missed";
-    return msToNight() <= 0 ? "open" : "wait";
-  }
-  function renderNightTile() {
-    var st = nightState(), left = msToNight(), sub;
-    if (st === "solved") sub = "Solved! Next one tomorrow at 8 PM";
-    else if (st === "missed") sub = "Not this time. Next one tomorrow at 8 PM";
-    else if (st === "open") sub = "Open now. A hard bonus case";
-    else sub = "Opens at 8 PM · in " + Math.floor(left / 3600000) + "h " + Math.floor((left % 3600000) / 60000) + "m";
-    $("night-sub").textContent = sub;
-    $("night-flag").hidden = st !== "open";
-    $("tile-night").classList.toggle("is-open", st === "open");
-  }
   // One banner at a time: install the app, then the daily reminder.
   function renderBanner() {
     var b = $("hq-banner"), html = "";
@@ -526,19 +466,6 @@
         '<button class="btn small primary" type="button" data-banner="reminder">Remind me</button><button class="icon-btn" type="button" data-banner="x-reminder" aria-label="Not now"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>';
     }
     b.innerHTML = html; b.hidden = !html;
-  }
-  function chapterNodes(ch, clickable) {
-    var h = "", cur = S.career.level;
-    for (var k = 1; k <= 10; k++) {
-      var n = (ch - 1) * 10 + k, st = S.career.stars[n] || 0, sp = WL.careerSpec(n);
-      var cls = "node" + (n < cur ? " done" : n === cur ? " now" : " locked") + (sp.mode !== "liar" ? " is-twist" : "");
-      var label = "Case " + n + (sp.mode !== "liar" ? ", twist" : "") + (n < cur ? ", " + st + " stars" : n === cur ? ", next" : ", locked");
-      if (clickable) h += '<button type="button" class="' + cls + '" data-level="' + n + '"' + (n > cur ? " disabled" : "") + ' aria-label="' + label + '">';
-      else h += '<span class="' + cls + '" aria-label="' + label + '">';
-      h += n + (n < cur ? stars(st) : '<span class="stars"><span class="st" style="visibility:hidden"></span></span>');
-      h += clickable ? "</button>" : "</span>";
-    }
-    return h;
   }
   function renderMissions() {
     var ms = P.ensureMissions();
@@ -580,8 +507,8 @@
     if (cloud.reload) { reloadWith("Your newer progress from another device is here."); return; }
     stopClock(); hideConfirm();
     if (run && run.prog) { saveElapsed(); persist(); }
-    if (run && (run.kind === "career" || run.kind === "night")) saveMemo();
     if (run && run.kind === "rush" && !run.over) { run.over = true; P.rushEnd(run.score); persist(); }
+    Book.leave();
     if (room) leaveRoom(); // going back to HQ leaves a live room
     run = null;
     try {
@@ -721,9 +648,8 @@
         $("rec-time").classList.toggle("urgent", rl < 10000);
         if (rl < 5500 && rs !== clock.lastTickSec && rs > 0) { clock.lastTickSec = rs; Snd.play("tick"); }
         if (rl <= 0) accuse(true);
-      } else if (run.kind === "career" || run.kind === "night" || run.kind === "friend") {
+      } else if (run.kind === "train" || run.kind === "friend") {
         $("rec-time").textContent = WL.fmtTime(run.caseElapsed);
-        if (run.kind === "career") renderStarsLive();
         clock.sinceSave += dt;
         if (clock.sinceSave > 4000) { clock.sinceSave = 0; saveMemo(); }
       } else {
@@ -741,7 +667,6 @@
     if (document.hidden) {
       clock.hiddenAt = performance.now();
       if (run && run.prog) { saveElapsed(); persist(); }
-      if (run && (run.kind === "career" || run.kind === "night")) saveMemo();
       traces.forEach(function (t) { if (t.active) { t.stop(); t.wasActive = true; } });
       Plat.flush();
       cloudFlush();
@@ -756,23 +681,14 @@
   });
 
   /* ---------- starting a case ---------- */
-  function startCareer(n) {
-    n = Math.min(n || S.career.level, S.career.level);
-    var w = (S.career.wip || {})[n], v = (w && w.v) || 0; // v > 0: a fresh version after a botched case
-    run = { kind: "career", n: n, v: v, c: v ? WL.careerRetry(n, v) : WL.buildCareerLevel(n), wrong: 0, hint: false };
-    WL.track("career_start", { level: n });
+  // New players start with one training case and the coach. It can't be failed: a wrong guess is just crossed out.
+  function startTraining() {
+    run = { kind: "train", n: 1, c: WL.tutorialCase(), wrong: 0, hint: false };
+    WL.track("training_start", {});
     show("case");
     loadCase();
-    // A new chapter opens with its part of the story, and (chapters 2-4) the new idea it brings.
-    // The clock waits while the dialog is open. Chapter 1 skips it while the tutorial runs.
-    var ch = WL.chapterOf(n), news = WL.CHAPTER_NEWS[ch], story = WL.chapterStory(ch);
-    S.career.news = S.career.news || {};
-    if (n === S.career.level && (n - 1) % 10 === 0 && !S.career.news[ch] && (ch > 1 || S.settings.tutorialDone)) {
-      S.career.news[ch] = 1; persist();
-      showNotice({ icon: news ? news.icon : "🗂️", eyebrow: "Chapter " + ch + " · " + WL.chapterName(ch), title: news ? news.title : WL.chapterName(ch),
-        text: esc(story.intro) + (news ? "<br><br><b>New:</b> " + news.text : ""), yes: "Start the chapter" });
-    }
   }
+  function careerLabel() { return Book.finished() ? "Career: Book 1 map" : "Continue Career: mission " + Book.current(); }
   function newProg(day) { return { day: day, results: [], hints: [], elapsed: 0, done: false }; }
   function progressFor(day, catchup) {
     if (catchup) { if (!S.catchups[day]) { S.catchups[day] = newProg(day); persist(); } return S.catchups[day]; }
@@ -1138,17 +1054,6 @@
   });
   $("nb-body").addEventListener("toggle", function (e) { if (e.target.open) WL.track("d5_evidence_open", {}); }, true);
   $("btn-notebook").addEventListener("click", function () { Snd.play("click"); openNotebook(); });
-  function startNight() {
-    var st = nightState();
-    if (st === "wait") { toast("The Night Shift opens at 8 PM. Come back tonight!"); return; }
-    if (st !== "open") { toast("You've done tonight's Night Shift. Next one tomorrow at 8 PM."); return; }
-    run = { kind: "night", day: TODAY, c: WL.buildNight(TODAY), elapsed: 0 };
-    if (S.night.day !== TODAY) { S.night = { day: TODAY, done: false }; persist(); } // keeps a case left half-way (S.night.cur)
-    document.documentElement.setAttribute("data-skin", "night"); refreshTraceColors();
-    WL.track("night_start", { day: TODAY });
-    show("case");
-    loadCase();
-  }
   var RUSH_START = 60000;
   /* Rush stages: every 5 cases a new stage starts with one new rule, so a long run keeps changing.
      Stage 1 has no rule; then the rules take turns. */
@@ -1222,12 +1127,12 @@
   function loadCase() {
     var c = run.c;
     run.pick = null; run.revealed = false; run.caseElapsed = 0; run.hint = false; run.froze = false; run.acts = [];
-    if (run.kind === "career") run.wrong = 0;
+    if (run.kind === "train") run.wrong = 0;
     $("actionbar").hidden = false;
     renderCase(c);
     var m = memo().get(); // a case left half-way: same mistakes, hint and clock as before the reload
     // ...but only for the same case: an update can change a generated case, and old taps must not land on new suspects
-    if (m && (m.t ? m.t !== c.title : run.kind === "career")) m = null;
+    if (m && m.t && m.t !== c.title) m = null;
     if (m) {
       run.wrong = m.wrong || 0; run.hint = !!m.hint; run.caseElapsed = m.ms || 0;
       (m.acts || []).forEach(function (a) { act(a, true); });
@@ -1239,26 +1144,23 @@
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     gameTrace.agit = run.kind === "rush" ? 0.2 : 0.28;
     $("rec-time").classList.remove("urgent", "frozen");
-    $("rec-time").textContent = run.kind === "rush" ? WL.fmtTime(run.time) : run.kind === "room" ? WL.fmtTime(run.limit) : run.kind === "career" ? WL.fmtTime(run.caseElapsed) : WL.fmtTime(run.elapsed);
+    $("rec-time").textContent = run.kind === "rush" ? WL.fmtTime(run.time) : run.kind === "room" ? WL.fmtTime(run.limit) : run.kind === "train" ? WL.fmtTime(run.caseElapsed) : WL.fmtTime(run.elapsed);
     $("case-grid").scrollTop = 0;
     [].forEach.call(document.querySelectorAll(".pane"), function (p) { p.scrollTop = 0; });
     if (c.mode !== "liar") Snd.play("twist");
-    else if (run.kind === "rush" ? run.n > 1 : run.kind === "career" ? true : run.idx > 0) Snd.play("whoosh");
+    else if (run.kind === "rush" ? run.n > 1 : run.kind === "train" ? false : run.idx > 0) Snd.play("whoosh");
     Plat.gameplayStart();
     startClock();
-    if (run.kind === "career" && run.n === 1 && !S.settings.tutorialDone) startCoach();
+    if (run.kind === "train" && !S.settings.tutorialDone) startCoach();
   }
   function renderCase(c) {
     var planted = c.mode === "planted";
-    if (run.kind === "career") {
-      setHud("Case " + run.n, "Chapter " + c.spec.chapter + " · " + WL.chapterName(c.spec.chapter));
-      $("case-kicker").textContent = (LEVEL[c.level] || "Case") + " · 3 stars under " + WL.fmtTime(c.spec.par * 1000);
+    if (run.kind === "train") {
+      setHud("Training", "Your first case");
+      $("case-kicker").textContent = "Training case · Take your time";
     } else if (run.kind === "rush") {
       setHud("Rush", "Case " + run.n + " · " + (run.rule ? run.rule.name : "Stage 1"));
       $("case-kicker").textContent = LEVEL[c.level] || "Case";
-    } else if (run.kind === "night") {
-      setHud("Night Shift", "Tonight's bonus case");
-      $("case-kicker").textContent = (LEVEL[c.level] || "Case") + " · One try";
     } else if (run.kind === "room") {
       setHud("Live room", "Case " + run.round + " of " + (room && room.data ? room.data.rounds : 5));
       $("case-kicker").textContent = (LEVEL[c.level] || "Case") + " · Everyone has the same case · One try";
@@ -1386,16 +1288,10 @@
      run.acts lists what happened (["c", i] wrong pick, ["o", kind, i] hint, ["b", i] wrong proof, ["p"] proof step). */
   function memo() {
     var k = run.kind;
-    if (k === "career") {
-      var w = S.career.wip = S.career.wip || {};
-      return { get: function () { var m = w[run.n]; return m && (m.v || 0) === run.v ? m : null; },
-        set: function (m) { if (m) w[run.n] = m; else delete w[run.n]; } };
-    }
     if (k === "daily" || k === "replay") {
       return { get: function () { var m = run.prog.cur; return m && m.idx === run.idx ? m : null; },
         set: function (m) { run.prog.cur = m ? Object.assign({ idx: run.idx }, m) : null; } };
     }
-    if (k === "night") return { get: function () { return S.night.cur || null; }, set: function (m) { S.night.cur = m; } };
     return { get: function () { return null; }, set: function () {} };
   }
   function saveMemo() {
@@ -1429,11 +1325,11 @@
     var nb = $("btn-notebook");
     nb.hidden = !run.d5;
     if (run.d5 && run.c) { var nx = nbData(), fresh = nx.ev.length + nx.fi.length - (run.d5.st.seen || 0); $("nb-new").hidden = fresh <= 0; $("nb-new").textContent = fresh; nb.setAttribute("aria-label", "Open the notebook" + (fresh > 0 ? ", " + fresh + " new" : "")); }
-    $("stars-live").hidden = k !== "career";
+    $("stars-live").hidden = true;
     $("lives").hidden = k !== "rush";
-    $("replay-tag").hidden = !(k === "replay" || k === "night" || k === "friend" || k === "room" || (k === "career" && run.n < S.career.level && !run.revealed));
-    $("replay-tag").textContent = k === "night" ? "Night Shift" : k === "room" ? "Live" : k === "friend" ? (run.preview ? "Preview" : run.again ? "Again" : "Friend's case") : run.catchup ? "Catch-up" : k === "replay" ? "Practice" : "Replay";
-    var combo = k === "career" ? S.career.combo : k === "rush" ? run.combo : 0;
+    $("replay-tag").hidden = !(k === "replay" || k === "friend" || k === "room");
+    $("replay-tag").textContent = k === "room" ? "Live" : k === "friend" ? (run.preview ? "Preview" : run.again ? "Again" : "Friend's case") : run.catchup ? "Catch-up" : k === "replay" ? "Practice" : "Replay";
+    var combo = k === "rush" ? run.combo : 0;
     $("combo").hidden = combo < 2;
     $("combo").innerHTML = FLAME_SVG + "×" + combo;
     $("combo").setAttribute("aria-label", "Streak: " + combo + " in a row");
@@ -1441,11 +1337,10 @@
       $("lives").innerHTML = [0, 1, 2].map(function (i) { return '<span class="' + (i < run.lives ? "on" : "") + '"></span>'; }).join("");
       $("lives").setAttribute("aria-label", run.lives + " of 3 lives left");
       $("rec-left").textContent = "Score " + run.score;
-    } else if (k === "career") {
-      $("rec-left").textContent = "Case " + run.n;
-      renderStarsLive(true);
-    } else if (k === "night" || k === "friend" || k === "room") {
-      $("rec-left").textContent = k === "night" ? "Night Shift" : k === "room" ? "Case " + run.round : "Friend's case";
+    } else if (k === "train") {
+      $("rec-left").textContent = "Training";
+    } else if (k === "friend" || k === "room") {
+      $("rec-left").textContent = k === "room" ? "Case " + run.round : "Friend's case";
     } else {
       var res = run.prog.results;
       $("pips").innerHTML = run.cases.map(function (_, i) {
@@ -1454,20 +1349,6 @@
       $("pips").setAttribute("aria-label", "Case " + (Math.min(run.idx, 4) + 1) + " of 5. " + scoreOf(res) + " caught so far.");
       $("rec-left").textContent = "Case " + (Math.min(run.idx, 4) + 1) + " of 5";
     }
-  }
-  function potentialStars() {
-    if (!run || run.kind !== "career") return 0;
-    if (run.wrong > 0) return 1;
-    return run.hint || run.caseElapsed / 1000 > run.c.spec.par ? 2 : 3;
-  }
-  var lastLive = -1;
-  function renderStarsLive(force) {
-    var n = potentialStars();
-    if (n === lastLive && !force) return;
-    if (lastLive > n && !force) FX.pop($("stars-live"));
-    lastLive = n;
-    $("stars-live").innerHTML = stars(n);
-    $("stars-live").setAttribute("aria-label", "Stars you can still earn: " + n);
   }
   function optionEls() { return els(run.phase === "proof" ? proofKind() : pickKind()); }
   function proofSets(c) { return [c.proof || []].concat(c.alt || []); }
@@ -1508,8 +1389,7 @@
     else if (m === "off") note = run.kind === "rush" ? "No magnifier in this stage." : run.kind === "room" ? "No hints in a live room. One try." : "No hints in a friend's case. One try.";
     else if (m === "none") note = "Out of magnifiers. Get more in the Shop.";
     else if (run.kind === "daily" || run.kind === "replay") note = "A hint turns this case yellow.";
-    else if (run.kind === "night") note = "One try. Take your time.";
-    else if (run.kind === "career" && run.wrong === 0) note = "A hint costs the 3rd star.";
+    else if (run.kind === "train") note = "No pressure: a wrong guess is just crossed out.";
     $("tool-note").textContent = note;
   }
   function useHint() {
@@ -1529,7 +1409,7 @@
       list[k].scrollIntoView({ block: "nearest" });
       run.hint = true;
       Snd.play("whoosh");
-      renderTools(); renderStarsLive();
+      renderTools();
       saveMemo();
       WL.track("hint_used", { kind: run.kind, type: m });
     };
@@ -1584,7 +1464,7 @@
     Snd.play("tap");
     var name = c.mode === "planted" ? "" : c.suspects[i].name;
     $("accuse-q").textContent = (c.mode === "liar" ? "Is " + name + " the liar?" : c.mode === "honest" ? "Is " + name + " the only honest one?" : "Is this fact fake?") +
-      (run.kind === "career" || run.kind === "rush" ? "" : " One try."); // a wrong pick ends the case here
+      (run.kind === "train" || run.kind === "rush" ? "" : " One try."); // a wrong pick ends the case here
     $("btn-accuse").textContent = c.mode === "liar" ? "Accuse " + name : c.mode === "honest" ? name + " is honest" : "It's fake";
     $("tools").hidden = true; $("confirm").hidden = false;
     if (run.coachStep === 2) hideCoach();
@@ -1606,7 +1486,7 @@
     el.classList.add("has-stamp");
     el.appendChild(s);
   }
-  // Step 1: accuse. The right suspect (or fake fact) opens the proof step; a wrong one is a miss (career: a mistake).
+  // Step 1: accuse. The right suspect (or fake fact) opens the proof step; a wrong one is a miss (training: crossed out).
   function accuse(timeout) {
     if (!run || run.revealed) return;
     var c = run.c, pick = timeout ? -1 : run.pick;
@@ -1615,7 +1495,7 @@
     hideCoach();
     if (timeout) { reveal(false, "timeout"); return; }
     if (c.d5) { act(["p", pick]); return; } // Daily 5: accuse, then prove; the file is checked once both are in
-    if (pick !== c.answer) { if (run.kind === "career") mistake(pick); else reveal(false, "pick"); return; }
+    if (pick !== c.answer) { if (run.kind === "train") mistake(pick); else reveal(false, "pick"); return; }
     if (!(c.proof || []).length) { reveal(true, "ok"); return; }
     act(["p"]);
   }
@@ -1630,7 +1510,7 @@
     saveMemo();
     Snd.play("stamp"); gameTrace.spike(false);
     (c.mode === "planted" ? $("task") : $("facts-h")).scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
-    if (run.kind === "career" && run.n === 1 && !S.settings.tutorialDone) {
+    if (run.kind === "train" && !S.settings.tutorialDone) {
       run.coachStep = 3;
       coach($("clues"), "Good! Now prove it. Tap the fact that shows " + c.suspects[c.answer].name + "'s story can't be true, then press Present proof.", "");
     }
@@ -1657,15 +1537,13 @@
     hideConfirm(); hideCoach();
     var c = run.c, s = run.sel.slice().sort(function (a, b) { return a - b; }).join();
     if (proofSets(c).some(function (p) { return p.join() === s; })) reveal(true, "ok");
-    else if (run.kind === "career") mistake(-1);
+    else if (run.kind === "train") mistake(-1);
     else reveal(false, "proof");
   }
-  // Career: the first mistake (wrong suspect or wrong proof) costs stars, the second botches the case.
-  // The tutorial case (Case 1 with the coach) can't be failed: a wrong guess only crosses that option out.
+  // The training case can't be failed: a wrong guess (suspect or proof) is crossed out and the player tries again.
   function mistake(pick) {
-    var c = run.c, el = $("clues"), msg, learning = run.n === 1 && !S.settings.tutorialDone;
-    if (!learning) { run.wrong++; P.careerWrong(); }
-    if (run.wrong >= 2) { reveal(false, "botched"); return; }
+    var c = run.c, el = $("clues"), msg;
+    run.wrong++;
     if (pick >= 0) {
       act(["c", pick]);
       el = els(pickKind())[pick];
@@ -1677,10 +1555,10 @@
       cancelPick();
     }
     Snd.play("wrong"); FX.shake(el); gameTrace.spike(true);
-    toast(msg + (learning ? " Try again: check each story against the facts." : " Careful: one more mistake botches the case."), "", 3200);
-    saveMemo(); renderMeta(); renderTools(); renderStarsLive();
+    toast(msg + " Try again: check each story against the facts.", "", 3200);
+    renderMeta(); renderTools();
   }
-  // how: "ok", "pick" (wrong suspect), "proof" (right suspect, wrong proof), "timeout", "botched"
+  // how: "ok", "pick" (wrong suspect), "proof" (right suspect, wrong proof), "timeout"
   function reveal(correct, how) {
     var c = run.c, pk = els(pickKind()), pf = els(proofKind());
     run.revealed = true;
@@ -1709,9 +1587,8 @@
     setTimeout(function () { Snd.play(how === "timeout" ? "timeout" : correct ? "correct" : "wrong"); }, 170);
     if (!correct) { FX.shake($("case-grid")); if (navigator.vibrate) { try { navigator.vibrate(120); } catch (e) { /* ignore */ } } }
 
-    if (run.kind === "career") { if (correct) verdictCareer(ansEl); else verdictBotched(); }
+    if (run.kind === "train") verdictTrain(ansEl);
     else if (run.kind === "rush") verdictRush(correct, how);
-    else if (run.kind === "night") verdictNight(correct, how);
     else if (run.kind === "friend") verdictFriend(correct, how);
     else if (run.kind === "room") verdictRoom(correct, how);
     else verdictDaily(correct, how);
@@ -1819,39 +1696,20 @@
     return c.mode === "honest" ? n + " was the only honest one." : n + " was the liar.";
   }
 
-  function verdictBotched() {
-    var r = P.careerBotched();
-    run.botched = true;
-    memo().set({ v: (run.v || 0) + 1, wrong: 0, hint: false, ms: 0, acts: [] }); // next try is a fresh version of this case
-    persist();
-    setVerdict({ head: "Case botched.", good: false, stars: 0, rewards: rw(0, r.xp),
-      sub: "Two mistakes, so the case fell apart. " + answerLine(), next: "Try a new version" });
-    renderMeta();
-    WL.track("career_botched", { level: run.n });
-  }
-  function verdictCareer(ansEl) {
-    memo().set(null);
-    var r = P.careerSolved({ level: run.n, wrong: run.wrong, hint: run.hint, seconds: run.caseElapsed / 1000 });
+  function verdictTrain(ansEl) {
+    var r = P.trainDone({ hint: run.hint });
+    S.settings.tutorialDone = true;
     persist();
     setVerdict({
-      head: run.wrong ? "Case closed." : pick(CAUGHT), good: true, stars: r.stars,
-      banner: r.chapterDone ? "Chapter " + r.chapter + " complete!" : r.replay && r.stars > r.prevStars ? "New best: " + r.stars + " stars" : "",
-      rewards: rw(r.coins, r.xp, r.mult) + (r.replay ? '<span class="rw">Replay: no coins</span>' : ""),
-      sub: answerLine(), story: r.chapterDone ? WL.chapterStory(r.chapter).outro : "",
-      next: r.chapterDone ? "Next chapter" : r.replay ? "Continue career" : "Next case"
+      head: run.wrong ? "Case closed." : pick(CAUGHT), good: true, rewards: rw(r.coins, r.xp), sub: answerLine(),
+      story: "That's the whole job: check every story against the facts, then prove the lie. Your first real case is waiting in Career, Book 1.",
+      next: "Start Career: Book 1"
     });
     if (r.coins) FX.float("+" + r.coins, $("coins"), "coin");
     renderCoins(true);
     renderMeta();
-    if (r.combo >= 2) { FX.float("Streak ×" + r.combo, $("combo"), "combo"); Snd.play("combo", { delay: 0.2 }); }
-    if (r.stars === 3) FX.confetti({ count: 60, y: ansEl.getBoundingClientRect().top });
-    if (r.chapterDone) {
-      FX.confetti({ count: 140 });
-      Snd.play("fanfare", { delay: 0.6 });
-      Plat.happytime();
-      WL.track("chapter_done", { chapter: r.chapter });
-    }
-    WL.track("career_solved", { level: run.n, stars: r.stars, wrong: run.wrong, hint: run.hint });
+    FX.confetti({ count: 60, y: ansEl.getBoundingClientRect().top });
+    WL.track("training_done", { wrong: run.wrong, hint: run.hint });
   }
   function verdictDaily(correct, how) {
     var c = run.c, code = correct ? (run.hint ? "y" : "g") : "r";
@@ -1872,19 +1730,6 @@
     if (r.coins) { FX.float("+" + r.coins, $("coins"), "coin"); renderCoins(true); }
     renderMeta();
     WL.track("daily_answer", { correct: correct, level: c.level, hint: run.hint, miss: correct ? "" : how });
-  }
-  function verdictNight(correct, how) {
-    S.night = { day: TODAY, done: true, correct: correct };
-    var r = P.nightDone({ correct: correct, hint: run.hint, twist: run.c.mode !== "liar" });
-    persist();
-    setVerdict({
-      head: correct ? "Night Shift: solved!" : how === "proof" ? "Not proven." : "The liar slipped away.", good: correct,
-      banner: correct ? "Bonus case cracked" : "", rewards: rw(r.coins, r.xp),
-      sub: missLine(how) + answerLine(), next: "Back to HQ"
-    });
-    if (r.coins) { FX.float("+" + r.coins, $("coins"), "coin"); renderCoins(true); }
-    if (correct) { FX.confetti({ count: 80 }); Plat.happytime(); }
-    WL.track("night_done", { correct: correct });
   }
   function verdictRush(correct, how) {
     var r = null, timeout = how === "timeout";
@@ -1922,18 +1767,12 @@
     $("verdict").hidden = true;
     if (run.kind === "friend") { openWrite(); return; }
     if (run.kind === "room") { if (room) { show("room"); setHud("Live room", "Room " + room.code); renderRoom(); } else goHQ(); return; }
-    if (run.kind === "career") {
-      if (run.n === 1 && !S.settings.tutorialDone && !run.botched) { S.settings.tutorialDone = true; persist(); }
-      var target = run.botched ? run.n : S.career.level;
-      midgame("career_next").then(function () { startCareer(target); });
-      return;
-    }
+    if (run.kind === "train") { run = null; Book.start(); return; }
     if (run.kind === "rush") {
       if (run.lives <= 0 || run.time <= 0) { outOfLives(); return; }
       nextRush();
       return;
     }
-    if (run.kind === "night") { goHQ(); return; }
     if (run.d5) { d5Next(); return; }
     run.idx = run.prog.results.length;
     if (run.idx >= run.cases.length) { finishDaily(); return; }
@@ -2015,7 +1854,6 @@
     } else if (!S.history[day]) {
       S.history[day] = { score: score, grid: p.results.join(""), time: p.elapsed, replay: true };
     }
-    if ((!replay || catchup) && WL.weekOf(day) === WEEK && WL.weekday(day) < 6) extra.clue = WL.weekday(day);
     if (run.d5 && S.history[day]) S.history[day].story = run.d5.ed.title;
     var failed = !!run.d5 && d5Failed(p.results, run.d5.ed.strikes);
     var r = P.dailyDone(score, replay, catchup, failed);
@@ -2145,7 +1983,7 @@
     resProgress();
     $("res-next").innerHTML = 'New cases in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) + "</strong>";
     var acts = $("res-actions"); acts.innerHTML = "";
-    acts.appendChild(actionBtn("Continue career: case " + S.career.level, "primary", function () { startCareer(); }));
+    acts.appendChild(actionBtn(careerLabel(), "primary", function () { Book.start(); }));
     if (replay) {
       acts.appendChild(actionBtn("Practice this day again", "ghost", function () { S.replay = null; persist(); startDaily(day, "practice"); }));
       acts.appendChild(actionBtn("Back to case files", "ghost", openFiles));
@@ -2200,7 +2038,7 @@
     $("res-next").innerHTML = dailyDone ? 'New daily cases in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) + "</strong>" : "Today's Daily Case is still waiting for you.";
     var acts = $("res-actions"); acts.innerHTML = "";
     acts.appendChild(actionBtn("Play Rush again", "primary", startRush));
-    acts.appendChild(actionBtn("Continue career: case " + S.career.level, "ghost", function () { startCareer(); }));
+    acts.appendChild(actionBtn(careerLabel(), "ghost", function () { Book.start(); }));
     if (!dailyDone) acts.appendChild(actionBtn("Play today's Daily Case", "ghost", function () { startDaily(TODAY); }));
     $("review").hidden = true;
     if (window.WLAds && Plat.allowExternal()) window.WLAds.display($("ad-results"));
@@ -2292,28 +2130,19 @@
     toast("Select the text in the box and copy it.");
   }
 
-  /* ---------- chapter map ---------- */
+  /* ---------- Book map (Career) ---------- */
   function openMap() {
     show("map");
-    setHud("Career map", "Every chapter so far");
-    var cur = WL.chapterOf(S.career.level), html = "";
-    for (var ch = 1; ch <= cur + 1; ch++) {
-      var locked = ch > cur, got = 0;
-      for (var k = 1; k <= 10; k++) got += S.career.stars[(ch - 1) * 10 + k] || 0;
-      html += '<section class="chapter' + (locked ? " locked" : "") + '"><div class="chapter-head"><h3>' + ch + ". " + esc(WL.chapterName(ch)) + "</h3>" +
-        '<span class="muted">' + (locked ? "Finish chapter " + (ch - 1) + " to open" : '<span class="st on"></span>' + got + " / 30") + "</span></div>" +
-        (locked ? "" : '<p class="chapter-story">' + esc(ch < cur ? WL.chapterStory(ch).outro || WL.chapterStory(ch).intro : WL.chapterStory(ch).intro) + "</p>") +
-        '<div class="nodes">' + chapterNodes(ch, true) + "</div></section>";
-    }
-    $("chapters").innerHTML = html;
-    var nowEl = $("chapters").querySelector(".node.now");
-    if (nowEl) setTimeout(function () { nowEl.scrollIntoView({ block: "center" }); }, 30);
+    setHud("Book map", "Career · " + Book.title);
+    $("map-sub").textContent = Book.total + " missions, 5 chapters, one conspiracy. " + Book.starsTotal() + " of " + Book.total * 3 +
+      " stars so far. Replay any solved mission for the story: you keep your first-run stars.";
+    Book.renderMap($("chapters"));
   }
   $("chapters").addEventListener("click", function (e) {
-    var b = e.target.closest("[data-level]");
+    var b = e.target.closest("[data-m]");
     if (!b || b.disabled) return;
     Snd.play("click");
-    startCareer(+b.dataset.level);
+    Book.start(+b.dataset.m);
   });
 
   /* ---------- shop ---------- */
@@ -2807,16 +2636,8 @@
   function renderExtras(day, replay, catchup, extra) {
     var h = [];
     if (extra.streak) h.push(nextCard("🔥", dailyStreak() + " days in a row!", "You earned a Case Key and a Streak Shield.", null));
-    if (extra.clue != null) {
-      h.push(nextCard("🧩", "New clue for " + esc(WL.buildWeek(WEEK).title), esc(WL.buildWeek(WEEK).clues[extra.clue].text), ["week", "Case board"]));
-    }
-    if (!replay && day === TODAY && WDAY === 6 && !S.arc.done) {
-      h.push(nextCard("★", "Name the mastermind today", "You have " + cluesOpen() + " of 6 clues for " + esc(WL.buildWeek(WEEK).title) + ".", ["week", "Solve it"]));
-    }
     if (!replay && day === TODAY) {
-      var ns = nightState();
-      if (ns === "open" && unlocked("night")) h.push(nextCard("🌙", "The Night Shift is open", "One hard bonus case, 40 coins if you crack it.", ["night", "Play"]));
-      else if (ns === "wait" && unlocked("night")) h.push(nextCard("🌙", "Night Shift at 8 PM", "Come back tonight for a hard bonus case.", null));
+      if (unlocked("rush")) h.push(nextCard("⏱️", "Fancy a quick Rush?", "Catch as many liars as you can before the clock runs out.", ["rush", "Play"]));
       if (web()) h.push(nextCard("🖋️", "Fool your friends", "Write your own case, hide one lie and send it to them.", ["write", "Write"]));
     }
     $("res-extra").innerHTML = h.join("");
@@ -2826,7 +2647,7 @@
     if (!b) return;
     Snd.play("click");
     var k = b.dataset.next;
-    if (k === "week") openWeek(); else if (k === "night") startNight(); else if (k === "reminder") openReminder(); else if (k === "write") openWrite();
+    if (k === "rush") startRush(); else if (k === "reminder") openReminder(); else if (k === "write") openWrite();
   });
 
   /* ---------- weekly league (web) ---------- */
@@ -3075,7 +2896,7 @@
   function renderFiles() {
     var keys = S.inv.key || 0;
     $("files-keys").innerHTML = '<span class="key-ico" aria-hidden="true">🔑</span><span>You have <b>' + keys + " Case Key" + (keys === 1 ? "" : "s") +
-      "</b>. A key opens a missed day with full rewards" + (WDAY < 6 ? " and its clue for the Case of the Week" : "") + ". Earn one every 7 days in a row, or buy them in the Shop.</span>";
+      "</b>. A key opens a missed day with full rewards. Earn one every 7 days in a row, or buy them in the Shop.</span>";
     var h = "";
     for (var d = TODAY; d >= filesUntil; d--) {
       var hist = S.history[d], played = hist && !hist.replay, today = d === TODAY, prog = today && S.daily && S.daily.day === TODAY ? S.daily : null;
@@ -3125,98 +2946,6 @@
     else startDaily(+b.dataset.play);
   });
   $("files-more").addEventListener("click", function () { filesUntil = Math.max(1, filesUntil - 14); renderFiles(); filesStories(); });
-
-  /* ---------- Case of the Week board ---------- */
-  var accusing = false;
-  function openWeek() {
-    show("week");
-    setHud("Case of the Week", "Week " + WEEK + " · " + weekLeftText());
-    accusing = false;
-    renderWeek();
-  }
-  function weekLeftText() { return WDAY === 6 ? "last day" : (7 - WDAY) + " days left"; }
-  function renderWeek() {
-    var k = WL.buildWeek(WEEK), a = S.arc, n = cluesOpen();
-    $("wk-eyebrow").textContent = "Case of the Week · " + (a.done ? "closed" : WDAY === 6 ? "name the mastermind today" : "solve it on Sunday");
-    $("wk-title").textContent = k.title;
-    $("wk-setup").textContent = k.setup;
-    $("wk-count").textContent = n + " of 6 found";
-    $("wk-clues").innerHTML = k.clues.map(function (c, i) {
-      var d = weekDay(i), day = DAY_NAMES[i].slice(0, 3);
-      if (clueOpen(i) || a.done) {
-        return '<li class="wk-clue open"><span class="wk-day">' + day + "</span><span>" + esc(c.text) + "</span>" +
-          (c.linked ? '<span class="wk-link" title="This clue ties two traits together">2 traits</span>' : "") + "</li>";
-      }
-      var why, acts = "";
-      if (d < TODAY) {
-        why = "You missed " + DAY_NAMES[i] + "'s Daily.";
-        acts = '<button class="btn small primary" type="button" data-wk-key="' + d + '">Catch up · 🔑</button>' +
-          '<button class="btn small ghost" type="button" data-wk-buy="' + i + '">Buy ' + COIN_SVG + CLUE_COST + "</button>";
-      } else if (d === TODAY) {
-        why = "Finish today's Daily to get this clue.";
-        acts = '<button class="btn small danger" type="button" data-wk-today="1">Play today</button>';
-      } else why = "Comes with " + DAY_NAMES[i] + "'s Daily.";
-      return '<li class="wk-clue locked"><span class="wk-day">' + day + '</span><span class="wk-why">' + why + "</span>" + (acts ? '<span class="wk-acts">' + acts + "</span>" : "") + "</li>";
-    }).join("");
-    $("wk-suspects").innerHTML = k.suspects.map(function (s, i) {
-      var cls = "wk-sus" + (a.crossed[i] ? " crossed" : "") + (a.done && i === k.answer ? " culprit" : "") + (a.done && a.pick === i && !a.correct ? " wrong" : "");
-      return '<button type="button" class="' + cls + '" data-sus="' + i + '" aria-pressed="' + (a.crossed[i] ? "true" : "false") + '"' + (a.done ? " disabled" : "") + ">" +
-        '<span class="mug">' + WL.avatar(s.name) + '</span><span class="wk-who"><b>' + esc(s.name) + '</b><span class="muted small">' + esc(s.role) + "</span>" +
-        '<span class="wk-traits">' + s.traits.map(function (t) { return "<span>" + esc(t) + "</span>"; }).join("") + "</span></span>" +
-        (a.done && i === k.answer ? '<span class="stamp">' + (a.correct ? "Caught" : "Escaped") + "</span>" : "") + "</button>";
-    }).join("");
-    var st;
-    if (a.done) st = '<div class="wk-verdict ' + (a.correct ? "good" : "bad") + '"><b>' + (a.correct ? "Mastermind caught!" : "The mastermind got away.") + "</b><p>" + esc(k.why) + "</p><p class=\"muted small\">A new Case of the Week starts on Monday.</p></div>";
-    else if (WDAY === 6 && accusing) st = '<p><b>Tap the mastermind.</b> You get one try.</p><button class="btn ghost small" type="button" data-wk-cancel="1">Cancel</button>';
-    else if (WDAY === 6) st = "<p>" + (n < 6 ? "You have <b>" + n + " of 6 clues</b>. With clues missing it's a guess, so catch up or buy them first." : "You have <b>every clue</b>. Only one suspect fits them all.") +
-      '</p><button class="btn danger wide" type="button" data-wk-accuse="1">Name the mastermind</button>';
-    else st = "<p>Every Daily you finish from Monday to Saturday adds a clue. On <b>Sunday</b>, name the mastermind (one try). Tap suspects to cross them out as the clues rule them out.</p>";
-    $("wk-status").innerHTML = st;
-    $("wk-tip").textContent = a.done ? "" : accusing ? "Tap the mastermind" : "Tap a suspect to cross them out";
-    $("scr-week").classList.toggle("accusing", accusing);
-  }
-  function accuseMastermind(i) {
-    var k = WL.buildWeek(WEEK), correct = i === k.answer;
-    S.arc.done = true; S.arc.correct = correct; S.arc.pick = i;
-    var r = P.mastermindDone(correct);
-    persist();
-    accusing = false;
-    renderWeek();
-    Snd.play("stamp");
-    setTimeout(function () { Snd.play(correct ? "fanfare" : "fail"); }, 200);
-    if (correct) { FX.confetti({ count: 150 }); Plat.happytime(); }
-    FX.float("+" + r.coins, $("coins"), "coin");
-    renderCoins(true);
-    toast((correct ? "Mastermind caught! " : "Wrong suspect. ") + "+" + r.coins + " coins, +" + r.xp + " XP", correct ? "gold" : "");
-    WL.track("mastermind", { correct: correct, clues: cluesOpen() });
-    setTimeout(flushQueue, 1500);
-  }
-  $("scr-week").addEventListener("click", function (e) {
-    var b = e.target.closest("[data-sus],[data-wk-key],[data-wk-buy],[data-wk-today],[data-wk-accuse],[data-wk-cancel]");
-    if (!b || b.disabled) return;
-    var a = S.arc;
-    if (b.dataset.sus != null) {
-      var i = +b.dataset.sus, s = WL.buildWeek(WEEK).suspects[i];
-      if (accusing) {
-        showNotice({ icon: "★", title: "Accuse " + s.name + "?", text: "You get one try. If you're wrong, the mastermind gets away.", yes: "Accuse " + s.name, no: "Not yet",
-          onYes: function () { accuseMastermind(i); } });
-        return;
-      }
-      a.crossed[i] = !a.crossed[i]; persist();
-      Snd.play("tap");
-      renderWeek();
-      return;
-    }
-    Snd.play("click");
-    if (b.dataset.wkKey) unlockDay(+b.dataset.wkKey);
-    else if (b.dataset.wkBuy) {
-      if (S.coins < CLUE_COST) { toast("You need " + (CLUE_COST - S.coins) + " more coins."); return; }
-      P.addCoins(-CLUE_COST); a.bought[+b.dataset.wkBuy] = true; persist();
-      Snd.play("buy"); renderCoins(true); renderWeek();
-    } else if (b.dataset.wkToday) startDaily(TODAY);
-    else if (b.dataset.wkAccuse) { accusing = true; renderWeek(); }
-    else if (b.dataset.wkCancel) { accusing = false; renderWeek(); }
-  });
 
   /* ---------- write a case for friends ----------
      The whole case goes into the link (see WL.packWritten), so nothing is stored online.
@@ -3867,6 +3596,14 @@
   }
   function startupChecks() {
     seasonCheck();
+    var gift = Book.migrate(); // players of the old endless Career: the news, and a thank-you
+    if (gift) {
+      notice({ icon: "📒", eyebrow: "Career has changed", title: "Career is now one big story", sound: "fanfare",
+        text: "The endless chapters have retired. Career is now <b>Book 1: The Black Ledger</b>, one mystery in 30 missions: search scenes, question suspects, " +
+          "rebuild timelines and expose a conspiracy. Your level, coins and achievements stay yours. Thanks for playing the old Career:",
+        html: rewardList(gift), yes: "Start Book 1", no: "Later", onYes: function () { Book.start(); } });
+      WL.track("book_migrated", {});
+    }
     if (S.lastSeen && S.lastSeen < TODAY) WL.track("return_visit", { days_away: TODAY - S.lastSeen, day_of_play: TODAY - S.firstDay + 1 });
     var away = S.lastSeen ? TODAY - S.lastSeen : 0;
     if (away >= 3 && S.tot.solved > 0) {
@@ -3908,13 +3645,17 @@
     else { history.back(); return; }
     armBack();
   });
-  $("coins").addEventListener("click", function () { Snd.play("click"); if (screen === "case") return toast("Finish this case first, then open the Shop."); openShop(false); });
-  $("btn-play").addEventListener("click", function () { Snd.play("click"); startCareer(); });
+  $("coins").addEventListener("click", function () {
+    Snd.play("click");
+    if (screen === "case") return toast("Finish this case first, then open the Shop.");
+    if (screen === "book") return toast("Finish this mission first, then open the Shop.");
+    openShop(false);
+  });
+  $("btn-play").addEventListener("click", function () { Snd.play("click"); Book.start(); });
   $("btn-map").addEventListener("click", function () { Snd.play("click"); openMap(); });
+  $("btn-dossier").addEventListener("click", function () { Snd.play("click"); Book.openDossier(); });
   $("btn-daily").addEventListener("click", function () { Snd.play("click"); startDaily(TODAY); });
-  $("btn-week").addEventListener("click", function () { Snd.play("click"); openWeek(); });
   $("btn-season").addEventListener("click", function () { Snd.play("click"); openBoard("season"); });
-  $("tile-night").addEventListener("click", function () { Snd.play("click"); if (!unlocked("night")) return toast("The Night Shift opens on your third day, or after 3 Daily Cases."); startNight(); });
   $("streak-chip").addEventListener("click", function () { Snd.play("click"); streakInfo(); });
   $("btn-files").addEventListener("click", function () { Snd.play("click"); openFiles(); });
   $("btn-friends").addEventListener("click", function () { Snd.play("click"); openBoard("friends"); });
@@ -3930,7 +3671,7 @@
   $("btn-next").addEventListener("click", next);
   $("btn-verdict-hq").addEventListener("click", function () {
     Snd.play("click");
-    if (run && run.kind === "career" && run.n === 1) { S.settings.tutorialDone = true; persist(); }
+    if (run && run.kind === "train") { S.settings.tutorialDone = true; persist(); }
     if (run && run.kind === "rush" && run.lives <= 0) { $("verdict").hidden = true; endRush(false); return; }
     if (run && (run.kind === "daily" || run.kind === "replay") && run.prog.results.length >= run.cases.length) { $("verdict").hidden = true; finishDaily(); return; }
     if (run && run.kind === "friend" && !run.preview && !run.again) { openWrite(); return; } // "Write one back"
@@ -3952,6 +3693,7 @@
     if (document.querySelector("dialog[open]")) return;
     var tag = (e.target && e.target.tagName) || "";
     if (tag === "TEXTAREA" || tag === "INPUT") return;
+    if (screen === "book") { Book.key(e); return; }
     if (screen !== "case" || !run) {
       if (e.key === "Escape" && screen !== "hq" && screen !== "case") goHQ();
       return;
@@ -3983,6 +3725,23 @@
     mission: function (m) { queue.push({ type: "mission", m: m }); }
   };
 
+  /* ---------- Career: Book 1 (js/book.js) gets the helpers it shares with the rest of the game ---------- */
+  function bookHintMode() {
+    if ((S.inv.magnifier || 0) > 0) return "item";
+    if (canRewarded() && P.coolLeft("hintAd", 90) === 0) return "ad";
+    return "none";
+  }
+  function bookUseHint(mode, give) {
+    if (mode === "item") { if (P.useItem("magnifier")) { give(); persist(); } return; }
+    P.coolStart("hintAd"); persist();
+    Plat.rewarded("hint").then(function (ok) { if (ok) { toast("Hint unlocked"); give(); } else adFailed(); });
+  }
+  Book.mount({
+    S: function () { return S; }, persist: persist, flush: cloudFlush, show: show, setHud: setHud, goHQ: goHQ, openMap: openMap,
+    toast: toast, rw: rw, P: P, Snd: Snd, FX: FX, Plat: Plat, midgame: midgame, renderCoins: renderCoins, flushQueue: flushQueue,
+    hintMode: bookHintMode, useHint: bookUseHint, openDialog: openDialog, closeDialog: closeDialog
+  });
+
   /* ---------- start-up ---------- */
   function loadState(data) {
     S = data || {};
@@ -3994,8 +3753,7 @@
     S.lb = Object.assign({ posted: {}, claimed: {}, badges: [], ranks: {} }, S.lb || {});
     S.unlocked = S.unlocked || {};   // past days opened with a Case Key
     S.catchups = S.catchups || {};   // progress on those days
-    S.night = S.night || {};
-    if (!S.arc || S.arc.week !== WEEK) S.arc = { week: WEEK, bought: {}, crossed: {}, done: false, correct: false, pick: -1 };
+    delete S.arc; delete S.night; // the Case of the Week and the Night Shift are gone
     S.league = Object.assign({ week: 0, tier: 0, entered: false }, S.league || {});
     S.groups = S.groups || [];
     S.pwa = S.pwa || {};
@@ -4034,7 +3792,7 @@
     if (location.hash === "#endless") { startRush(); return; }
     if (D5 && D5.mode === "local") { startDaily(TODAY); return; } // a preview from the Daily 5 admin desk
     // New players go straight into their first case.
-    if (!S.settings.tutorialDone && S.tot.solved === 0) { startCareer(1); return; }
+    if (!S.settings.tutorialDone && S.tot.solved === 0) { startTraining(); return; }
     goHQ();
   }
   // A brand-new visitor has nothing to load. Firebase keeps its sign-in in this IndexedDB database, so when
@@ -4128,7 +3886,7 @@
   // Test hook for automated checks (only with ?test=1 in the address).
   if (/[?&]test=1/.test(location.search)) window.__WLtest = {
     run: function () { return run; }, state: function () { return S; }, persist: persist,
-    hq: goHQ, career: startCareer, rush: startRush, daily: startDaily, night: startNight, week: openWeek, files: openFiles,
+    hq: goHQ, train: startTraining, book: Book, rush: startRush, daily: startDaily, files: openFiles,
     cloud: function () { return cloud; }, push: function () { S.sync.dirty = true; return cloudPush(); },
     d5: function () { return { editions: d5Edition, store: S.d5, run: run && run.d5 ? run.d5.r : null }; }, notebook: openNotebook
   };

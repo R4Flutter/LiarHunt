@@ -6,11 +6,10 @@
   with motives, facts, and two-fact puzzles. The case generator mixes them with the game's built-in facts.
 
   To add a season, copy Season 1's shape and append it to the list. A season with no entry of its own
-  (the list ran out) reuses the last season's templates, so the game never stops. Every Daily, Night Shift,
-  Career and Rush case uses the current season. Run `node tools/check-cases.mjs` after editing.
+  (the list ran out) reuses the last season's templates, so the game never stops. Every Daily and Rush case
+  uses the current season. Run `node tools/check-cases.mjs` after editing.
 
   name, tagline   shown on the season card
-  weeks           { title, setup }: the Case of the Week, one per week of the season (8 of the cast are its suspects)
   cast            [name, role]: locals who appear as suspects all season (first names, not used elsewhere)
   premises        { title, setup, motives: ["{name} ..."], at }: what happened. {name} becomes the liar.
                   at: "night" (the default) or "day". The game adds the crime's time window to the setup and only
@@ -30,13 +29,6 @@ window.WL_SEASONS = [
     name: "The Port Ellery Files",
     icon: "⚓",
     tagline: "Fog, ferries and a harbor full of secrets. Four weeks, one small town, a lot of lies.",
-    // Case of the Week, one per week of the season: 8 of the cast are the suspects
-    weeks: [
-      { title: "The Lighthouse Sapphire", setup: "The Ellery family's sapphire vanished from the lighthouse museum on the night of the big storm." },
-      { title: "The Night Ferry Heist", setup: "A bag of cash for the bank vanished from the night ferry's safe somewhere between Port Ellery and Gull Rock." },
-      { title: "The Sunken Regatta", setup: "Someone drilled holes in the mayor's racing yacht the night before the Port Ellery regatta." },
-      { title: "The Cannery Fire", setup: "A fire gutted the old cannery's records room. The fire chief says it was no accident." }
-    ],
     cast: [
       ["Marta", "Harbor master"], ["Otto", "Ferry captain"], ["Ines", "Fishmonger"], ["Jonah", "Lighthouse keeper"],
       ["Priya", "Hotel manager"], ["Leo", "Boatbuilder"], ["Sadie", "Café owner"], ["Tomas", "Dock worker"],

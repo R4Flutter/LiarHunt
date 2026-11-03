@@ -41,7 +41,7 @@
   var THEMES = [
     { id: "auto", name: "Match my device", price: 0, swatch: ["#e7eee5", "#0e1612", "#c22438"] },
     { id: "precinct", name: "Precinct", price: 0, swatch: ["#e7eee5", "#142029", "#c22438"] },
-    { id: "night", name: "Night Shift", price: 0, swatch: ["#0e1612", "#e2ebe1", "#ff5c6c"] },
+    { id: "night", name: "Night Desk", price: 0, swatch: ["#0e1612", "#e2ebe1", "#ff5c6c"] },
     { id: "sepia", name: "Sepia Files", price: 500, swatch: ["#efe2c8", "#3b2a1a", "#a2361f"] },
     { id: "blueprint", name: "Blueprint", price: 900, swatch: ["#123a63", "#e8f1ff", "#ffd23f"] },
     { id: "neon", name: "Neon Noir", price: 1500, swatch: ["#140f24", "#f1e9ff", "#ff2e88"] },
@@ -56,8 +56,8 @@
 
   /* ---------- daily missions ---------- */
   var MISSION_TYPES = [
-    { type: "career", targets: [3, 5, 8], reward: [40, 60, 80], text: function (n) { return "Solve " + n + " career cases"; } },
-    { type: "stars3", targets: [2, 3, 5], reward: [50, 60, 80], text: function (n) { return "Earn 3 stars on " + n + " cases"; } },
+    { type: "career", book: true, targets: [1, 2, 3], reward: [40, 60, 80], text: function (n) { return "Finish " + n + " career mission" + (n > 1 ? "s" : ""); } },
+    { type: "stars3", book: true, targets: [1, 2, 3], reward: [50, 60, 80], text: function (n) { return "Earn 3 stars on " + n + " career mission" + (n > 1 ? "s" : ""); } },
     { type: "rushcatch", targets: [8, 12, 20], reward: [40, 60, 80], text: function (n) { return "Catch " + n + " liars in Rush"; } },
     { type: "combo", targets: [3, 5, 7], reward: [40, 60, 80], text: function (n) { return "Solve " + n + " in a row on the first try"; } },
     { type: "daily", targets: [1], reward: [60], text: function () { return "Finish today's Daily Case"; } },
@@ -72,8 +72,8 @@
     { id: "solved25", name: "On the Beat", desc: "Solve 25 cases", stat: "solved", goal: 25, coins: 75 },
     { id: "solved100", name: "Case Hardened", desc: "Solve 100 cases", stat: "solved", goal: 100, coins: 200 },
     { id: "solved500", name: "Living Legend", desc: "Solve 500 cases", stat: "solved", goal: 500, coins: 600 },
-    { id: "stars10", name: "Sharp Eye", desc: "Get 3 stars on 10 cases", stat: "stars3", goal: 10, coins: 100 },
-    { id: "stars50", name: "Perfectionist", desc: "Get 3 stars on 50 cases", stat: "stars3", goal: 50, coins: 300 },
+    { id: "stars10", name: "Sharp Eye", desc: "Get 3 stars on 10 career missions", stat: "stars3", goal: 10, coins: 100 },
+    { id: "stars50", name: "Perfectionist", desc: "Get 3 stars on 25 career missions", stat: "stars3", goal: 25, coins: 300 },
     { id: "nohint25", name: "No Help Needed", desc: "Solve 25 cases without a hint", stat: "nohint", goal: 25, coins: 150 },
     { id: "twist10", name: "Twist Master", desc: "Solve 10 twist cases", stat: "twists", goal: 10, coins: 150 },
     { id: "combo10", name: "Hot Streak", desc: "Solve 10 cases in a row on the first try", stat: "bestCombo", goal: 10, coins: 150 },
@@ -83,19 +83,17 @@
     { id: "rush50", name: "Polygraph Breaker", desc: "Catch 50 liars in one Rush run", stat: "rushBest", goal: 50, coins: 500 },
     { id: "daily7", name: "Regular", desc: "Finish 7 Daily Cases", stat: "dailyDone", goal: 7, coins: 150 },
     { id: "perfectday", name: "Perfect Day", desc: "Catch all 5 liars in a Daily Case", stat: "perfectDays", goal: 1, coins: 100 },
-    { id: "chapter1", name: "Rookie No More", desc: "Finish chapter 1", stat: "chapters", goal: 1, coins: 50 },
-    { id: "chapter3", name: "Harbor Master", desc: "Finish chapter 3", stat: "chapters", goal: 3, coins: 150 },
-    { id: "chapter5", name: "Night Owl", desc: "Finish chapter 5", stat: "chapters", goal: 5, coins: 300 },
-    { id: "chapter10", name: "Final Verdict", desc: "Finish chapter 10", stat: "chapters", goal: 10, coins: 800 },
+    // Career (Book 1). The ids are the old Career's, so players who earned them keep them.
+    { id: "chapter1", name: "Rookie No More", desc: "Solve chapter 1 of Book 1", stat: "bookCh", goal: 1, coins: 50 },
+    { id: "chapter3", name: "Follow the Money", desc: "Solve chapter 3 of Book 1", stat: "bookCh", goal: 3, coins: 150 },
+    { id: "chapter5", name: "The Black Ledger", desc: "Solve all of Book 1", stat: "bookCh", goal: 5, coins: 500 },
+    { id: "chapter10", name: "Master Detective", desc: "Earn 80 stars in Book 1", stat: "bookStars", goal: 80, coins: 800 },
     { id: "level10", name: "Promoted", desc: "Reach level 10", stat: "level", goal: 10, coins: 100 },
     { id: "level25", name: "Decorated", desc: "Reach level 25", stat: "level", goal: 25, coins: 250 },
     { id: "theme", name: "New Look", desc: "Buy a desk theme", stat: "themesBought", goal: 1, coins: 50 },
     { id: "streak7", name: "Week Warrior", desc: "Play the Daily Case 7 days in a row", stat: "bestStreak", goal: 7, coins: 100 },
     { id: "streak30", name: "Iron Habit", desc: "Play the Daily Case 30 days in a row", stat: "bestStreak", goal: 30, coins: 500 },
     { id: "shield", name: "Saved by the Shield", desc: "Let a Streak Shield save your streak", stat: "shieldSaves", goal: 1, coins: 50 },
-    { id: "night5", name: "Graveyard Shift", desc: "Solve 5 Night Shift cases", stat: "nights", goal: 5, coins: 150 },
-    { id: "master1", name: "Mastermind Hunter", desc: "Catch the mastermind in a Case of the Week", stat: "masterminds", goal: 1, coins: 150 },
-    { id: "master4", name: "Most Wanted", desc: "Catch 4 weekly masterminds", stat: "masterminds", goal: 4, coins: 400 },
     { id: "rival3", name: "Top Dog", desc: "Beat 3 friends' challenges", stat: "challengesWon", goal: 3, coins: 150 },
     { id: "promoted", name: "Moving Up", desc: "Get promoted in the weekly league", stat: "promotions", goal: 1, coins: 100 }
   ];
@@ -116,8 +114,7 @@
     S.xp = S.xp || 0;
     S.coins = S.coins || 0;
     S.inv = Object.assign({ magnifier: 3, freeze: 1, shield: 1, key: 2 }, S.inv || {});
-    S.career = Object.assign({ level: 1, stars: {}, combo: 0 }, S.career || {});
-    S.tot = Object.assign({ solved: 0, stars3: 0, nohint: 0, twists: 0, bestCombo: 0, rushBest: 0, dailyDone: 0, perfectDays: 0, chapters: 0, themesBought: 0, liars: 0,
+    S.tot = Object.assign({ solved: 0, stars3: 0, nohint: 0, twists: 0, bestCombo: 0, rushBest: 0, dailyDone: 0, perfectDays: 0, chapters: 0, bookCh: 0, bookStars: 0, themesBought: 0, liars: 0,
       bestStreak: 0, shieldSaves: 0, nights: 0, masterminds: 0, challengesWon: 0, promotions: 0 }, S.tot || {});
     S.themes = Object.assign({ owned: ["auto", "precinct", "night"], current: "precinct" }, S.themes || {});
     S.ach = S.ach || {};
@@ -162,40 +159,35 @@
   /* ---------- recording play ---------- */
   function comboMult(c) { return 1 + 0.1 * Math.min(c, 10); }
 
-  // A career case was solved. wrong = number of wrong picks before the right one.
-  function careerSolved(o) {
-    var n = o.level, spec = WL.careerSpec(n), replay = n < S.career.level;
-    var stars = o.wrong > 0 ? 1 : (!o.hint && o.seconds <= spec.par ? 3 : 2);
-    var firstTry = o.wrong === 0;
-    S.career.combo = firstTry ? S.career.combo + 1 : 0;
-    var prev = S.career.stars[n] || 0;
-    if (stars > prev) S.career.stars[n] = stars;
-    var ch = spec.chapter, mult = comboMult(S.career.combo);
-    var coins = replay ? 0 : [0, 8, 12, 20][stars] + Math.floor(ch / 2) * 2;
-    var xp = rookie(Math.round((20 + 3 * Math.min(ch, 10)) * (stars === 3 ? 1.5 : stars === 2 ? 1.2 : 1) * mult * (replay ? 0.25 : 1)));
-    var chapterDone = false;
-    if (!replay) {
-      S.career.level = n + 1;
-      if (n % 10 === 0) { chapterDone = true; S.tot.chapters = Math.max(S.tot.chapters, ch); coins += 60 + 10 * ch; }
-    }
-    S.tot.solved++; S.tot.liars++;
-    if (stars === 3 && prev < 3) S.tot.stars3++;
-    if (!o.hint) S.tot.nohint++;
-    if (spec.mode !== "liar") S.tot.twists++;
-    S.tot.bestCombo = Math.max(S.tot.bestCombo, S.career.combo);
+  // A Career mission was solved (js/book.js). o: { ch, stars, hint, replay, chapterDone, bookDone }.
+  // Replays keep the first run's stars and pay a little XP, no coins.
+  function bookSolved(o) {
+    S.tot.solved++;
     missionProgress("career", 1);
-    if (stars === 3) missionProgress("stars3", 1);
-    if (!o.hint) missionProgress("nohint", 1);
-    if (spec.mode !== "liar") missionProgress("twist", 1);
-    missionMax("combo", S.career.combo);
-    if (coins) addCoins(coins);
-    var lvl = addXp(xp);
+    if (o.replay) { var rx = rookie(15); addXp(rx); checkAch(); return { coins: 0, xp: rx }; }
+    var coins = [0, 15, 25, 40][o.stars], items = null;
+    if (o.chapterDone) { coins += 100 + 25 * o.ch; items = { magnifier: 1 }; S.tot.bookCh = Math.max(S.tot.bookCh, o.ch); }
+    if (o.bookDone) { coins += 300; items = { magnifier: 3, key: 2 }; }
+    S.tot.bookStars += o.stars;
+    if (o.stars === 3) { S.tot.stars3++; missionProgress("stars3", 1); }
+    if (!o.hint) { S.tot.nohint++; missionProgress("nohint", 1); }
+    var xp = rookie(Math.round((45 + 5 * o.ch) * [1, 1, 1.2, 1.5][o.stars]));
+    addCoins(coins);
+    grant(items);
+    addXp(xp);
     checkAch();
-    return { stars: stars, prevStars: prev, coins: coins, xp: xp, combo: S.career.combo, mult: mult, replay: replay, chapterDone: chapterDone, chapter: ch, levelInfo: lvl, par: spec.par };
+    return { coins: coins, xp: xp, items: items };
   }
-  function careerWrong() { S.career.combo = 0; }
-  // Two mistakes: no stars, no coins, the level stays open. A little XP for trying.
-  function careerBotched() { S.career.combo = 0; addXp(5); return { xp: 5 }; }
+  // The training case every new player starts with.
+  function trainDone(o) {
+    S.tot.solved++; S.tot.liars++;
+    if (!o.hint) S.tot.nohint++;
+    var coins = 20, xp = rookie(30);
+    addCoins(coins);
+    addXp(xp);
+    checkAch();
+    return { coins: coins, xp: xp };
+  }
 
   // Rush: one liar caught (combo = current run combo)
   function rushCatch(o) {
@@ -270,32 +262,19 @@
   var COMEBACK = { coins: 150, magnifier: 2, key: 1 };
   function comeback() { grant(COMEBACK); return COMEBACK; }
 
-  /* ---------- Night Shift + Case of the Week ---------- */
-  function nightDone(o) {
-    var coins = o.correct ? 40 : 0, xp = rookie(o.correct ? 60 : 10);
-    if (o.correct) {
-      S.tot.solved++; S.tot.liars++; S.tot.nights++;
-      if (!o.hint) { S.tot.nohint++; missionProgress("nohint", 1); }
-      if (o.twist) { S.tot.twists++; missionProgress("twist", 1); }
-    }
-    if (coins) addCoins(coins);
-    addXp(xp);
-    return { coins: coins, xp: xp };
-  }
-  function mastermindDone(correct) {
-    var coins = correct ? 250 : 40, xp = correct ? 200 : 30;
-    if (correct) S.tot.masterminds++;
-    addCoins(coins);
-    addXp(xp);
-    return { coins: coins, xp: xp };
-  }
   function count(stat) { S.tot[stat] = (S.tot[stat] || 0) + 1; checkAch(); }
 
   /* ---------- missions ---------- */
   function ensureMissions() {
     var key = todayKey();
-    if (S.missions.date === key && S.missions.list.length) return S.missions;
-    var r = WL.rngFrom("missions-" + key), types = WL.shuffle(MISSION_TYPES, r);
+    if (S.missions.date === key && S.missions.list.length) {
+      // lists made before Career became Book 1 could ask for 8 career cases in a day
+      S.missions.list.forEach(function (m) { if ((m.type === "career" || m.type === "stars3") && m.target > 3) { m.target = 3; m.progress = Math.min(m.progress, 3); } });
+      return S.missions;
+    }
+    // no Career missions once Book 1 is solved: replays can't earn stars
+    var bookOpen = !(window.WLBook && window.WLBook.finished());
+    var r = WL.rngFrom("missions-" + key), types = WL.shuffle(MISSION_TYPES.filter(function (t) { return bookOpen || !t.book; }), r);
     // the first mission always has the easiest target
     var list = types.slice(0, 3).map(function (t, i) {
       var k = i === 0 ? 0 : Math.floor(r() * t.targets.length);
@@ -424,9 +403,9 @@
     init: function (state, h) { hooks = h || {}; return ensure(state); },
     levelInfo: levelInfo, titleFor: titleFor, nextTitle: nextTitle, tierFor: tierFor, TITLES: TITLES,
     ITEMS: ITEMS, THEMES: THEMES, LOGIN: LOGIN, CHEST: CHEST, COMEBACK: COMEBACK, MAX_SHIELDS: MAX_SHIELDS,
-    streakDay: streakDay, coverStreak: coverStreak, comeback: comeback, nightDone: nightDone, mastermindDone: mastermindDone, count: count,
+    streakDay: streakDay, coverStreak: coverStreak, comeback: comeback, count: count,
     addCoins: addCoins, grant: grant, addXp: addXp,
-    careerSolved: careerSolved, careerWrong: careerWrong, careerBotched: careerBotched,
+    bookSolved: bookSolved, trainDone: trainDone,
     rushCatch: rushCatch, rushEnd: rushEnd, dailyCase: dailyCase, dailyDone: dailyDone, comboMult: comboMult,
     ensureMissions: ensureMissions, missionText: missionText, claimMission: claimMission, chestReady: chestReady,
     claimChest: claimChest, missionsToClaim: missionsToClaim,

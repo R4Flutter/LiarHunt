@@ -3,7 +3,7 @@
   Shared by the game (index.html) and the past-cases page (archive.html).
   - seeded random numbers (everyone gets the same daily cases)
   - day numbers and dates
-  - the case generator (career levels, rush mode, and backup when the hand-written list runs out)
+  - the case generator (daily, rush and live rooms, and backup when the hand-written list runs out)
   - suspect portraits (small SVG sketches)
   - saved progress (localStorage)
 */
@@ -632,8 +632,9 @@
       combos: (pack.combos || []).map(function (f) { return mine(f, { own: true, combo: true, tier: 3 }); }),
       cast: (pack.cast || []).map(function (c) { return { name: c[0], role: c[1] }; })
     };
-    var cast = {};
+    var cast = {}, story = (window.WL_BOOK1 || {}).people || {};
     p.cast.forEach(function (c) { cast[c.name] = 1; });
+    Object.keys(story).forEach(function (k) { cast[story[k].name.split(" ")[0]] = 1; }); // nor a Career character's
     p.names = NAMES.filter(function (n) { return !cast[n]; }); // a local's name always means that local
     pools.push(p);
     return p;
@@ -737,7 +738,7 @@
       level: o.level || (mode === "liar" ? "easy" : "twist"), source: "generated"
     };
   }
-  // How hard each weekday is: an easy Monday up to a hard Saturday. Sunday is mastermind day.
+  // How hard each weekday is: an easy Monday up to a hard Saturday, then a lighter Sunday.
   var HEAT = [0, 1, 1, 2, 2, 3, 1];
   function daySpecs(day) {
     var h = HEAT[weekday(day)];
@@ -805,81 +806,8 @@
     return list;
   }
 
-  /* ---------- career: endless chapters of 10 cases ---------- */
-  var CHAPTERS = ["Rookie Beat", "Downtown", "The Harbor", "High Society", "Night Shift",
-    "The Old Quarter", "Riverside", "The Syndicate", "Cold Cases", "Final Verdict"];
-  function roman(n) {
-    var v = [[10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]], out = "";
-    v.forEach(function (p) { while (n >= p[0]) { out += p[1]; n -= p[0]; } });
-    return out;
-  }
-  function chapterOf(n) { return Math.ceil(n / 10); }
-  function chapterName(ch) {
-    var round = Math.floor((ch - 1) / CHAPTERS.length);
-    return CHAPTERS[(ch - 1) % CHAPTERS.length] + (round ? " " + roman(round + 1) : "");
-  }
-  /* One new idea per chapter: 1 the basics, 2 stories with two claims, 3 lies that need two facts,
-     4 true stories that sound suspicious, then everything mixed. */
-  var CHAPTER_NEWS = [null,
-    null,
-    { icon: "💬", title: "Two claims, one lie", text: "From now on some stories say two things. One part can be true and the other a lie, so check every claim." },
-    { icon: "🧩", title: "Two facts, one proof", text: "Some lies only break when you put two facts together, like a start time and a running time. You'll need to tap both." },
-    { icon: "🤔", title: "Suspicious but true", text: "Some honest stories now sound fishy: a crab bought just before the market sold out. Only a broken fact makes a liar." }];
-  /* The career story: one thread through the ten chapters, from a rookie's first week to the Collector's arrest.
-     intro shows when a chapter starts (and on the career card), outro when its last case is solved. */
-  var CHAPTER_STORY = [null,
-    { intro: "First week on the force. Sergeant Okafor gives you the small cases nobody else wants. “Anyone can find a thief,” she says. “Your job is to hear the lie.”",
-      outro: "Ten cases, ten liars. Okafor puts your name forward for the downtown squad." },
-    { intro: "Downtown, people talk fast and lie faster. Three of last month's stolen things have turned up in the same pawn shop window.",
-      outro: "The pawn shop owner shrugs: a quiet buyer called the Collector takes anything small and pretty. Nobody has seen their face." },
-    { intro: "The Collector's goods leave town by boat. Captain Reyes wants every crate on the docks checked and every alibi timed to the minute.",
-      outro: "A dock worker talks at last: the Collector's best customers live up on the hill." },
-    { intro: "Up on the hill the stories are polished, and some honest ones sound guilty. Someone here buys from the Collector.",
-      outro: "A collector of old clocks admits she paid cash for a stolen brooch, at night, to a voice behind a door." },
-    { intro: "Reyes moves you to nights. The Collector's people work after dark, so now you do too.",
-      outro: "You catch a courier with a key to an empty warehouse in the Old Quarter. Inside: a list of twelve names." },
-    { intro: "Twelve names, all from the Old Quarter. Every one of them has an alibi, and most of them are lying.",
-      outro: "Half the list were decoys. The other half all rent boats from the same yard on the river." },
-    { intro: "Fog on the water and boats that leave without lights. Someone is moving stolen goods up the river.",
-      outro: "You stop a boat at the lock. In the hold: a gold statue, a ship's bell and a business card with no name on it." },
-    { intro: "The card opens doors to the Collector's inner circle. They lie like professionals: calm, detailed and nearly perfect.",
-      outro: "One of them cracks and names the Collector's banker. Reyes says it's time to open the old files." },
-    { intro: "The banker's ledger matches cold cases going back ten years. Old alibis that nobody checked. You check them.",
-      outro: "Every old trail leads back to the pawn shop downtown, where this all began." },
-    { intro: "You know who the Collector is. Now prove it, one liar at a time, before they leave town.",
-      outro: "The pawn shop owner, the Collector all along, is in custody. Okafor leaves a note on your desk: “Told you you'd hear it.”" }];
-  function chapterStory(ch) {
-    if (ch < CHAPTER_STORY.length) return CHAPTER_STORY[ch];
-    return { intro: "Round " + roman(Math.floor((ch - 1) / 10) + 1) + ". The Collector is behind bars, but the old crew is back at work. Same streets, harder lies.", outro: "" };
-  }
-  function careerSpec(n) {
-    var ch = chapterOf(n), k = (n - 1) % 10 + 1, twist = k === 5 || k === 10;
-    var s = { n: n, chapter: ch, slot: k, mode: "liar", clueCount: 3, maxTier: 1, needTier: 0, level: "easy", combo: false, near: false };
-    if (twist) s.mode = (k === 5) === (ch % 2 === 1) ? "honest" : "planted";
-    if (ch === 1) {
-      s.maxTier = k >= 7 ? 2 : 1;
-      s.clueCount = twist || k < 6 ? 3 : 4;
-      s.level = twist ? "twist" : k <= 4 ? "easy" : "medium";
-    } else if (ch === 2) {
-      s.maxTier = 2;
-      s.clueCount = twist || k < 4 ? 3 : 4;
-      s.level = twist ? "twist" : k >= 6 ? "hard" : "medium";
-    } else {
-      s.maxTier = 3;
-      s.clueCount = twist ? 4 : k <= 3 ? 4 : 5;
-      s.needTier = !twist && (k === 4 || k === 7 || k === 9) ? 3 : 0;
-      s.combo = !!s.needTier;
-      s.near = ch >= 4 && !twist && k >= 6;
-      s.level = twist ? "twist" : k >= 6 ? "hard" : "medium";
-    }
-    // seconds to beat for the third star (6 of them for pointing at the proof)
-    s.par = 24 + s.clueCount * 7 + (twist ? 15 : 0) + (s.needTier ? 15 : 0) + (s.near ? 5 : 0);
-    return s;
-  }
-  function careerOpts(s, avoid) {
-    return { pack: packFor(Math.max(1, seasonOf(dayNumber()))), avoid: avoid, mode: s.mode, level: s.level, clueCount: s.clueCount,
-      maxTier: s.maxTier, needTier: s.needTier, combo: s.combo, near: s.near };
-  }
+  /* ---------- the training case ----------
+     Every new player starts here, with the coach, before Career (Book 1, js/book.js) or the Daily. */
   var TUTORIAL = {
     title: "The Missing Cupcakes",
     setup: "A box of cupcakes vanished from the school kitchen.",
@@ -893,40 +821,7 @@
     proof: [0],
     why: "It rained hard all afternoon, so there was no sunshine for Mia to play football in."
   };
-  var careerCache = {}, careerFacts = {}, careerAvoid = newAvoid();
-  function buildCareerLevel(n) {
-    if (careerCache[n]) return careerCache[n];
-    if (n > 2) buildCareerLevel(n - 1); // build in order: each level skips the facts the levels before it used
-    var s = careerSpec(n), c;
-    if (n === 1) {
-      c = prepHand(TUTORIAL, "easy", rngFrom("wl-career-1"));
-    } else if (packFor(1)) {
-      c = generateCase2(rngFrom("wl-career2-" + n), careerOpts(s, careerAvoid));
-    } else {
-      // walk through all story openers in a shuffled order, so they don't repeat for 50 cases
-      var round = Math.floor((n - 2) / PREMISES.length);
-      var premise = shuffle(PREMISES, rngFrom("wl-prem-" + round))[(n - 2) % PREMISES.length];
-      c = generateCase(rngFrom("wl-career-" + n), {
-        mode: s.mode, clueCount: s.clueCount, maxTier: s.maxTier, needTier: s.needTier, level: s.level, premise: premise,
-        avoid: { names: {}, premises: {}, facts: careerFacts }
-      });
-    }
-    c.spec = s;
-    careerCache[n] = c;
-    return c;
-  }
-  /* A botched career case comes back as a fresh version: new facts, suspects and story. */
-  function careerRetry(n, k) {
-    var base = buildCareerLevel(n), s = base.spec, avoid = { names: {}, premises: {}, facts: {} };
-    (base.factIds || []).forEach(function (id) { avoid.facts[id] = 1; });
-    base.suspects.forEach(function (x) { avoid.names[x.name] = 1; });
-    avoid.premises[base.title] = 1;
-    var r = rngFrom("wl-career-" + n + "-retry-" + k);
-    var c = packFor(1) ? generateCase2(r, careerOpts(s, Object.assign(newAvoid(), avoid)))
-      : generateCase(r, { mode: s.mode, clueCount: s.clueCount, maxTier: s.maxTier, needTier: s.needTier, level: s.level, avoid: avoid });
-    c.spec = s;
-    return c;
-  }
+  function tutorialCase() { return prepHand(TUTORIAL, "easy", rngFrom("wl-career-1")); }
 
   /* Rush (endless) mode: case n (1, 2, 3...). Every 5th case is a twist. */
   function endlessSpec(n) {
@@ -1012,179 +907,9 @@
     return '<svg class="face" viewBox="0 0 64 64" aria-hidden="true" focusable="false">' + p.join("") + "</svg>";
   }
 
-  /* ---------- weeks: Monday to Sunday (Daily #1 must be a Monday) ---------- */
+  /* ---------- weeks: Monday to Sunday (Daily #1 must be a Monday). Weekly leagues use them. ---------- */
   function weekOf(day) { return Math.floor((day - 1) / 7) + 1; }
   function weekday(day) { return (day - 1) % 7; } // 0 = Monday ... 6 = Sunday
-
-  /* ---------- Night Shift: one hard bonus case each evening ---------- */
-  var NIGHT_HOUR = 20;
-  function buildNight(day) {
-    var mode = ["liar", "honest", "liar", "planted"][day % 4];
-    if (day >= SEASON_ONE && packFor(seasonOf(day))) {
-      buildDay(day); // skips what that day's Daily used
-      return generateCase2(rngFrom("wl-s" + seasonOf(day) + "-night-" + day), {
-        pack: packFor(seasonOf(day)), avoid: copyAvoid(dayAvoid[day]), mode: mode, level: mode === "liar" ? "hard" : "twist",
-        clueCount: mode === "liar" ? 5 : 4, maxTier: 3, combo: mode === "liar", near: true
-      });
-    }
-    var facts = {};
-    if (day >= CHAIN_FROM) { buildDay(day); facts = Object.assign({}, dayFacts[day]); } // skip that day's Daily facts
-    var c = generateCase(rngFrom("wl-night-" + day), {
-      mode: mode, clueCount: mode === "liar" ? 5 : 4, maxTier: 3, needTier: mode === "liar" ? 3 : 0,
-      level: mode === "liar" ? "hard" : "twist", avoid: { names: {}, premises: {}, facts: facts }
-    });
-    return c;
-  }
-
-  /* ---------- Case of the Week ----------
-     8 suspects, 6 clues (one for each Daily from Monday to Saturday), solved on Sunday.
-     Together the clues rule out everyone but the mastermind, and every clue rules out
-     someone no other clue does, so each missed day really leaves a gap. */
-  var WEEK_CASES = [
-    { title: "The Harbor Diamond", setup: "The Star of the Harbor vanished from a locked case during the yacht club gala." },
-    { title: "The Mayor's Ledger", setup: "The mayor's secret ledger was stolen from City Hall the night before the election." },
-    { title: "The Silent Auction", setup: "A famous painting was swapped for a fake at the museum's silent auction." },
-    { title: "The Midnight Express", setup: "A briefcase full of bonds vanished from the sleeper car of the midnight train." },
-    { title: "The Stolen Stradivarius", setup: "A priceless violin disappeared from the concert hall minutes before the show." },
-    { title: "The Chocolate Formula", setup: "The secret recipe of the city's oldest chocolate factory was copied and sold." },
-    { title: "The Stadium Trophy", setup: "The championship trophy disappeared from the stadium on the eve of the final." },
-    { title: "The Royal Stamp", setup: "The rarest stamp in the world went missing from a collector's locked album." },
-    { title: "The Blackout Bank Job", setup: "During a city blackout, someone emptied a safe deposit box at Central Bank." },
-    { title: "The Last Film Reel", setup: "The only copy of a famous director's new film was stolen from the editing room." },
-    { title: "The Golden Falcon", setup: "A golden falcon statue vanished from the hotel lobby during a charity ball." },
-    { title: "The Rooftop Orchids", setup: "Rare orchids worth a fortune were dug up from a rooftop garden overnight." }
-  ];
-  var TRAITS = [
-    { label: "Came by", vals: ["car", "bus", "bike", "train"], short: ["Car", "Bus", "Bike", "Train"],
-      yes: function (v) { return "A ticket stub shows the mastermind came by " + v + "."; },
-      no: function (v) { return "Cameras prove the mastermind did not come by " + v + "."; } },
-    { label: "Drinks", vals: ["coffee", "tea", "juice"], short: ["Coffee", "Tea", "Juice"],
-      yes: function (v) { return "The mastermind left a half-finished cup of " + v + " behind."; },
-      no: function (v) { return "The mastermind can't stand " + v + " and never drinks it."; } },
-    { label: "Writes with", vals: ["left hand", "right hand"], short: ["Left-handed", "Right-handed"],
-      yes: function (v) { return "The ransom note was written with the " + v + "."; },
-      no: function (v) { return "Experts say the note was not written with the " + v + "."; } },
-    { label: "Wore", vals: ["a red scarf", "a grey coat", "a blue cap"], short: ["Red scarf", "Grey coat", "Blue cap"],
-      yes: function (v) { return "A witness saw the mastermind wearing " + v + "."; },
-      no: function (v) { return "Nobody near the scene was wearing " + v + "."; } }
-  ];
-  // How many clues each trait gets (always 6 in total).
-  var WEEK_SPLITS = [[3, 1, 1, 1], [2, 2, 1, 1], [2, 1, 1, 2], [1, 2, 1, 2]];
-  var weekCache = {};
-  /* Season weeks (from Season 1): the suspects are 8 of the season's locals, and 2 of the 6 clues tie two traits
-     together ("if the mastermind came by car, they wore a grey coat", "came by bus or drinks tea"), so naming the
-     mastermind takes thinking, not just ticking. Every clue still rules out someone no other clue does. */
-  var IS = ["came by ", "drinks ", "writes with the ", "wore "], THEY = ["they came by ", "they drink ", "they write with the ", "they wore "];
-  function weekHolds(c, p) {
-    return c.t === "yes" ? p[c.a] === c.v : c.t === "no" ? p[c.a] !== c.v : c.t === "if" ? p[c.a] !== c.v || p[c.b] === c.w : p[c.a] === c.v || p[c.b] === c.w;
-  }
-  function weekText(c) {
-    var A = TRAITS[c.a];
-    if (c.t === "yes") return A.yes(A.vals[c.v]);
-    if (c.t === "no") return A.no(A.vals[c.v]);
-    if (c.t === "if") return "A witness is sure of one thing: if the mastermind " + IS[c.a] + A.vals[c.v] + ", " + THEY[c.b] + TRAITS[c.b].vals[c.w] + ".";
-    return "Two sightings, at least one right: the mastermind " + IS[c.a] + A.vals[c.v] + " or " + IS[c.b] + TRAITS[c.b].vals[c.w] + ".";
-  }
-  function tryWeek2(r, A) {
-    var simple = [], linked = [];
-    TRAITS.forEach(function (a, ai) { a.vals.forEach(function (_, v) { simple.push({ t: v === A[ai] ? "yes" : "no", a: ai, v: v }); }); });
-    TRAITS.forEach(function (a, ai) {
-      TRAITS.forEach(function (b, bi) {
-        if (ai === bi) return;
-        linked.push({ t: "if", a: ai, v: A[ai], b: bi, w: A[bi] }); // only with a true "if" part, so it can't mislead
-        if (ai < bi) a.vals.forEach(function (_, v) { b.vals.forEach(function (_, w) { if ((A[ai] === v) !== (A[bi] === w)) linked.push({ t: "or", a: ai, v: v, b: bi, w: w }); }); });
-      });
-    });
-    var l = shuffle(linked, r), pair = function (c) { return Math.min(c.a, c.b) + "-" + Math.max(c.a, c.b); };
-    var l2 = l.filter(function (c) { return pair(c) !== pair(l[0]); })[0]; // the two linked clues tie different traits
-    var clues = shuffle(simple, r).slice(0, 4).concat([l[0], l2]);
-    // every possible suspect: who breaks exactly one clue (one per clue), and one who breaks two
-    var only = clues.map(function () { return []; }), two = [];
-    for (var p0 = 0; p0 < 4; p0++) for (var p1 = 0; p1 < 3; p1++) for (var p2 = 0; p2 < 2; p2++) for (var p3 = 0; p3 < 3; p3++) {
-      var p = [p0, p1, p2, p3], broken = [];
-      clues.forEach(function (c, i) { if (!weekHolds(c, p)) broken.push(i); });
-      if (broken.length === 1) only[broken[0]].push(p); else if (broken.length === 2) two.push(p);
-    }
-    if (!two.length || only.some(function (l) { return !l.length; })) return null;
-    // simple clues on Monday and Tuesday, the linked ones later in the week
-    var order = shuffle([0, 1, 2, 3], r);
-    var days = order.slice(0, 2).concat(shuffle(order.slice(2).concat([4, 5]), r));
-    return { clues: days.map(function (i) { return clues[i]; }), people: only.map(function (l) { return pick(l, r); }).concat([pick(two, r), A]) };
-  }
-  function buildWeek2(w, pack) {
-    var r = rngFrom("wl-week2-" + w), A = TRAITS.map(function (a) { return Math.floor(r() * a.vals.length); }), got = null;
-    for (var k = 0; !got && k < 400; k++) got = tryWeek2(r, A);
-    if (!got) return null;
-    var order = shuffle(got.people.map(function (_, i) { return i; }), r);
-    var cast = pack.cast && pack.cast.length >= 8 ? shuffle(pack.cast, r) : null;
-    var names = shuffle(NAMES, r), roles = shuffle(ROLES, r);
-    var sus = order.map(function (pi, i) {
-      var t = got.people[pi];
-      return { name: cast ? cast[i][0] : names[i], role: cast ? cast[i][1] : roles[i], t: t, traits: t.map(function (v, ai) { return TRAITS[ai].short[v]; }) };
-    });
-    var ans = order.indexOf(got.people.length - 1), m = sus[ans];
-    var list = pack.weeks && pack.weeks.length ? pack.weeks : WEEK_CASES;
-    var story = list[(w - weekOf(SEASON_ONE)) % list.length];
-    return {
-      week: w, title: story.title, setup: story.setup, answer: ans, suspects: sus,
-      clues: got.clues.map(function (c) {
-        var out = [];
-        sus.forEach(function (s, si) { if (!weekHolds(c, s.t)) out.push(si); });
-        return { text: weekText(c), out: out, linked: c.t === "if" || c.t === "or" };
-      }),
-      why: m.name + " is the only one who fits every clue: came by " + TRAITS[0].vals[m.t[0]] + ", drinks " + TRAITS[1].vals[m.t[1]] +
-        ", writes with the " + TRAITS[2].vals[m.t[2]] + " and wore " + TRAITS[3].vals[m.t[3]] + "."
-    };
-  }
-  function buildWeek(w) {
-    if (weekCache[w]) return weekCache[w];
-    var pk = w >= weekOf(SEASON_ONE) ? packFor(seasonOf((w - 1) * 7 + 1)) : null;
-    if (pk && (weekCache[w] = buildWeek2(w, pk))) return weekCache[w];
-    var r = rngFrom("wl-week-" + w);
-    var A = TRAITS.map(function (a) { return Math.floor(r() * a.vals.length); });
-    var split = pick(WEEK_SPLITS, r), clues = [], people = [];
-    // Each clue gets one suspect who matches the mastermind except on that clue's trait,
-    // so that clue (and only that clue) rules them out.
-    TRAITS.forEach(function (a, ai) {
-      var others = shuffle(a.vals.map(function (_, v) { return v; }).filter(function (v) { return v !== A[ai]; }), r);
-      if (split[ai] === 1 && r() < 0.5) {
-        clues.push({ a: ai, yes: true, v: A[ai] });
-        people.push(A.map(function (x, k) { return k === ai ? others[0] : x; }));
-      } else {
-        others.slice(0, split[ai]).forEach(function (v) {
-          clues.push({ a: ai, yes: false, v: v });
-          people.push(A.map(function (x, k) { return k === ai ? v : x; }));
-        });
-      }
-    });
-    // One decoy who differs on two traits (ruled out twice).
-    var two = shuffle([0, 1, 2, 3], r).slice(0, 2);
-    people.push(A.map(function (x, k) {
-      if (two.indexOf(k) < 0) return x;
-      var hit = clues.filter(function (c) { return c.a === k; })[0];
-      return hit.yes ? (x + 1) % TRAITS[k].vals.length : hit.v;
-    }));
-    people.push(A);
-    var order = shuffle(people.map(function (_, i) { return i; }), r);
-    var names = shuffle(NAMES, r), roles = shuffle(ROLES, r);
-    var sus = order.map(function (pi, i) {
-      return { name: names[i], role: roles[i], t: people[pi], traits: people[pi].map(function (v, ai) { return TRAITS[ai].short[v]; }) };
-    });
-    var ans = order.indexOf(people.length - 1);
-    var fits = function (c, t) { return c.yes ? t[c.a] === c.v : t[c.a] !== c.v; };
-    var story = WEEK_CASES[(w - 1) % WEEK_CASES.length], m = sus[ans];
-    weekCache[w] = {
-      week: w, title: story.title, setup: story.setup, answer: ans, suspects: sus,
-      clues: shuffle(clues, r).map(function (c) {
-        var a = TRAITS[c.a], out = [];
-        sus.forEach(function (s, si) { if (!fits(c, s.t)) out.push(si); });
-        return { text: (c.yes ? a.yes : a.no)(a.vals[c.v]), out: out };
-      }),
-      why: m.name + " is the only one who fits every clue: came by " + TRAITS[0].vals[m.t[0]] + ", drinks " + TRAITS[1].vals[m.t[1]] +
-        ", writes with the " + TRAITS[2].vals[m.t[2]] + " and wore " + TRAITS[3].vals[m.t[3]] + "."
-    };
-    return weekCache[w];
-  }
 
   /* ---------- saved progress ---------- */
   var KEY = "whoslying:v1";
@@ -1308,13 +1033,13 @@
     cfg: CFG, rngFrom: rngFrom, shuffle: shuffle, pick: pick,
     dayNumber: dayNumber, dateForDay: dateForDay, formatDate: formatDate, msToNextDay: msToNextDay, istHour: istHour,
     buildDay: buildDay, generateCase: generateCase, endlessSpec: endlessSpec, endlessSeconds: endlessSeconds,
-    careerSpec: careerSpec, buildCareerLevel: buildCareerLevel, careerRetry: careerRetry, chapterOf: chapterOf, CHAPTER_NEWS: CHAPTER_NEWS, chapterStory: chapterStory, FACT_AT: FACT_AT,
+    tutorialCase: tutorialCase, FACT_AT: FACT_AT,
     generateCase2: generateCase2, rushCase: rushCase, roomCase: roomCase, newAvoid: newAvoid, packFor: packFor, seasonOf: seasonOf, seasonStart: seasonStart,
     SEASON_ONE: SEASON_ONE, SEASON_DAYS: SEASON_DAYS, daySpecs: daySpecs,
     cleanName: cleanName, NAME_BLOCK: NAME_BLOCK, checkWritten: checkWritten, packWritten: packWritten, unpackWritten: unpackWritten, writtenCase: writtenCase,
-    hash: function (s) { return hashString(String(s)).toString(36); }, chapterName: chapterName, clock: clock,
+    hash: function (s) { return hashString(String(s)).toString(36); }, clock: clock,
     avatar: avatar, load: load, save: save, esc: esc, fmtTime: fmtTime, fmtCountdown: fmtCountdown,
     track: track, siteUrl: siteUrl, FACTS: FACTS, PREMISES: PREMISES, CASES: CASES,
-    weekOf: weekOf, weekday: weekday, buildWeek: buildWeek, buildNight: buildNight, NIGHT_HOUR: NIGHT_HOUR, TRAITS: TRAITS
+    weekOf: weekOf, weekday: weekday
   };
 })();

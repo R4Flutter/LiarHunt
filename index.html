@@ -98,15 +98,16 @@
               <button class="btn danger big wide" id="btn-daily" type="button">Play today's cases</button>
             </div>
           </article>
-          <!-- the two things to do: today's Daily, then Career -->
+          <!-- the two things to do: today's Daily, then Career (Book 1: one 30-mission story) -->
           <div class="career-card" id="career-card">
             <div class="career-in">
-              <p class="eyebrow" id="career-chapter">Chapter 1</p>
-              <h2 class="career-name" id="career-name">Rookie Beat</h2>
+              <p class="eyebrow" id="career-chapter">Career · Book 1</p>
+              <h2 class="career-name" id="career-name">The Black Ledger</h2>
               <p class="career-story" id="career-story"></p>
-              <div class="nodes" id="career-nodes"></div>
-              <button class="btn primary big wide" id="btn-play" type="button">Play case 1</button>
-              <button class="link-btn" id="btn-map" type="button">Career map</button>
+              <div class="nodes six" id="career-nodes"></div>
+              <div class="book-bar" id="career-bar" role="img"></div>
+              <button class="btn primary big wide" id="btn-play" type="button">Start Book 1</button>
+              <div class="career-links"><button class="link-btn" id="btn-map" type="button">Book map</button><button class="link-btn" id="btn-dossier" type="button">Dossier</button></div>
             </div>
           </div>
         </div>
@@ -119,19 +120,7 @@
             <p class="muted small" id="season-next"></p>
             <button class="btn ghost wide" id="btn-season" type="button" hidden>Season scoreboard</button>
           </article>
-          <article class="week-card" id="week-card" aria-labelledby="week-title">
-            <div class="week-head"><p class="eyebrow">Case of the Week</p><span class="muted small" id="week-left"></span></div>
-            <h2 class="week-title" id="week-title"></h2>
-            <ol class="week-slots" id="week-slots"></ol>
-            <p class="week-sub" id="week-sub"></p>
-            <button class="btn ghost wide" id="btn-week" type="button">Open the case board</button>
-          </article>
           <div class="modes">
-            <button class="mode-tile night" id="tile-night" type="button">
-              <span class="mode-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></span>
-              <span class="mode-txt"><b>Night Shift</b><span id="night-sub">A hard bonus case at 8 PM</span></span>
-              <span class="mode-flag" id="night-flag" hidden>Open</span>
-            </button>
             <button class="mode-tile rush" id="tile-rush" type="button">
               <span class="mode-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg></span>
               <span class="mode-txt"><b>Rush</b><span id="rush-sub">Catch liars against the clock</span></span>
@@ -262,6 +251,27 @@
       </div>
     </section>
 
+    <!-- CAREER MISSION (js/book.js) -->
+    <section class="scr book-scr" id="scr-book" aria-label="Career mission" hidden>
+      <div class="bk-top">
+        <div class="bk-steps" id="bk-steps" role="img"></div>
+        <span class="replay-tag" id="bk-replay" hidden>Replay</span>
+        <div class="stars-live" id="bk-stars" role="img"></div>
+        <button class="chip-btn" id="bk-dossier" type="button"><span aria-hidden="true">🗂️</span>Dossier <b id="bk-dossier-n">0</b></button>
+      </div>
+      <div class="bk-body" id="bk-body"></div>
+      <div class="actionbar" id="bk-bar">
+        <div class="tools">
+          <button class="tool" id="bk-hint" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>
+            <span>Magnifier</span><b class="tool-n" id="bk-hint-n">3</b>
+          </button>
+          <p class="tool-note" id="bk-note"></p>
+          <button class="btn primary" id="bk-go" type="button">Start the mission</button>
+        </div>
+      </div>
+    </section>
+
     <!-- RESULTS (daily + rush) -->
     <section class="scr results" id="scr-results" aria-labelledby="res-title" hidden>
       <div class="results-in">
@@ -302,8 +312,8 @@
     <!-- CHAPTER MAP -->
     <section class="scr list-scr" id="scr-map" aria-labelledby="map-h" hidden>
       <div class="list-in">
-        <h2 class="page-h" id="map-h">Career map</h2>
-        <p class="muted">Replay any solved case to earn more stars. Replays give XP but no coins.</p>
+        <h2 class="page-h" id="map-h">Book 1: The Black Ledger</h2>
+        <p class="muted" id="map-sub">30 missions, 5 chapters, one conspiracy. Replay any solved mission for the story: you keep your first-run stars.</p>
         <div class="chapters" id="chapters"></div>
       </div>
     </section>
@@ -336,20 +346,6 @@
         <p class="files-keys" id="files-keys"></p>
         <ol class="files" id="files-list"></ol>
         <button class="btn ghost" id="files-more" type="button" hidden>Show older days</button>
-      </div>
-    </section>
-
-    <!-- CASE OF THE WEEK board -->
-    <section class="scr list-scr" id="scr-week" aria-labelledby="wk-title" hidden>
-      <div class="list-in wk">
-        <p class="eyebrow" id="wk-eyebrow"></p>
-        <h2 class="page-h" id="wk-title"></h2>
-        <p class="wk-setup" id="wk-setup"></p>
-        <div class="wk-status" id="wk-status" aria-live="polite"></div>
-        <h3 class="sec">Clues <span class="muted small" id="wk-count"></span></h3>
-        <ol class="wk-clues" id="wk-clues"></ol>
-        <h3 class="sec">Suspects <span class="muted small" id="wk-tip">Tap a suspect to cross them out</span></h3>
-        <div class="wk-suspects" id="wk-suspects"></div>
       </div>
     </section>
 
@@ -475,19 +471,17 @@
     <p>Every 5th case changes the rules. Sometimes two people are lying and you must find the honest one. Sometimes everyone is honest and one fact is fake: then the proof is the story that shows it.</p>
     <h3>Stars</h3>
     <ul class="legend">
-      <li><span class="star-ico on"></span><span class="star-ico on"></span><span class="star-ico on"></span> No mistakes, no hint, under the target time</li>
-      <li><span class="star-ico on"></span><span class="star-ico on"></span><span class="star-ico"></span> No mistakes</li>
-      <li><span class="star-ico on"></span><span class="star-ico"></span><span class="star-ico"></span> One mistake: a wrong suspect or a wrong proof</li>
+      <li><span class="star-ico on"></span><span class="star-ico on"></span><span class="star-ico on"></span> No mistakes, no Magnifier</li>
+      <li><span class="star-ico on"></span><span class="star-ico on"></span><span class="star-ico"></span> One mistake, or a Magnifier</li>
+      <li><span class="star-ico on"></span><span class="star-ico"></span><span class="star-ico"></span> Two mistakes</li>
     </ul>
-    <p>Two mistakes botch the case. You get a new version of it to try again.</p>
+    <p>A third mistake makes the case fall apart: you retry that step, and the mission can earn 1 star.</p>
     <h3>Modes</h3>
-    <p><strong>Daily Case:</strong> 5 cases a day, the same for everyone, one try each. A wrong suspect or a wrong proof lets the liar walk. <strong>Career:</strong> chapter after chapter of cases. <strong>Rush:</strong> catch as many liars as you can before you run out of lives. <strong>Night Shift:</strong> one hard bonus case every evening from 8 PM.</p>
+    <p><strong>Daily Case:</strong> 5 cases a day, the same for everyone, one try each. A wrong suspect or a wrong proof lets the liar walk. <strong>Career:</strong> Book 1, The Black Ledger, one story in 30 missions. You search scenes, question suspects, rebuild timelines, compare documents and connect the evidence. <strong>Rush:</strong> a quick game against the clock: catch as many liars as you can before you run out of time or lives.</p>
     <h3>Daily 5</h3>
     <p>Most days the Daily is <strong>one mystery in five connected cases</strong>. Each case opens the next, and what you prove goes into your <strong>Notebook</strong> for the cases ahead. One wrong answer ends the day, so take your time. You get one free <strong>Hunch</strong> a day, and the full story opens at midnight (India time).</p>
-    <h3>Case of the Week</h3>
-    <p>Each Daily from Monday to Saturday gives you one clue to a bigger case. On Sunday, use all 6 clues to name the mastermind. You get one try.</p>
     <h3>Streaks, shields and keys</h3>
-    <p>Play the Daily every day to grow your streak. A <strong>Streak Shield</strong> saves it if you miss a day. A <strong>Case Key</strong> opens a Daily you missed, with full rewards and its weekly clue. You earn one of each every 7 days in a row.</p>
+    <p>Play the Daily every day to grow your streak. A <strong>Streak Shield</strong> saves it if you miss a day. A <strong>Case Key</strong> opens a Daily you missed, with full rewards. You earn one of each every 7 days in a row.</p>
     <p class="muted">Keyboard: keys 1-5 pick, Enter confirms, Esc cancels.</p>
     <button class="btn primary wide" type="button" data-close>Got it</button>
   </div>
@@ -675,6 +669,7 @@
 <script src="js/config.js"></script>
 <script src="js/cases.js"></script>
 <script src="js/seasons.js"></script>
+<script src="js/book1.js"></script>
 <script src="js/engine.js"></script>
 <!-- WEB-ONLY:START -->
 <script src="js/ads.js"></script>
@@ -694,6 +689,7 @@
 <script src="js/progress.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/fx.js"></script>
+<script src="js/book.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

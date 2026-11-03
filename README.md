@@ -10,15 +10,13 @@ It is plain HTML, CSS and JavaScript with no build step. The web version is host
 
 ## What's in the game
 
-**Five ways to play**
+**Three ways to play, plus friends**
 
 | Mode | What it is |
 |---|---|
 | Daily Case | 5 cases a day, the same for everyone, with a streak and a shareable result. The hero of the home screen. On days with a **Daily 5** story (web), the five cases are one connected mystery (section 8). |
-| Case of the Week | Each Daily from Monday to Saturday gives one clue to a bigger case (8 suspects). On Sunday, name the mastermind with one try. Missed a day? Catch up with a Case Key or buy the clue. |
-| Night Shift | One hard bonus case every evening from 8 PM, one try. The screen switches to the night theme. |
-| Career | Endless chapters of 10 cases (Rookie Beat, Downtown, The Harbor…). Cases get harder as you go. Cases 5 and 10 of each chapter are twists. Earn up to 3 stars per case by being fast and not using hints. New players land straight in case 1 with a short coach. |
-| Rush | Catch as many liars as you can against the clock. 3 lives, a combo multiplier, a faster clock as you go, and one second chance per run. |
+| Career | **Book 1: The Black Ledger**, one story in 30 missions (5 chapters of 6). A missing analyst leads to a bribery network and a mole inside the agency. Each mission is a briefing and 1 to 4 steps: search a place, question a suspect and catch the lie with evidence, rebuild a timeline, compare documents, connect evidence, and accuse with proof and a motive. A dossier keeps every piece of evidence, the people met and a "Who is B?" board. Up to 3 stars per mission, retries allowed. New players start with one short training case and a coach. |
+| Rush | The quick game for spare minutes: catch as many liars as you can against the clock. 3 lives, a combo multiplier, a faster clock as you go, and one second chance per run. |
 
 **Twist cases:** "two are lying, find the honest one" and "everyone is honest, find the fake fact".
 
@@ -28,26 +26,26 @@ It is plain HTML, CSS and JavaScript with no build step. The web version is host
 |---|---|
 | Cloud save (web) | Every player's game is saved in their own Firebase account (`players/{uid}`), not on the device: an anonymous account from the first visit, which **Sign in with Google** (in the profile) turns into one that follows them to any device. The game needs a connection to start. Old 12-letter save codes still bring their progress into the account once; no new codes are made. |
 | Streak Shields | Save your Daily streak if you miss a day (used automatically, hold up to 2). Earn one every 7 days in a row or buy one for 200 coins. |
-| Case Keys + Case Files | Case Files lists every past Daily. A Case Key opens a missed day with full rewards and its weekly clue. Earn one every 7 days in a row, on day 7 of the login calendar, or buy them. |
+| Case Keys + Case Files | Case Files lists every past Daily. A Case Key opens a missed day with full rewards. Earn one every 7 days in a row, on day 7 of the login calendar, or buy them. |
 | Comeback gift | Players who return after 3+ days get 150 coins, 2 Magnifiers and a Case Key. |
 | Friend challenges | Every shared result is a challenge link. Your friend plays the same Daily and sees "You beat Raj by 12 seconds!" with a rematch button. Works on CrazyGames too (invite links). |
 | Rank among everyone | After the Daily: "#37 of 230 today, better than 84% of players", also in the share text. |
 | Weekly leagues (web) | Bronze → Silver → Gold → Platinum → Diamond. Points are liars caught in that week's Dailies. Top 20% move up on Monday, bottom 20% move down. |
 | Friend groups (web) | Make a group, share the code or link, see each member's Daily result side by side. Up to 50 per group. |
 | Install + reminder (web) | Installs as an app (works offline). A "Remind me" button adds a daily calendar alarm (Google Calendar or .ics). |
-| Stars and chapters | 3 stars per case, a chapter map, replay any case to improve your stars. |
+| Stars and chapters | Up to 3 stars per Career mission (a mistake or a Magnifier costs one), a rank badge and coins for every chapter, a Book map, and replays for the story. |
 | Streak bonus | Solve cases in a row on the first try for up to ×2 coins. |
 | Levels and titles | XP from every case. Rookie → Patrol Officer → … → Legend, with a badge that changes metal. Level-ups pay coins. |
 | Coins and shop | Spend coins on Magnifiers (rule out a wrong answer), Time Freezes (+10 s in Rush) and 6 desk themes. |
 | Daily missions | 3 new missions every day ("Earn 3 stars on 3 cases"…), plus a mission chest when all 3 are done. |
 | 7-day login calendar | A bigger reward each day you come back, with an option to double it by watching an ad. |
-| Achievements | 31 achievements with coin rewards. |
+| Achievements | 27 achievements with coin rewards. |
 | What's next | Every results screen shows your level bar and the next mission, so there's always one more goal. |
 | Sound and juice | Sound effects, a noir-jazz music loop, stamps, confetti, floating rewards, screen shake. |
 
 **Works everywhere:** phones, tablets and desktop, 16:9 game frames down to 800×450, light and dark mode, keyboard (1–5, Enter, Esc), reduced motion.
 
-**Never runs out:** 75 hand-written cases plus a generator with 55 fact types and 50 story openers. `node tools/check-cases.mjs` tests 500 career levels, 300 Rush cases and 400 days of daily cases.
+**Never runs out:** 75 hand-written cases plus a generator with 55 fact types and 50 story openers. `node tools/check-cases.mjs` tests 300 Rush cases and 400 days of daily cases; `node tools/check-book.mjs` checks every Career mission.
 
 ---
 
@@ -60,7 +58,9 @@ privacy.html, 404.html     web pages
 css/style.css              all the styles
 js/config.js               ← YOUR SETTINGS (edit this)
 js/cases.js                hand-written cases
-js/engine.js               case generator, career and Rush difficulty, portraits
+js/engine.js               case generator, Rush difficulty, the training case, portraits
+js/book1.js                Career Book 1: the whole story (missions, people, evidence)
+js/book.js                 Career: plays the missions, the dossier, the Book map
 js/progress.js             levels, coins, stars, missions, login calendar, shop, achievements
 js/game.js                 all the screens
 js/platform.js             web vs CrazyGames: ads, saves, mute, username, invite links
@@ -72,6 +72,7 @@ sw.js                      offline play + app install (web only)
 firebase.json, firebase/   database settings, rules and indexes for the web leaderboard
 tools/build-crazygames.mjs builds the CrazyGames zip
 tools/check-cases.mjs      checks every case for mistakes
+tools/check-book.mjs       checks every Career mission (and that released answers never change)
 tools/elevenlabs-audio.mjs remakes all sounds with ElevenLabs
 tools/synth-audio.py       rebuilds the built-in sounds
 ```
@@ -154,7 +155,7 @@ This makes `dist/liarhunt-crazygames.zip` (about 1.3 MB, 39 files). Upload that 
 
 - Players land straight in gameplay (case 1 with a short coach).
 - `loadingStart`/`loadingStop` around loading, `gameplayStart`/`gameplayStop` around every case, `happytime` on big wins.
-- **Midgame ads** only between cases (next career case, end of a Rush run, end of the Daily), never in a player's first minute or first 3 solved cases. The screen is blocked while an ad plays.
+- **Midgame ads** only between cases (next Career mission, end of a Rush run, end of the Daily), never in a player's first minute or first 3 solved cases. The screen is blocked while an ad plays.
 - **Rewarded ads** are always the player's choice: a hint when out of Magnifiers (not during Rush, 90-second cooldown), one extra Rush life, double login reward, +40 shop coins (4-minute cooldown). No reward if the ad fails. Never a midgame and a rewarded ad in the same break.
 - Sound is muted only once an ad really starts, and comes back after. The CrazyGames mute setting overrides the game's own switches.
 - Adblock players can still play. Rewarded buttons fall back to free versions or hide.
@@ -180,9 +181,9 @@ Catch the liar! Read the facts, compare three stories and tap the suspect whose 
 **Description:**
 LiarHunt is a detective puzzle game for sharp eyes. In every case, the police checked a few facts and three suspects tell you where they were. One of them is lying. Find the story that can't be true and stamp it LIAR.
 
-Climb through career chapters from Rookie Beat to Final Verdict, earn 3 stars by solving fast without hints, and watch out for twist cases where two people lie, or everyone tells the truth and a fact was planted. Race the clock in Rush mode, build combos for bonus coins, and come back for 5 new Daily Cases every day.
+Play the Career story, The Black Ledger: 30 missions where you search scenes, question suspects, rebuild timelines and follow the money to expose a conspiracy. Watch out for twist cases where two people lie, or everyone tells the truth and a fact was planted. Race the clock in Rush mode, build combos for bonus coins, and come back for 5 new Daily Cases every day.
 
-Level up from Rookie to Legend, finish daily missions, open the mission chest, collect your login reward, unlock 22 achievements and buy new desk themes in the shop.
+Level up from Rookie to Legend, finish daily missions, open the mission chest, collect your login reward, unlock 27 achievements and buy new desk themes in the shop.
 
 **Controls:**
 - Mouse or touch: tap a suspect (or a fact in twist cases), then tap Accuse
@@ -228,7 +229,7 @@ firebase deploy --only firestore,auth
 
 To see or delete scores (for example a cheater), open **Firestore Database → Data** in the console.
 
-Daily top-10 players get a badge (🥇 🥈 🥉 🎖️) and a prize hint once the day's ranks lock in (38 hours after it starts). If you change `launchDate`, change the `dayStart` line in `firebase/firestore.rules` too, and pick a **Monday**: weeks (Case of the Week, leagues) run from Daily #1, so #1 has to be a Monday.
+Daily top-10 players get a badge (🥇 🥈 🥉 🎖️) and a prize hint once the day's ranks lock in (38 hours after it starts). If you change `launchDate`, change the `dayStart` line in `firebase/firestore.rules` too, and pick a **Monday**: weekly leagues run from Daily #1, so #1 has to be a Monday.
 
 **Push notifications** are the next step up from the calendar reminder. They need a Firebase Cloud Messaging key and a small scheduled job (a GitHub Actions cron works on the free plan) that sends "New cases are ready" each morning.
 
@@ -281,7 +282,7 @@ Ads use the same placements as on CrazyGames (section 3), plus **side ads**: on 
 
 ## 7. Add your own cases
 
-Open `js/cases.js`. The lists `medium`, `hard` and `twist` feed Daily cases 2, 4 and 5. Day 1 uses the first item of each list, and so on. The generator fills in when a list runs out. Career and Rush always use the generator.
+Open `js/cases.js`. The lists `medium`, `hard` and `twist` feed Daily cases 2, 4 and 5. Day 1 uses the first item of each list, and so on. The generator fills in when a list runs out. Rush always uses the generator. Career has its own written story (below).
 
 ```js
 {
@@ -314,12 +315,29 @@ The checker also makes sure Dailies #1 to #14 never change (players already play
 
 ### Seasons
 
-From Daily #15 (Monday 9 November 2026) the game runs in seasons of 4 weeks. Each season has its own case templates in `js/seasons.js`: a town, a cast of locals, story openers with motives, facts and two-fact puzzles. The generator mixes them with the built-in facts for every Daily, Night Shift, Career and Rush case, so each season feels different.
+From Daily #15 (Monday 9 November 2026) the game runs in seasons of 4 weeks. Each season has its own case templates in `js/seasons.js`: a town, a cast of locals, story openers with motives, facts and two-fact puzzles. The generator mixes them with the built-in facts for every Daily and Rush case, so each season feels different.
 
 - To add Season 2, copy Season 1's block in `js/seasons.js`, change the content, and run the checker. When a season ends without a new block, the next season reuses the last one's templates in a new mix, so the game never stops.
 - The season score is the number of liars caught in that season's Dailies, played on the day. Badges: Bronze 25, Silver 60, Gold 100, Platinum 125.
 - The season scoreboard needs the Firestore rules and index in `firebase/` (run `firebase deploy --only firestore`). The rules assume Season 1 starts in week 3; keep that in step with `SEASON_ONE` in `js/engine.js`.
 - To try a season early on your computer, open `index.html?test=1&today=20` (pretends today is Daily #20).
+
+### Career: Book 1, The Black Ledger
+
+The whole story is in `js/book1.js`, as plain data; `js/book.js` plays it. The comment at the top of `js/book1.js` says what really happened, and every clue and lie must agree with it.
+
+- A mission has a briefing (`brief`, `goal`, `cast`, evidence it `gives`) and 1 to 4 `steps`. A chapter has 6 missions; the 6th ends with an accusation.
+- Step types: `search` (items, mark the ones that matter), `talk` (questions, then `breaks`: a statement and the evidence that breaks it), `timeline` (events in the right order), `compare` (one to three documents, the lines to tap), `link` (left items and their match on the right), `accuse` (who, the proof, the motive) and `think` (one right answer). Steps and breaks can give evidence.
+- Stars: 3, minus one per mistake, minus one if a Magnifier helped. A third mistake makes the case fall apart: the player retries that step and the mission can earn 1 star. Replays keep the first run's stars.
+- Players of the old endless Career got a one-time notice and a thank-you gift; their old progress stays in the save (`S.career`) but isn't used.
+
+After any change run:
+
+```
+node tools/check-book.mjs
+```
+
+It checks that every step can be solved, that evidence is found before it's needed, that names don't clash with a season's locals, and that the answers of released missions never change (they're locked in `tools/book1-lock.json`). If you change an answer on purpose, run it once with `--lock`. To try a mission, open `index.html?test=1&lb=demo` and run `__WLtest.book.start(12)` in the console (any mission up to the one you've reached).
 
 ### Live rooms
 
@@ -359,7 +377,6 @@ node admin.mjs                             # the admin desk: http://127.0.0.1:87
 
 ## Tech notes
 
-- Daily cases come from a random number generator seeded with the day number, so everyone gets the same ones. Career level N is seeded with N, so it's the same for every player too. The Case of the Week is seeded with the week number, the Night Shift with the day.
-- `node tools/check-cases.mjs` also checks 400 Night Shift cases and 400 weekly cases: the mastermind fits every clue, everyone else is ruled out, and every clue rules out someone no other clue does (so each missed day really matters).
+- Daily cases come from a random number generator seeded with the day number, so everyone gets the same ones.
 - The game code, styles and fonts are about 420 KB. Sounds load after the first tap.
 - Fonts: Big Shoulders Display and Atkinson Hyperlegible (SIL Open Font License, files in `assets/fonts`).

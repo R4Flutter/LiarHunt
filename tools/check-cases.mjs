@@ -11,7 +11,7 @@ const ctx = { window: {}, console, Intl, Date, Math, location: { origin: "null" 
   TextEncoder, TextDecoder, CompressionStream, DecompressionStream, Response, Blob, atob, btoa };
 ctx.window = ctx;
 vm.createContext(ctx);
-for (const f of ["js/config.js", "js/cases.js", "js/seasons.js", "js/engine.js"]) {
+for (const f of ["js/config.js", "js/cases.js", "js/seasons.js", "js/book1.js", "js/engine.js"]) {
   vm.runInContext(readFileSync(join(root, f), "utf8"), ctx, { filename: f });
 }
 const { WL_CASES: C, WL } = ctx;
@@ -56,28 +56,9 @@ for (let n = 1; n <= 600; n++) {
   const c = WL.generateCase(WL.rngFrom("t" + n), { ...spec, avoid: { names: {}, premises: {}, facts: {} } });
   checkCase(c, `endless ${n}`, true);
 }
-// Career: 500 levels. Rush: 300 cases with growing difficulty.
-const repeats = [];
-for (let n = 1; n <= 500; n++) {
-  const c = WL.buildCareerLevel(n);
-  checkCase(c, `career ${n}`, n > 1);
-  if (n > 1 && WL.buildCareerLevel(n - 1).title === c.title) repeats.push(n);
-  const spec = WL.careerSpec(n);
-  if (spec.mode !== c.mode) fail(`career ${n}`, "mode doesn't match its spec");
-}
-if (repeats.length) fail("career", `same story opener twice in a row at levels ${repeats.slice(0, 5).join(", ")}`);
-// Career levels skip the facts of the levels before them, so no statement comes back within 5 levels.
-let near = 0;
-for (let n = 7; n <= 500; n++) {
-  const prev = new Set([1, 2, 3, 4, 5].flatMap((k) => WL.buildCareerLevel(n - k).suspects.map((s) => s.says)));
-  WL.buildCareerLevel(n).suspects.forEach((s) => { if (prev.has(s.says)) near++; });
-}
-if (near) fail("career", `${near} statement(s) repeat within 5 levels`);
-// Night Shift skips the facts used in that day's Daily.
-for (let d = 9; d <= 400; d++) {
-  const dayClues = new Set(WL.buildDay(d).flatMap((c) => c.clues));
-  if (WL.buildNight(d).clues.some((cl) => dayClues.has(cl))) fail(`night ${d}`, "reuses a fact from that day's Daily");
-}
+// The training case every new player starts with. (Career is Book 1 now: node tools/check-book.mjs checks it.)
+checkCase(WL.tutorialCase(), "training case");
+// Rush: 300 cases with growing difficulty.
 for (let n = 1; n <= 300; n++) {
   const spec = WL.endlessSpec(n);
   const c = WL.generateCase(WL.rngFrom("rush" + n), { ...spec, avoid: { names: {}, premises: {}, facts: {} } });
@@ -121,30 +102,14 @@ if (WL.packFor(1)) {
     if (off.length || !c.setup.includes("It happened")) fail(`season case ${n}`, `facts outside the crime's time (${c.when}): ${off.join(", ")}`);
   }
 }
-// Night Shift: 400 days.
-for (let d = 1; d <= 400; d++) checkCase(WL.buildNight(d), `night ${d}`, true);
-// Case of the Week: 400 weeks. The mastermind fits every clue, everyone else is ruled out,
-// and every clue rules out someone that no other clue does (so no clue is wasted).
-for (let w = 1; w <= 400; w++) {
-  const k = WL.buildWeek(w), where = `week ${w}`;
-  if (k.suspects.length !== 8 || k.clues.length !== 6) { fail(where, "needs 8 suspects and 6 clues"); continue; }
-  if (new Set(k.suspects.map((s) => s.name)).size !== 8) fail(where, "suspect names must be different");
-  const hits = {};
-  k.clues.forEach((c) => {
-    if (c.out.includes(k.answer)) fail(where, `a clue rules out the mastermind: ${c.text}`);
-    c.out.forEach((s) => { hits[s] = (hits[s] || 0) + 1; });
-  });
-  if (Object.keys(hits).length !== 7) fail(where, "the clues don't rule out everyone else");
-  k.clues.forEach((c, i) => { if (!c.out.some((s) => hits[s] === 1)) fail(where, `clue ${i + 1} isn't needed`); });
-}
 // Same day must build the same cases every time (everyone plays the same puzzle).
 const a = JSON.stringify(WL.buildDay(7)), b = JSON.stringify(WL.generateCase && WL.buildDay(7));
 if (a !== b) fail("determinism", "day 7 changed between builds");
 // Days 1-14 (before Season 1) are already played or published: they must never change.
 const see = (c) => JSON.stringify([c.title, c.setup, c.clues, c.suspects, c.mode, c.answer, c.why, c.twist]);
 let early = "";
-for (let d = 1; d <= 14; d++) early += WL.buildDay(d).map(see).join() + see(WL.buildNight(d));
-if (createHash("sha1").update(early).digest("hex") !== "549402aa2bb70a5caf0337f380d5b5d377af7831") fail("days 1-14", "the cases of an earlier day changed");
+for (let d = 1; d <= 14; d++) early += WL.buildDay(d).map(see).join();
+if (createHash("sha1").update(early).digest("hex") !== "defb7221d66219508d80f96c71ffb0e4ec0151fd") fail("days 1-14", "the cases of an earlier day changed");
 // Every case can be proved: liar and honest cases by clues, planted twists by a suspect's story.
 function checkProof(c, where) {
   const sets = [c.proof || []].concat(c.alt || []), max = c.mode === "planted" ? 3 : c.clues.length;
@@ -155,9 +120,7 @@ function checkProof(c, where) {
   if (c.mode === "planted" && sets[0][0] === -1) fail(where, "proof suspect not found");
 }
 for (let d = 1; d <= 400; d++) WL.buildDay(d).forEach((c, i) => checkProof(c, `day ${d} case ${i + 1}`));
-for (let n = 1; n <= 500; n++) checkProof(WL.buildCareerLevel(n), `career ${n}`);
-for (let n = 1; n <= 60; n++) checkProof(WL.careerRetry(n, 1), `career retry ${n}`);
-for (let d = 1; d <= 400; d++) checkProof(WL.buildNight(d), `night ${d}`);
+checkProof(WL.tutorialCase(), "training case");
 
 // Live rooms: 10 rounds from two room seeds are full, provable cases.
 for (const seed of ["ABCD12-q", "ZZZZZZ-1"]) for (let r = 1; r <= 10; r++) {
@@ -189,6 +152,6 @@ const ahead = handDays - WL.dayNumber();
 if (ahead < 28) fail("hand-written cases", `only ${ahead} days left after today (Daily #${WL.dayNumber()}). Write more so at least 28 days are ready.`);
 else console.log(`${ahead} hand-written days are ready after today.`);
 console.log(`Generator: ${WL.FACTS.length} facts (${WL.FACTS.filter(f => f.make).length} with random times/prices), ${WL.PREMISES.length} story openers, ${seen.size} different opening cases in 400 days.`);
-console.log(`Career: checked 500 levels (${Math.ceil(500 / 10)} chapters). Rush: checked 300 cases.`);
+console.log("Training case checked. Rush: checked 300 cases. Career (Book 1): run node tools/check-book.mjs");
 console.log(problems ? `\n${problems} problem(s) found.` : "\nAll good. No problems found.");
 process.exit(problems ? 1 : 0);
