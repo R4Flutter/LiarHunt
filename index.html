@@ -190,6 +190,10 @@
         </div>
         <div class="case-meta" id="case-meta">
           <div class="pips" id="pips" role="img" hidden></div>
+          <button class="nb-btn" id="btn-notebook" type="button" hidden aria-label="Open the notebook">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h11v17h-11z"/><path d="M6.5 3.5v17M9.5 8h5M9.5 11.5h5"/></svg>
+            <span>Notebook</span><b class="nb-new" id="nb-new" hidden>0</b>
+          </button>
           <div class="stars-live" id="stars-live" role="img" hidden></div>
           <div class="lives" id="lives" role="img" hidden></div>
           <div class="combo" id="combo" hidden></div>
@@ -202,6 +206,7 @@
           <div class="case-head">
             <p class="case-kicker" id="case-kicker"></p>
             <h2 class="case-title" id="case-title"></h2>
+            <p class="case-prev" id="case-prev" hidden></p>
             <p class="case-setup" id="case-setup"></p>
           </div>
           <div class="twist" id="twist" hidden></div>
@@ -434,6 +439,31 @@
   </div>
 </dialog>
 
+<dialog id="dlg-notebook" class="nb-dlg" aria-labelledby="nb-h">
+  <div class="dlg nb">
+    <button class="icon-btn dlg-close" type="button" data-close aria-label="Close the notebook"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <div class="nb-top"><p class="eyebrow" id="nb-eyebrow">Daily 5</p><h2 id="nb-h">Notebook</h2></div>
+    <div class="nb-tabs" role="tablist" aria-label="Notebook sections">
+      <button type="button" role="tab" data-tab="evidence" aria-controls="nb-body">Evidence <b>0</b></button>
+      <button type="button" role="tab" data-tab="findings" aria-controls="nb-body">Findings <b>0</b></button>
+      <button type="button" role="tab" data-tab="suspects" aria-controls="nb-body">Suspects <b>0</b></button>
+      <button type="button" role="tab" data-tab="timeline" aria-controls="nb-body">Timeline <b>0</b></button>
+    </div>
+    <div class="nb-body" id="nb-body" role="tabpanel" tabindex="0"></div>
+  </div>
+</dialog>
+
+<dialog id="dlg-dossier" class="dossier-dlg" aria-labelledby="dos-h">
+  <div class="dlg">
+    <button class="icon-btn dlg-close" type="button" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <h2 id="dos-h">Dossier</h2>
+    <p class="muted small" id="dos-sub"></p>
+    <div class="seg" id="dos-tabs"></div>
+    <div class="dos-body" id="dos-body"></div>
+    <button class="btn primary wide" type="button" data-close>Back to the case</button>
+  </div>
+</dialog>
+
 <dialog id="dlg-help" aria-labelledby="help-h">
   <div class="dlg">
     <button class="icon-btn dlg-close" type="button" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
@@ -452,6 +482,8 @@
     <p>Two mistakes botch the case. You get a new version of it to try again.</p>
     <h3>Modes</h3>
     <p><strong>Daily Case:</strong> 5 cases a day, the same for everyone, one try each. A wrong suspect or a wrong proof lets the liar walk. <strong>Career:</strong> chapter after chapter of cases. <strong>Rush:</strong> catch as many liars as you can before you run out of lives. <strong>Night Shift:</strong> one hard bonus case every evening from 8 PM.</p>
+    <h3>Daily 5</h3>
+    <p>Most days the Daily is <strong>one mystery in five connected cases</strong>. Each case opens the next, and what you prove goes into your <strong>Notebook</strong> for the cases ahead. One wrong answer ends the day, so take your time. You get one free <strong>Hunch</strong> a day, and the full story opens at midnight (India time).</p>
     <h3>Case of the Week</h3>
     <p>Each Daily from Monday to Saturday gives you one clue to a bigger case. On Sunday, use all 6 clues to name the mastermind. You get one try.</p>
     <h3>Streaks, shields and keys</h3>

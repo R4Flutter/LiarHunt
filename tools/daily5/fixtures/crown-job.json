@@ -1,0 +1,205 @@
+{
+  "id": "crown-job",
+  "title": "The Crown Job",
+  "summary": "Museum director Victor Hale owes money after a failed hotel deal. He makes a copy of curator Elena Voss's access card and gives it to conservator Ravi Shah. While Victor replays old footage on the vault camera, Ravi takes the Peacock Crown through a forgotten passage and ships it to Pune in a crate of lamps.",
+  "setting": {
+    "place": "Sagar Heritage Museum, Mumbai",
+    "intro": "Tonight the Sagar Heritage Museum in Mumbai hosted a donor tour. At 9:30 PM the vault alarm rang. The Peacock Crown was gone from Vault 3."
+  },
+  "strikes": 1,
+  "people": [
+    { "id": "p1", "name": "Victor Hale", "role": "Museum director", "background": "Runs the museum. Charming with donors, always in a hurry.", "part": "mastermind", "motive": "He lost a fortune on a hotel deal and a buyer in Pune offered to pay his debts for the crown.", "secret": "The museum board is about to review his accounts." },
+    { "id": "p2", "name": "Noah Reed", "role": "Security chief", "background": "Has guarded the museum for twelve years. Never misses a cricket match.", "part": "innocent", "motive": "", "secret": "He slipped out of the control room to check the cricket score." },
+    { "id": "p3", "name": "Elena Voss", "role": "Chief curator", "background": "Knows every object in the collection. Led tonight's donor tour.", "part": "innocent", "motive": "", "secret": "Ravi is her cousin, and she protects him." },
+    { "id": "p4", "name": "Ravi Shah", "role": "Conservation specialist", "background": "Cleans and repairs the museum's metalwork. Quiet, careful, short of money.", "part": "accomplice", "motive": "Victor promised to clear his loans.", "secret": "" },
+    { "id": "p5", "name": "Maya Chen", "role": "Archive assistant", "background": "Looks after old letters, maps and building plans in the basement archive.", "part": "innocent", "motive": "", "secret": "She sent the old building plans to Victor without asking why." }
+  ],
+  "places": [
+    { "id": "l1", "name": "Vault 3" },
+    { "id": "l2", "name": "Control room" },
+    { "id": "l3", "name": "Conservation lab" },
+    { "id": "l4", "name": "Director's office" },
+    { "id": "l5", "name": "Archive room" },
+    { "id": "l6", "name": "Loading bay" },
+    { "id": "l7", "name": "Old maintenance passage" },
+    { "id": "l8", "name": "Staff canteen" },
+    { "id": "l9", "name": "Main gallery" },
+    { "id": "l10", "name": "Card office" }
+  ],
+  "items": [
+    { "id": "i1", "name": "The Peacock Crown" },
+    { "id": "i2", "name": "Elena's access card 4471" },
+    { "id": "i3", "name": "Copy card 4471-B" },
+    { "id": "i4", "name": "Crate 7" },
+    { "id": "i5", "name": "Vault 3 camera" },
+    { "id": "i6", "name": "Old building plans" }
+  ],
+  "acts": [
+    { "id": "a1", "name": "set the vault camera to replay old footage" },
+    { "id": "a2", "name": "approved a copy of card 4471" },
+    { "id": "a3", "name": "opened the old passage door" }
+  ],
+  "truth": [
+    { "slot": "at:p1", "value": "l10", "from": "20:25", "to": "20:35" },
+    { "slot": "doer:a2", "value": "p1", "from": "20:30", "to": "20:30" },
+    { "slot": "holder:i3", "value": "p4", "from": "20:35", "to": "21:40" },
+    { "slot": "at:p1", "value": "l9", "from": "20:38", "to": "20:44" },
+    { "slot": "at:p1", "value": "l4", "from": "20:45", "to": "21:40" },
+    { "slot": "holder:i2", "value": "p3", "from": "18:00", "to": "20:39" },
+    { "slot": "holder:i2", "value": "p1", "from": "20:40", "to": "21:05" },
+    { "slot": "holder:i2", "value": "p3", "from": "21:06", "to": "23:59" },
+    { "slot": "holder:i6", "value": "p1", "from": "20:55", "to": "23:59" },
+    { "slot": "at:p3", "value": "l9", "from": "20:30", "to": "21:30" },
+    { "slot": "at:p2", "value": "l2", "from": "20:00", "to": "21:09" },
+    { "slot": "at:p2", "value": "l8", "from": "21:10", "to": "21:20" },
+    { "slot": "at:p2", "value": "l2", "from": "21:21", "to": "22:00" },
+    { "slot": "doer:a1", "value": "p1", "from": "21:11", "to": "21:11" },
+    { "slot": "state:i5", "value": "live", "from": "20:00", "to": "21:11" },
+    { "slot": "state:i5", "value": "replay", "from": "21:12", "to": "21:18" },
+    { "slot": "state:i5", "value": "live", "from": "21:19", "to": "23:59" },
+    { "slot": "at:p4", "value": "l3", "from": "20:30", "to": "21:08" },
+    { "slot": "at:p4", "value": "l1", "from": "21:10", "to": "21:15" },
+    { "slot": "at:p4", "value": "l7", "from": "21:16", "to": "21:19" },
+    { "slot": "at:p4", "value": "l6", "from": "21:20", "to": "21:26" },
+    { "slot": "at:p4", "value": "l3", "from": "21:29", "to": "22:00" },
+    { "slot": "at:i3", "value": "l1", "from": "21:14", "to": "21:14" },
+    { "slot": "at:i3", "value": "l7", "from": "21:16", "to": "21:16" },
+    { "slot": "doer:a3", "value": "p4", "from": "21:16", "to": "21:16" },
+    { "slot": "holder:i1", "value": "l1", "from": "18:00", "to": "21:14" },
+    { "slot": "holder:i1", "value": "p4", "from": "21:15", "to": "21:21" },
+    { "slot": "holder:i1", "value": "i4", "from": "21:22", "to": "23:59" },
+    { "slot": "at:i4", "value": "l6", "from": "20:00", "to": "21:44" },
+    { "slot": "state:i4", "value": "shipped", "from": "21:45", "to": "23:59" },
+    { "slot": "at:p5", "value": "l5", "from": "20:30", "to": "21:40" }
+  ],
+  "cases": [
+    {
+      "n": 1,
+      "title": "The Six-Minute Blind Spot",
+      "intro": "The vault camera recorded nothing strange, and the guard on the screens saw nothing. But the footage looks wrong. Start with the people who were near the cameras.",
+      "previously": "",
+      "ask": "Who is lying about where they were?",
+      "mode": "liar",
+      "suspects": ["p2", "p5", "p4"],
+      "statements": [
+        { "id": "s1", "by": "p2", "text": "I watched the control room screens from 9 to 9:30. I never left my chair.", "claims": [{ "slot": "at:p2", "value": "l2", "from": "21:00", "to": "21:30" }] },
+        { "id": "s2", "by": "p5", "text": "I was sorting old letters in the archive room all evening.", "claims": [{ "slot": "at:p5", "value": "l5", "from": "20:30", "to": "21:30" }] },
+        { "id": "s3", "by": "p4", "text": "When the alarm rang at 9:30, I was in the conservation lab polishing silver lamps.", "claims": [{ "slot": "at:p4", "value": "l3", "from": "21:30", "to": "21:30" }] }
+      ],
+      "evidence": [
+        { "id": "e1", "kind": "record", "title": "Canteen till receipt", "source": "Staff canteen", "time": "21:14", "text": "One masala chai, paid with Noah Reed's staff card at 9:14 PM.", "shows": [{ "slot": "at:p2", "value": "l8", "from": "21:14", "to": "21:14" }] },
+        { "id": "e2", "kind": "cctv", "title": "Vault 3 footage", "source": "Camera recorder", "time": "21:12", "text": "The clock on the vault footage jumps back at 9:12 PM and again at 9:18 PM. Those six minutes are an old recording.", "shows": [{ "slot": "state:i5", "value": "replay", "from": "21:12", "to": "21:18" }] },
+        { "id": "e3", "kind": "log", "title": "Archive door log", "source": "Basement door", "time": "20:31", "text": "Maya Chen's card opened the archive at 8:31 PM. Nobody left until 9:40 PM.", "shows": [{ "slot": "at:p5", "value": "l5", "from": "20:31", "to": "21:40" }] }
+      ],
+      "uses": [],
+      "answer": "s1",
+      "why": "Noah said he never left the control room between 9 and 9:30. But his staff card paid for chai in the canteen at 9:14 PM. He slipped out, and that is exactly when the vault camera went blind.",
+      "finding": { "id": "f1", "text": "Noah left the control room from 9:10 to 9:20 PM to check the cricket score. In that gap the vault camera played old footage from 9:12 to 9:18 PM.", "facts": [{ "slot": "at:p2", "value": "l8", "from": "21:10", "to": "21:20" }, { "slot": "state:i5", "value": "replay", "from": "21:12", "to": "21:18" }] },
+      "timeline": [{ "at": "21:10", "text": "Noah leaves the control room for the canteen" }, { "at": "21:12", "text": "The vault camera starts playing old footage" }, { "at": "21:18", "text": "The live picture comes back" }]
+    },
+    {
+      "n": 2,
+      "title": "The Borrowed Card",
+      "intro": "The vault door keeps its own log. It says Elena's card number opened Vault 3 at 9:14 PM, right inside the blind spot. Elena says she was leading the donor tour.",
+      "previously": "The vault camera was fooled for six minutes while the control room stood empty.",
+      "ask": "Who is lying about the vault?",
+      "mode": "liar",
+      "suspects": ["p3", "p1", "p2"],
+      "statements": [
+        { "id": "s4", "by": "p3", "text": "I led the donor tour in the main gallery from 8:30 until the alarm.", "claims": [{ "slot": "at:p3", "value": "l9", "from": "20:30", "to": "21:30" }] },
+        { "id": "s5", "by": "p1", "text": "At 9:15 I checked the vault camera from my office. The picture was live and Vault 3 was shut.", "claims": [{ "slot": "state:i5", "value": "live", "from": "21:15", "to": "21:15" }] },
+        { "id": "s6", "by": "p2", "text": "I was back at my desk in the control room by 9:25.", "claims": [{ "slot": "at:p2", "value": "l2", "from": "21:25", "to": "21:40" }] }
+      ],
+      "evidence": [
+        { "id": "e4", "kind": "log", "title": "Vault 3 door log", "source": "Vault door", "time": "21:14", "text": "Card 4471, Elena Voss's number, opened Vault 3 at 9:14 PM.", "shows": [{ "slot": "at:i3", "value": "l1", "from": "21:14", "to": "21:14" }] },
+        { "id": "e5", "kind": "witness", "title": "Tour guide", "source": "Donor tour", "time": "", "text": "Elena stood beside me at the front of the tour from 8:30 to 9:30. She never left.", "shows": [{ "slot": "at:p3", "value": "l9", "from": "20:30", "to": "21:30" }] },
+        { "id": "e6", "kind": "photo", "title": "Gallery photo", "source": "Donor's phone", "time": "20:41", "text": "8:41 PM: Elena hands her lanyard card to Victor Hale.", "shows": [{ "slot": "holder:i2", "value": "p1", "from": "20:41", "to": "20:41" }] }
+      ],
+      "uses": ["f1"],
+      "answer": "s5",
+      "why": "Victor says the vault camera showed a live picture at 9:15. But from 9:12 to 9:18 the camera was playing old footage. Whatever Victor watched, it wasn't live, so he is covering for the blind spot.",
+      "finding": { "id": "f2", "text": "Victor held Elena's real card from 8:40 to 9:05 PM, then gave it back. So the card that opened Vault 3 at 9:14 PM, while Elena was on the tour, was a second card: a copy.", "facts": [{ "slot": "holder:i2", "value": "p1", "from": "20:40", "to": "21:05" }, { "slot": "at:i3", "value": "l1", "from": "21:14", "to": "21:14" }] },
+      "timeline": [{ "at": "20:40", "text": "Elena lends her card to Victor" }, { "at": "21:05", "text": "Victor gives the card back" }, { "at": "21:14", "text": "A copy of Elena's card opens Vault 3" }]
+    },
+    {
+      "n": 3,
+      "title": "The Duplicate",
+      "intro": "The card office keeps a record of every card it prints. Tonight it printed exactly one copy of card 4471. Somebody collected it.",
+      "previously": "Victor lied about the camera. The card that opened the vault wasn't Elena's own.",
+      "ask": "Who is lying about the copy card?",
+      "mode": "liar",
+      "suspects": ["p4", "p1", "p5"],
+      "statements": [
+        { "id": "s7", "by": "p4", "text": "I was in the conservation lab from 9 until the alarm. I never went near the vault.", "claims": [{ "slot": "at:p4", "value": "l3", "from": "21:00", "to": "21:30" }] },
+        { "id": "s8", "by": "p1", "text": "Yes, I approved a spare card at 8:30. Ravi said the lab needed one.", "claims": [{ "slot": "doer:a2", "value": "p1", "from": "20:30", "to": "20:30" }] },
+        { "id": "s9", "by": "p5", "text": "I sent the old building plans up to Victor's office at 8:55. He asked for them.", "claims": [{ "slot": "holder:i6", "value": "p1", "from": "20:55", "to": "20:55" }] }
+      ],
+      "evidence": [
+        { "id": "e7", "kind": "log", "title": "Card printer log", "source": "Card office", "time": "20:35", "text": "Copy 4471-B printed at 8:30 PM. Collected by Ravi Shah at 8:35 PM. Not handed back.", "shows": [{ "slot": "holder:i3", "value": "p4", "from": "20:35", "to": "21:30" }] },
+        { "id": "e8", "kind": "document", "title": "Approval slip", "source": "Card office", "time": "20:30", "text": "The copy was approved with the director's own override code at 8:30 PM.", "shows": [{ "slot": "doer:a2", "value": "p1", "from": "20:30", "to": "20:30" }] },
+        { "id": "e9", "kind": "record", "title": "Porter's chit", "source": "Front desk", "time": "20:55", "text": "Rolled plans carried from the archive to the director's office at 8:55 PM.", "shows": [{ "slot": "holder:i6", "value": "p1", "from": "20:55", "to": "20:55" }] }
+      ],
+      "uses": ["f2"],
+      "answer": "s7",
+      "why": "Ravi collected the copy card at 8:35 and never gave it back. That copy opened Vault 3 at 9:14 PM. So Ravi was at the vault, not in his lab.",
+      "finding": { "id": "f3", "text": "Victor approved the copy of Elena's card at 8:30 PM and Ravi collected it. Ravi opened Vault 3 with the copy at 9:14 PM.", "facts": [{ "slot": "doer:a2", "value": "p1", "from": "20:30", "to": "20:30" }, { "slot": "holder:i3", "value": "p4", "from": "20:35", "to": "21:30" }, { "slot": "at:p4", "value": "l1", "from": "21:14", "to": "21:14" }] },
+      "timeline": [{ "at": "20:30", "text": "Victor approves a copy of card 4471" }, { "at": "20:35", "text": "Ravi collects the copy" }, { "at": "20:55", "text": "The old building plans reach Victor's office" }]
+    },
+    {
+      "n": 4,
+      "title": "The Secret Exit",
+      "intro": "Behind Vault 3 is a narrow passage built for repairs a century ago. Staff believed it was sealed. Tonight its door was used, and the crown is not in the building.",
+      "previously": "Ravi had the copy card and used it to open Vault 3.",
+      "ask": "Who is lying about Ravi?",
+      "mode": "liar",
+      "suspects": ["p3", "p2", "p5"],
+      "statements": [
+        { "id": "s10", "by": "p3", "text": "Ravi was with me in the main gallery from 9:15 to 9:18, helping with the donors.", "claims": [{ "slot": "at:p4", "value": "l9", "from": "21:15", "to": "21:18" }] },
+        { "id": "s11", "by": "p2", "text": "I never opened that passage door. I thought it was bricked up years ago.", "claims": [{ "slot": "doer:a3", "value": "p2", "from": "20:00", "to": "22:00", "not": true }] },
+        { "id": "s12", "by": "p5", "text": "I stayed in the archive until 9:40, cataloguing letters.", "claims": [{ "slot": "at:p5", "value": "l5", "from": "21:00", "to": "21:40" }] }
+      ],
+      "evidence": [
+        { "id": "e10", "kind": "log", "title": "Passage door log", "source": "Door behind Vault 3", "time": "21:16", "text": "The old door behind Vault 3 opened at 9:16 PM with card 4471-B.", "shows": [{ "slot": "at:i3", "value": "l7", "from": "21:16", "to": "21:16" }] },
+        { "id": "e11", "kind": "cctv", "title": "Loading bay camera", "source": "Loading bay", "time": "21:22", "text": "9:22 PM: a figure in a lab coat lays a velvet bundle in crate 7 and closes the lid.", "shows": [{ "slot": "holder:i1", "value": "i4", "from": "21:22", "to": "21:44" }] },
+        { "id": "e12", "kind": "document", "title": "Shipping list", "source": "Loading bay", "time": "21:45", "text": "Crate 7, marked 'silver lamps for cleaning', left on the 9:45 PM van to Pune.", "shows": [{ "slot": "state:i4", "value": "shipped", "from": "21:45", "to": "21:45" }] }
+      ],
+      "uses": ["f3"],
+      "answer": "s10",
+      "why": "Ravi held the copy card, and the copy opened the passage door at 9:16 PM. So at 9:16 Ravi was in the passage, not in the gallery with Elena. She lied to protect her cousin.",
+      "finding": { "id": "f4", "text": "Ravi opened the passage door at 9:16 PM and carried the crown down to the loading bay. At 9:22 he hid it in crate 7, which left on the 9:45 PM van to Pune.", "facts": [{ "slot": "at:p4", "value": "l7", "from": "21:16", "to": "21:16" }, { "slot": "doer:a3", "value": "p4", "from": "21:16", "to": "21:16" }, { "slot": "holder:i1", "value": "i4", "from": "21:22", "to": "21:44" }] },
+      "timeline": [{ "at": "21:16", "text": "Ravi opens the passage door behind Vault 3" }, { "at": "21:22", "text": "The crown goes into crate 7" }, { "at": "21:45", "text": "Crate 7 leaves on the van to Pune" }]
+    },
+    {
+      "n": 5,
+      "title": "The Final Verdict",
+      "intro": "Time to close the file. Put the four answers together and name everyone behind the Peacock Crown job.",
+      "previously": "The crown left the museum in crate 7, on a van to Pune.",
+      "ask": "Give your final verdict.",
+      "mode": "verdict",
+      "uses": ["f1", "f2", "f3", "f4"],
+      "parts": [
+        { "id": "q1", "ask": "Who planned the theft?", "about": "mastermind", "options": [{ "id": "p1", "label": "Victor Hale" }, { "id": "p2", "label": "Noah Reed" }, { "id": "p3", "label": "Elena Voss" }, { "id": "p5", "label": "Maya Chen" }], "answer": "p1", "because": ["f1", "f2", "f3"] },
+        { "id": "q2", "ask": "Who carried the crown out?", "about": "accomplice", "options": [{ "id": "p4", "label": "Ravi Shah" }, { "id": "p2", "label": "Noah Reed" }, { "id": "p3", "label": "Elena Voss" }, { "id": "p5", "label": "Maya Chen" }], "answer": "p4", "because": ["f3", "f4"] },
+        { "id": "q3", "ask": "Which way did the crown leave Vault 3?", "about": "route", "options": [{ "id": "l7", "label": "The old maintenance passage" }, { "id": "l9", "label": "Through the main gallery" }, { "id": "l2", "label": "Past the control room" }, { "id": "l5", "label": "Through the archive" }], "answer": "l7", "because": ["f4"] },
+        { "id": "q4", "ask": "Where is the crown now?", "about": "item", "options": [{ "id": "i4", "label": "In crate 7, on the way to Pune" }, { "id": "x1", "label": "In Victor's office safe" }, { "id": "x2", "label": "Hidden in the archive" }, { "id": "x3", "label": "In Ravi's lab locker" }], "answer": "i4", "because": ["f4"] }
+      ],
+      "why": "Victor needed money. He approved a copy of Elena's card, gave it to Ravi, and fooled the vault camera for six minutes. Ravi used the copy to enter Vault 3, took the passage to the loading bay, and shipped the crown to Pune in crate 7."
+    }
+  ],
+  "finale": {
+    "text": "Victor Hale lost a fortune on a hotel deal, and a buyer in Pune offered to clear his debts for the Peacock Crown. He planned the job for the night of the donor tour, when the building was busy. He borrowed Elena's card, approved a copy with his own code, and handed it to Ravi Shah, who owed money too. When Noah stepped out to check the cricket, Victor set the vault camera to replay old footage. Ravi opened the vault with the copy, slipped through the forgotten passage that Maya's old plans had shown Victor, and packed the crown into a crate of lamps. Elena guessed her cousin was in trouble and lied for him. The police stopped the van outside Pune at midnight. The crown was inside crate 7.",
+    "chronology": [
+      { "at": "20:30", "text": "Victor approves a copy of Elena's card with his override code", "case": 3 },
+      { "at": "20:35", "text": "Ravi collects the copy card", "case": 3 },
+      { "at": "20:40", "text": "Elena lends her real card to Victor", "case": 2 },
+      { "at": "20:55", "text": "The old building plans reach Victor's office", "case": 3 },
+      { "at": "21:10", "text": "Noah leaves the control room to check the cricket score", "case": 1 },
+      { "at": "21:12", "text": "The vault camera starts playing old footage", "case": 1 },
+      { "at": "21:14", "text": "Ravi opens Vault 3 with the copy", "case": 3 },
+      { "at": "21:16", "text": "Ravi takes the crown through the old passage", "case": 4 },
+      { "at": "21:22", "text": "The crown goes into crate 7 at the loading bay", "case": 4 },
+      { "at": "21:30", "text": "The vault alarm rings", "case": 0 },
+      { "at": "21:45", "text": "Crate 7 leaves on the van to Pune", "case": 4 }
+    ]
+  }
+}

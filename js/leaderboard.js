@@ -434,8 +434,64 @@
     }
   };
 
+  /* ---------- Daily 5: one story a day in five connected cases ----------
+     Firebase: the rules open each case only when the player reaches it, and check every answer against a key
+     no player can read (firebase/firestore.rules). Each answer is two writes: commit the pick (it can't change
+     afterwards), then resolve it once the reveal is open, so nobody can try answers until one sticks.
+     ?d5=local&draft=ID plays a draft from the admin desk instead (node tools/daily5/admin.mjs).
+     Everything returns a Promise. A doc that isn't open yet fails with code "permission-denied". */
+  var d5mode = provider === "firebase" ? "firebase" : "", d5draft = "";
+  try { var dq = new URLSearchParams(location.search); if (dq.get("d5") === "local" && dq.get("draft")) { d5mode = "local"; d5draft = dq.get("draft"); } } catch (e) { /* ignore */ }
+  function d5local(action, n, body) {
+    var opts = body ? { method: "POST", headers: { "Content-Type": "application/json", "X-D5": "1" }, body: JSON.stringify(body) } : {};
+    return fetch("/api/play/" + encodeURIComponent(d5draft) + "/" + action + "/" + (n || 0), opts).then(function (r) {
+      return r.json().then(function (j) { if (!r.ok) throw err(r.status === 403 ? "permission-denied" : "unavailable", j.error || "preview error"); return j; });
+    });
+  }
+  function d5doc(day, sub, n) { var r = db.collection("d5").doc(String(day)); return sub ? r.collection(sub).doc(String(n)) : r; }
+  function runRef(day) { return db.collection("d5runs").doc(day + "_" + uid); }
+  function dataOf(s) { return s.exists ? s.data() : null; }
+  function deniedIsNull(e) { if (e && e.code === "permission-denied") return null; throw e; }
+  function fv() { return window.firebase.firestore.FieldValue; }
+  var d5 = !d5mode ? null : d5mode === "local" ? {
+    mode: "local",
+    edition: function () { return d5local("edition"); },
+    run: function () { return d5local("run"); },
+    start: function () { return d5local("start", 0, {}); },
+    caseDoc: function (day, n) { return d5local("case", n); },
+    commit: function (day, n, pick) { return d5local("commit", n, pick); },
+    reveal: function (day, n) { return d5local("reveal", n); },
+    resolve: function (day, n, letter) { return d5local("resolve", n, { letter: letter }); },
+    hunch: function (day, n) { return d5local("hunch", n, {}); },
+    hunchDoc: function () { return Promise.reject(err("permission-denied", "preview")); },
+    finale: function () { return d5local("finale").catch(deniedIsNull); }
+  } : {
+    mode: "firebase",
+    edition: function (day) { return ready().then(function () { return d5doc(day).get(); }).then(dataOf, deniedIsNull); },
+    run: function (day) { return ready().then(function () { return runRef(day).get(); }).then(dataOf); },
+    start: function (day, strikes) {
+      return ready().then(function () {
+        return runRef(day).set({ uid: uid, day: day, picks: {}, grid: "", strikes: strikes, hunch: 0, startedAt: fv().serverTimestamp() })
+          .catch(function () { /* another tab started it first: read that one */ });
+      }).then(function () { return runRef(day).get(); }).then(dataOf);
+    },
+    caseDoc: function (day, n) { return ready().then(function () { return d5doc(day, "cases", n).get(); }).then(dataOf); },
+    commit: function (day, n, pick) {
+      var u = {}; u["picks.c" + n] = { s: pick.s, p: pick.p, at: fv().serverTimestamp() };
+      return ready().then(function () { return runRef(day).update(u); }).then(function () { return runRef(day).get(); }).then(dataOf);
+    },
+    reveal: function (day, n) { return ready().then(function () { return d5doc(day, "reveals", n).get(); }).then(dataOf); },
+    resolve: function (day, n, letter, grid) {
+      return ready().then(function () { return runRef(day).update({ grid: grid + letter }); }).then(function () { return runRef(day).get(); }).then(dataOf);
+    },
+    hunch: function (day, n) { return ready().then(function () { return runRef(day).update({ hunch: n }); }).then(function () { return d5.hunchDoc(day, n); }); },
+    hunchDoc: function (day, n) { return ready().then(function () { return d5doc(day, "hunch", n).get(); }).then(dataOf); },
+    finale: function (day) { return ready().then(function () { return d5doc(day, "end", "finale").get(); }).then(dataOf, deniedIsNull); }
+  };
+
   /* ---------- public API ---------- */
   window.WLLB = {
+    d5: d5,
     rooms: rooms,
     provider: provider,
     TIERS: TIERS,

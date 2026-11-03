@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily 5 desk</title>
+<style>
+  :root { --bg: #f4f1ea; --card: #fffdf8; --ink: #1d1a16; --muted: #6b645a; --line: #ddd5c6; --red: #b3261e; --green: #1f7a3a; --amber: #9a6400; --blue: #234e8c; --chip: #ece6da; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #15130f; --card: #1f1c17; --ink: #f1ece2; --muted: #a59d90; --line: #3a352c; --red: #f08a82; --green: #7fd492; --amber: #f2c063; --blue: #9dbcf0; --chip: #2c2820; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--ink); }
+  header { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--card); position: sticky; top: 0; z-index: 2; }
+  h1 { font-size: 18px; margin: 0; letter-spacing: .02em; } h1 span { color: var(--red); }
+  h2 { font-size: 16px; margin: 18px 0 8px; } h3 { font-size: 14px; margin: 12px 0 6px; }
+  .stock { padding: 6px 12px; border-radius: 8px; background: var(--chip); }
+  .stock.warn { background: color-mix(in srgb, var(--red) 18%, var(--card)); color: var(--red); font-weight: 600; }
+  main { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 0; min-height: calc(100vh - 60px); }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+  aside { border-right: 1px solid var(--line); padding: 12px; overflow: auto; }
+  section#detail { padding: 16px 22px 60px; overflow: auto; }
+  button, select, input { font: inherit; color: inherit; }
+  button { border: 1px solid var(--line); background: var(--card); padding: 6px 12px; border-radius: 8px; cursor: pointer; }
+  button:hover { border-color: var(--ink); }
+  button.primary { background: var(--ink); color: var(--card); border-color: var(--ink); }
+  button.danger { color: var(--red); border-color: color-mix(in srgb, var(--red) 50%, var(--line)); }
+  button:disabled { opacity: .45; cursor: default; }
+  input, select { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 5px 8px; }
+  .group h3 { color: var(--muted); text-transform: uppercase; font-size: 11px; letter-spacing: .08em; margin: 14px 4px 6px; }
+  .item { display: block; width: 100%; text-align: left; margin: 0 0 6px; padding: 8px 10px; }
+  .item.on { border-color: var(--ink); box-shadow: inset 3px 0 0 var(--red); }
+  .item b { display: block; } .item small { color: var(--muted); }
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 99px; background: var(--chip); font-size: 12px; margin-right: 4px; }
+  .ok { color: var(--green); } .bad { color: var(--red); } .meh { color: var(--amber); }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 10px 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } @media (max-width: 1100px) { .grid2 { grid-template-columns: 1fr; } }
+  ul { margin: 6px 0; padding-left: 18px; } li { margin: 3px 0; }
+  .liar { background: color-mix(in srgb, var(--red) 10%, transparent); border-radius: 6px; padding: 2px 6px; }
+  .fact { font: 12px/1.4 ui-monospace, Consolas, monospace; color: var(--muted); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; } td, th { border-bottom: 1px solid var(--line); padding: 4px 6px; text-align: left; vertical-align: top; }
+  pre.log { max-height: 220px; overflow: auto; background: var(--chip); padding: 8px; border-radius: 8px; font-size: 12px; white-space: pre-wrap; }
+  .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--card); padding: 10px 16px; border-radius: 10px; max-width: 90vw; z-index: 5; }
+  .muted { color: var(--muted); } .small { font-size: 13px; }
+  details summary { cursor: pointer; font-weight: 600; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Liar<span>Hunt</span> · Daily 5 desk</h1>
+  <span id="today" class="muted"></span>
+  <span id="stock" class="stock"></span>
+  <span class="row" style="margin:0">
+    <button class="primary" id="gen">Generate 5 stories</button>
+    <label class="small"><input type="checkbox" id="dry"> dry run (free, uses the Crown Job)</label>
+  </span>
+</header>
+<main>
+  <aside id="list"></aside>
+  <section id="detail"><p class="muted">Pick a story on the left.</p></section>
+</main>
+<script>
+"use strict";
+var $ = function (id) { return document.getElementById(id); };
+var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
+var state = null, current = null, pollT = 0;
+function api(path, data) {
+  return fetch(path, data === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json", "X-D5": "1" }, body: JSON.stringify(data) })
+    .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.statusText); return j; }); });
+}
+function toast(msg) { var t = document.createElement("div"); t.className = "toast"; t.textContent = msg; document.body.appendChild(t); setTimeout(function () { t.remove(); }, 4200); }
+var LABEL = { published: "Live / uploaded", scheduled: "Scheduled", approved: "Approved", ready: "Ready for review", failed: "Needs work", rejected: "Rejected" };
+
+function load() {
+  return api("/api/state").then(function (s) {
+    state = s;
+    var k = s.stock;
+    $("today").textContent = "Today: Daily #" + k.today + " (" + k.todayDate + ", IST)";
+    $("stock").className = "stock" + (k.warn ? " warn" : "");
+    $("stock").textContent = k.ahead + " day" + (k.ahead === 1 ? "" : "s") + " covered from today · " + k.approved + " approved waiting" + (k.unpublished ? " · " + k.unpublished + " scheduled but not uploaded" : "") + (k.warn ? " · below 14: generate more" : "");
+    var groups = {};
+    s.drafts.forEach(function (d) { (groups[d.status] = groups[d.status] || []).push(d); });
+    $("list").innerHTML = ["published", "scheduled", "ready", "approved", "failed", "rejected"].filter(function (g) { return groups[g]; }).map(function (g) {
+      return '<div class="group"><h3>' + LABEL[g] + " (" + groups[g].length + ")</h3>" + groups[g].map(function (d) {
+        var badge = d.gate ? '<span class="ok">✓ checks</span>' : d.stage === "done" ? '<span class="meh">review</span>' : '<span class="bad">✗ ' + esc(d.stage || "") + "</span>";
+        return '<button class="item' + (current === d.id ? " on" : "") + '" data-id="' + esc(d.id) + '"><b>' + esc(d.title) + "</b><small>" +
+          (d.day ? "Daily #" + d.day + " · " + d.date + " · " : "") + esc(d.place) + "<br>" + badge + " · critic: " + esc(d.critic || "–") + (d.blockers ? ' · <span class="bad">' + d.blockers + " blocker</span>" : "") + " · $" + d.usd.toFixed(2) + "</small></button>";
+      }).join("") + "</div>";
+    }).join("") || '<p class="muted">No drafts yet. Generate a batch, or try a dry run.</p>';
+    [].forEach.call(document.querySelectorAll(".item"), function (b) { b.onclick = function () { openDraft(b.getAttribute("data-id")); }; });
+    if (s.job) {
+      var log = $("joblog") || document.createElement("div");
+      log.id = "joblog";
+      log.innerHTML = "<h3>" + (s.job.running ? "Generating…" : "Last job finished" + (s.job.code ? " with errors" : "")) + '</h3><pre class="log">' + esc(s.job.log.join("\n")) + "</pre>";
+      $("list").prepend(log);
+      clearTimeout(pollT);
+      if (s.job.running) pollT = setTimeout(load, 3000);
+    }
+    $("gen").disabled = !!(s.job && s.job.running);
+  }).catch(function (e) { toast(e.message); });
+}
+
+function factLine(f) { return '<div class="fact">' + esc(f.slot) + (f.not ? " ≠ " : " = ") + esc(f.value) + " @ " + esc(f.from) + (f.to && f.to !== f.from ? "–" + esc(f.to) : "") + "</div>"; }
+function openDraft(id) {
+  current = id;
+  [].forEach.call(document.querySelectorAll(".item"), function (b) { b.classList.toggle("on", b.getAttribute("data-id") === id); });
+  api("/api/draft/" + id).then(render).catch(function (e) { toast(e.message); });
+}
+function render(res) {
+  var d = res.draft, m = d.meta, s = d.story, r = m.report || {}, keys = res.keys;
+  var h = "<h2>" + esc(s ? s.title : m.id) + ' <span class="chip">' + esc(LABEL[m.status] || m.status) + "</span></h2>";
+  h += '<p class="muted small">' + esc(m.id) + (s ? " · " + esc(s.setting.place) : "") + (m.day ? " · Daily #" + m.day + " (" + res.date + ")" : "") + " · brief: " + esc(m.brief ? m.brief.setting + " / " + m.brief.crime : "–") + "</p>";
+  // actions
+  h += '<div class="row">';
+  if (s && res.check && res.check.ok) h += '<button class="primary" id="a-play">▶ Play it in the game</button>';
+  if (["ready", "failed", "rejected"].includes(m.status)) h += '<button id="a-approve">Approve</button>';
+  if (!["published", "rejected"].includes(m.status)) h += '<button class="danger" id="a-reject">Reject</button>';
+  if (["approved", "scheduled"].includes(m.status)) h += '<input type="date" id="a-date" value="' + (res.date || state.stock.nextEmptyDate) + '"><button id="a-schedule">' + (m.status === "scheduled" ? "Move" : "Schedule") + "</button>";
+  if (m.status === "scheduled") h += '<button id="a-unschedule">Unschedule</button><button class="primary" id="a-publish">Publish to Firebase</button>';
+  if (m.status === "published") h += '<button class="danger" id="a-unpublish">Take down (before its day)</button>';
+  if (!["published", "scheduled"].includes(m.status)) h += '<button id="a-redo">Regenerate whole story</button><select id="a-case"><option value="">Rewrite case…</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>';
+  h += "</div>";
+  // checks
+  var errs = res.check ? res.check.errors : (r.errors || []), warns = res.check ? res.check.warnings : (r.warnings || []);
+  h += '<div class="grid2"><div class="card"><h3>Code checks ' + (errs.length ? '<span class="bad">✗ ' + errs.length + "</span>" : '<span class="ok">✓ one answer per case, proven</span>') + "</h3>" +
+    (errs.length ? "<ul>" + errs.map(function (e) { return '<li class="bad">' + esc(e) + "</li>"; }).join("") + "</ul>" : "") +
+    (warns.length ? "<ul>" + warns.map(function (e) { return '<li class="meh">' + esc(e) + "</li>"; }).join("") + "</ul>" : "") + "</div>";
+  h += '<div class="card"><h3>Blind solver (sees only what players see)</h3>' + (r.solved ? "<table>" + r.solved.map(function (c) {
+    return "<tr><td>Case " + c.n + "</td><td>" + c.right.map(function (x) { return x ? '<span class="ok">✓</span>' : '<span class="bad">✗</span>'; }).join(" ") + "</td><td class=small>" +
+      c.answers.map(function (a) { return a.error ? '<span class="bad">' + esc(a.error) + "</span>" : esc(a.answer || (a.answers || []).map(function (x) { return x.question + "=" + x.option; }).join(" ")) + (a.proof ? " + " + esc(a.proof.join(",")) : "") + " (" + a.confidence + "%)" + ((a.problems || []).length ? ' <span class="meh">' + esc(a.problems.join("; ")) + "</span>" : ""); }).join("<br>") + "</td></tr>";
+  }).join("") + "</table>" : '<p class="muted">Not run yet.</p>') + "</div></div>";
+  if (r.critic) h += '<div class="card"><h3>Critic: <span class="' + (r.critic.verdict === "pass" ? "ok" : r.critic.verdict === "reject" ? "bad" : "meh") + '">' + esc(r.critic.verdict) + "</span></h3>" +
+    (r.critic.issues.length ? "<ul>" + r.critic.issues.map(function (i) { return '<li><b class="' + (i.severity === "blocker" ? "bad" : i.severity === "major" ? "meh" : "muted") + '">' + esc(i.severity) + "</b> · " + esc(i.where) + ": " + esc(i.problem) + (i.fix ? ' <span class="muted">Fix: ' + esc(i.fix) + "</span>" : "") + "</li>"; }).join("") + "</ul>" : "<p>No issues.</p>") + "</div>";
+  if (!s) { $("detail").innerHTML = h; wire(d, res); return; }
+  // story
+  h += '<div class="card"><h3>Cast</h3><table>' + s.people.map(function (p) {
+    return "<tr><td><b>" + esc(p.name) + "</b><br><span class=small>" + esc(p.role) + "</span></td><td>" + esc(p.part) + "</td><td class=small>" + esc(p.background) + (p.motive ? "<br><b>Motive:</b> " + esc(p.motive) : "") + (p.secret ? "<br><b>Secret:</b> " + esc(p.secret) : "") + "</td></tr>";
+  }).join("") + "</table><p class=small><b>Setting:</b> " + esc(s.setting.intro) + "</p><p class='small muted'>" + esc(s.summary) + "</p></div>";
+  var name = function (id) { var p = s.people.find(function (x) { return x.id === id; }); return p ? p.name : id; };
+  s.cases.forEach(function (c) {
+    h += '<div class="card"><h3>Case ' + c.n + ": " + esc(c.title) + ' <span class="muted small">· ' + esc(c.ask) + "</span></h3>";
+    if (c.previously) h += '<p class="small"><b>Previously:</b> ' + esc(c.previously) + "</p>";
+    h += '<p class="small">' + esc(c.intro) + "</p>";
+    if (c.mode === "verdict") {
+      h += "<ul>" + c.parts.map(function (q) { return "<li><b>" + esc(q.ask) + "</b> " + q.options.map(function (o) { return o.id === q.answer ? '<span class="liar">✓ ' + esc(o.label) + "</span>" : esc(o.label); }).join(" · ") + ' <span class="muted small">(from ' + esc(q.because.join(", ")) + ")</span></li>"; }).join("") + "</ul>";
+    } else {
+      h += '<div class="grid2"><div><b class=small>Statements</b><ul>' + c.statements.map(function (st) { return '<li class="' + (st.id === c.answer ? "liar" : "") + '"><b>' + esc(name(st.by)) + (st.id === c.answer ? " · LIAR" : "") + ":</b> " + esc(st.text) + st.claims.map(factLine).join("") + "</li>"; }).join("") + "</ul></div>";
+      h += "<div><b class=small>Evidence</b><ul>" + c.evidence.map(function (e) { return "<li><b>[" + esc(e.id) + "] " + esc(e.title) + "</b> <span class='muted small'>" + esc(e.kind) + " · " + esc(e.source) + (e.time ? " · " + esc(e.time) : "") + "</span><br>" + esc(e.text) + e.shows.map(factLine).join("") + "</li>"; }).join("") + "</ul>" +
+        (c.uses.length ? "<p class=small><b>Builds on:</b> " + esc(c.uses.join(", ")) + "</p>" : "") +
+        (keys ? "<p class=small><b>Proof:</b> " + esc(keys["c" + c.n].proofs.join("  or  ")) + "</p>" : "") + "</div></div>";
+      h += '<p class="small"><b>Why:</b> ' + esc(c.why) + "</p><p class=small><b>Finding " + esc(c.finding.id) + ":</b> " + esc(c.finding.text) + "</p>";
+    }
+    h += "</div>";
+  });
+  h += '<details class="card"><summary>True timeline (' + s.truth.length + " facts)</summary><table>" + s.truth.slice().sort(function (a, b) { return a.from.localeCompare(b.from); }).map(function (f) { return "<tr><td>" + esc(f.from) + (f.to !== f.from ? "–" + esc(f.to) : "") + "</td><td>" + esc(f.slot) + "</td><td>" + esc(f.value) + "</td></tr>"; }).join("") + "</table></details>";
+  h += '<div class="card"><h3>The ending</h3><p>' + esc(s.finale.text) + "</p><table>" + s.finale.chronology.map(function (t) { return "<tr><td>" + esc(t.at) + "</td><td>" + esc(t.text) + '</td><td class="muted small">' + (t.case ? "case " + t.case : "") + "</td></tr>"; }).join("") + "</table></div>";
+  if ((m.notes || []).length) h += '<div class="card"><h3>History</h3><ul class=small>' + m.notes.map(function (n) { return "<li>" + esc(n.at.slice(0, 16).replace("T", " ")) + " · " + esc(n.text) + "</li>"; }).join("") + "</ul></div>";
+  h += '<div class="card"><h3>How players did</h3><div class="row"><input type="number" id="st-day" min="1" value="' + (m.day || state.stock.today - 1) + '"><button id="st-go">Load stats</button></div><div id="st-out" class="small muted">Reads the run docs in Firebase (needs credentials).</div></div>';
+  $("detail").innerHTML = h;
+  wire(d, res);
+}
+function act(id, action, data) { return api("/api/draft/" + id + "/" + action, data || {}).then(function (j) { toast(j.message || "Done"); return load().then(function () { openDraft(id); }); }).catch(function (e) { toast(e.message); }); }
+function wire(d, res) {
+  var id = d.meta.id, on = function (el, f) { if ($(el)) $(el).onclick = f; };
+  on("a-play", function () { api("/api/play/" + id + "/reset/0", {}).then(function () { window.open("/index.html?test=1&lb=demo&d5=local&fresh=1&draft=" + encodeURIComponent(id), "_blank"); }); });
+  on("a-approve", function () { act(id, "approve"); });
+  on("a-reject", function () { var why = prompt("Why reject it? (kept in the history so new stories avoid it)"); if (why !== null) act(id, "reject", { reason: why }); });
+  on("a-schedule", function () { act(id, "schedule", { date: $("a-date").value }); });
+  on("a-unschedule", function () { act(id, "unschedule"); });
+  on("a-publish", function () { if (confirm("Upload this story to Firebase as Daily #" + d.meta.day + "? Players get it at midnight IST that day.")) act(id, "publish"); });
+  on("a-unpublish", function () { if (confirm("Take this story down from Firebase?")) act(id, "unpublish"); });
+  on("a-redo", function () { if (confirm("Write this story again from scratch? It costs about $3 (free with dry run).")) api("/api/generate", { redo: id, dry: $("dry").checked }).then(load).catch(function (e) { toast(e.message); }); });
+  if ($("a-case")) $("a-case").onchange = function () { var n = this.value; if (n && confirm("Rewrite the words of case " + n + ", keeping the logic?")) api("/api/generate", { redo: id, case: +n, dry: $("dry").checked }).then(load).catch(function (e) { toast(e.message); }); this.value = ""; };
+  on("st-go", function () {
+    $("st-out").textContent = "Loading…";
+    api("/api/stats?day=" + $("st-day").value).then(function (st) {
+      var pct = function (a, b) { return b ? Math.round((100 * a) / b) + "%" : "–"; };
+      $("st-out").innerHTML = "<p>Daily #" + st.day + " (" + st.date + "): <b>" + st.started + "</b> started · " + st.completed + " finished all 5 (" + pct(st.completed, st.started) + ") · " + st.perfect + " perfect · " + st.abandoned + " gave up · Hunch used by " + st.hunch + (st.medianMinutes != null ? " · median " + st.medianMinutes + " min" : "") + "</p>" +
+        "<table><tr><th>Case</th><th>Reached</th><th>Solved</th><th>Failed</th><th>Solve rate</th></tr>" + [0, 1, 2, 3, 4].map(function (i) { return "<tr><td>" + (i + 1) + "</td><td>" + st.reached[i] + "</td><td>" + st.solved[i] + "</td><td>" + st.failed[i] + "</td><td>" + pct(st.solved[i], st.solved[i] + st.failed[i]) + "</td></tr>"; }).join("") + "</table>" +
+        "<p>Came back next day: " + st.nextDay + " (" + pct(st.nextDay, st.started) + ") · 7 days later: " + st.sevenDay + " (" + pct(st.sevenDay, st.started) + ")</p>";
+    }).catch(function (e) { $("st-out").textContent = e.message; });
+  });
+}
+$("gen").onclick = function () { if (!$("dry").checked && !confirm("Generate 5 stories with Claude? About $15-25 at list price.")) return; api("/api/generate", { count: 5, dry: $("dry").checked }).then(load).catch(function (e) { toast(e.message); }); };
+load();
+</script>
+</body>
+</html>

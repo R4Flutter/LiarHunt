@@ -234,10 +234,11 @@
     addXp(xp);
     return { coins: coins, xp: xp };
   }
-  function dailyDone(score, replay, catchup) {
+  // failed: a Daily 5 story ended early (a wrong answer). The day still counts, but there is no completion bonus.
+  function dailyDone(score, replay, catchup, failed) {
     if (replay && !catchup) return { bonus: 0, perfect: 0 };
     S.tot.dailyDone++;
-    var done = 25, perfect = score === 5 ? 50 : 0;
+    var done = failed ? 0 : 25, perfect = score === 5 ? 50 : 0;
     if (score === 5) S.tot.perfectDays++;
     addCoins(done + perfect);
     if (!catchup) missionProgress("daily", 1);

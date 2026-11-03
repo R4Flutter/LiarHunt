@@ -14,7 +14,7 @@ It is plain HTML, CSS and JavaScript with no build step. The web version is host
 
 | Mode | What it is |
 |---|---|
-| Daily Case | 5 cases a day, the same for everyone, with a streak and a shareable result. The hero of the home screen. |
+| Daily Case | 5 cases a day, the same for everyone, with a streak and a shareable result. The hero of the home screen. On days with a **Daily 5** story (web), the five cases are one connected mystery (section 8). |
 | Case of the Week | Each Daily from Monday to Saturday gives one clue to a bigger case (8 suspects). On Sunday, name the mastermind with one try. Missed a day? Catch up with a Case Key or buy the clue. |
 | Night Shift | One hard bonus case every evening from 8 PM, one try. The screen switches to the night theme. |
 | Career | Endless chapters of 10 cases (Rookie Beat, Downtown, The Harbor…). Cases get harder as you go. Cases 5 and 10 of each chapter are twists. Earn up to 3 stars per case by being fast and not using hints. New players land straight in case 1 with a short coach. |
@@ -330,6 +330,32 @@ HQ → **Play live** opens a room with one link (`?room=CODE`). Up to 10 players
 HQ → **Write a case** lets players make their own mystery (3 to 5 facts, 3 suspects, the liar and the proof) and send it as a link (`?w=...`). The whole case is packed into the link, compressed, so nothing is stored online and there's nothing to moderate. Friends get one try, no hints, and can send back how they did or write one back. Web only (hidden on CrazyGames). The checker tests that a packed case comes back unchanged.
 
 ---
+
+## 8. Daily 5: one mystery in five connected cases (web)
+
+On a day with an approved story, the web Daily becomes **Daily 5**: one mystery split into five cases. Each solved case adds a finding to the player's **Notebook** (evidence, findings, suspects, timeline), and the next case builds on it. Case 5 is a final verdict (who planned it, who helped, how, where the loot is). One wrong answer ends the day and locks the rest; the streak still counts. Everyone gets one free **Hunch** a day (rules out one wrong answer). Players who finish see the full story at once, everyone else at the next midnight. Days without a story, and the CrazyGames build, play the classic Daily.
+
+**The day turns over at midnight India time (IST) for everyone**, for every mode (`dayNumber()` in `js/engine.js`).
+
+**How answers stay honest.** The game has no server, so the Firestore rules do the checking (`firebase/firestore.rules`, Daily 5 section). A case only opens once the one before is solved. Each answer is two writes: commit the pick (it can never change), then resolve it; the rules compare it with an answer key in `d5keys/{day}` that no player can read. On a story day, the Daily score must match the player's run, so it can't be faked. After 6 AM IST the next morning a story becomes a public archive (everything but the keys), and Case files can replay it.
+
+**Making stories** happens on your computer, never in the game. Stories are written by Claude, checked by code, solved blind by a second model, reviewed by a critic, and only go live after you approve and publish them.
+
+```
+cd tools/daily5
+npm install
+node check.mjs --self-test                 # the checker, against the Crown Job example and broken copies of it
+node generate.mjs --count 5 --dry-run      # the whole pipeline for free (no API calls)
+node generate.mjs --count 5                # 5 real stories, about $15-25 (needs ANTHROPIC_API_KEY)
+node admin.mjs                             # the admin desk: http://127.0.0.1:8787
+```
+
+- **Drafts and answer keys live outside this repo**, in `~/.liarhunt/daily5` (set `LIARHUNT_DATA` to move it). The repo is public; the tools refuse to write drafts inside it.
+- **The checker** (`tools/daily5/check.mjs`) proves each case has exactly one answer: every statement and piece of evidence carries small facts (who, where, when), and code checks that exactly the liar clashes with what the player knows, that every proof needs an earlier case's finding, and that no story text gives a later answer away.
+- **The admin desk** shows each draft's checks, blind-solver results and critic notes, lets you play it in the real game (`?d5=local`), approve or reject it, rewrite one case, schedule it for a day and publish it. It warns when fewer than 14 days are covered, and shows how players did on each day (from the run docs).
+- **Publishing** writes the day's docs with the Firebase Admin SDK. It needs Google credentials for the project: `gcloud auth application-default login`, or `GOOGLE_APPLICATION_CREDENTIALS` pointing at a key file outside this repo. A published day can't change once it has started.
+- **Rules tests:** `cd tools/daily5 && npm run test:rules` runs `rules.test.mjs` on the Firestore emulator (needs Java; with Java 17 use `npx firebase-tools@13 emulators:exec --only firestore --project demo-liarhunt "node tools/daily5/rules.test.mjs"` from the game folder).
+- After changing the rules: `firebase deploy --only firestore`.
 
 ## Tech notes
 

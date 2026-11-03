@@ -24,7 +24,7 @@
   var mq = function (q) { return window.matchMedia ? window.matchMedia(q) : { matches: false, addEventListener: function () {} }; };
   var reduceMotion = mq("(prefers-reduced-motion: reduce)").matches;
   var coarse = mq("(pointer: coarse)").matches;
-  var GRID = { g: "✅", y: "☑️", r: "❌" }; // ☑️: caught with a hint
+  var GRID = { g: "✅", y: "☑️", r: "❌", "-": "🔒" }; // ☑️: caught with a hint. 🔒: a Daily 5 case locked after a wrong answer
   var LEVEL = { easy: "Easy case", medium: "Medium case", hard: "Hard case", twist: "Twist case" };
   var DAILY_TITLES = ["Every liar walked free.", "Rough day at the office.", "The liars won this round.", "Not bad, detective.", "Sharp eyes.", "Perfect. Nobody fooled you."];
   var CAUGHT = ["Caught!", "Got them!", "Case closed!", "Nailed it!", "Busted!"];
@@ -49,13 +49,15 @@
 
   function persist() { if (cloud.gone) return; if (!cloud.on) Plat.save(S); cloudDirty(); }
   function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-  function scoreOf(results) { return results.filter(function (r) { return r !== "r"; }).length; }
-  // A tick for each liar caught (amber if a hint helped), a cross for a miss, an empty slot for a case not played yet.
-  var TICK = '<path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/>', MARK = { g: TICK, y: TICK, r: '<path pathLength="1" d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>' };
+  function scoreOf(results) { return results.filter(function (r) { return r === "g" || r === "y"; }).length; }
+  // A tick for each liar caught (amber if a hint helped), a cross for a miss, a lock for a Daily 5 case that never opened,
+  // an empty slot for a case not played yet.
+  var TICK = '<path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/>', MARK = { g: TICK, y: TICK, r: '<path pathLength="1" d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>', l: '<path d="M8 11V8.5a4 4 0 0 1 8 0V11M6.5 11h11v8h-11z"/>' };
+  function cellClass(r) { return r === "-" ? "l" : r || "n"; }
   function cells(results, total) {
     var out = "";
     for (var i = 0; i < (total || results.length); i++) {
-      var r = results[i] || "n";
+      var r = cellClass(results[i]);
       out += '<span class="cell-' + r + '">' + (MARK[r] ? '<svg viewBox="0 0 24 24" aria-hidden="true">' + MARK[r] + "</svg>" : "") + "</span>";
     }
     return out;
@@ -342,12 +344,27 @@
   function renderToday() {
     var d = S.daily && S.daily.day === TODAY ? S.daily : null, streak = dailyStreak();
     var res = d ? d.results : [], done = !!(d && d.done);
-    $("today-eyebrow").textContent = WL.formatDate(WL.dateForDay(TODAY));
+    var ed = d5Today(); // today's Daily 5 story, if there is one
+    $("today-eyebrow").textContent = WL.formatDate(WL.dateForDay(TODAY)) + (ed ? " · Daily 5" : "");
     $("today-tab").textContent = "Daily #" + TODAY;
     $("today-cells").hidden = !res.length;
     $("today-cells").innerHTML = res.length ? cells(res, 5) : "";
     var title, sub, btn;
-    if (done) {
+    if (ed) {
+      if (done) {
+        title = scoreOf(res) === 5 ? "Solved: " + ed.title : ed.title + ": the trail went cold";
+        sub = (scoreOf(res) === 5 ? "A new mystery" : "The ending, and a new mystery,") + ' in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) + "</strong>";
+        btn = "See your result";
+      } else if (res.length) {
+        title = "Case " + (res.length + 1) + " of 5 · " + ed.title;
+        sub = "Your notebook is waiting. One wrong answer ends the day.";
+        btn = "Continue the investigation";
+      } else {
+        title = ed.title;
+        sub = "One mystery in five connected cases. " + (streak > 0 ? "Play to keep your <strong>" + streak + "-day streak</strong>." : "One wrong answer ends the day.");
+        btn = "Open the case file";
+      }
+    } else if (done) {
       title = scoreOf(res) + " of 5 caught";
       sub = 'New cases in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) + "</strong>";
       btn = "See your result";
@@ -372,8 +389,12 @@
     if (done && st && st.total >= RANK_MIN) meta.push("🏆 #" + st.rank + " of " + st.total + " today");
     var c = S.challenge;
     if (c && c.day === TODAY && !done) meta.push("⚔️ " + esc(c.name) + " challenged you: " + scoreOf(c.grid.split("")) + "/5 in " + WL.fmtTime(c.time * 1000));
+    // a story you didn't finish yesterday: its ending is open now
+    var yh = S.history[TODAY - 1];
+    if (D5 && yh && yh.story && yh.score < 5) meta.push('<button class="link-btn" type="button" id="btn-yesterday">📜 How “' + esc(yh.story) + "” ended</button>");
     $("today-meta").hidden = !meta.length;
     $("today-meta").innerHTML = meta.join("<br>");
+    if ($("btn-yesterday")) $("btn-yesterday").addEventListener("click", function () { Snd.play("click"); openFinale(TODAY - 1); });
   }
   function renderWeekCard() {
     var k = WL.buildWeek(WEEK), a = S.arc;
@@ -763,6 +784,8 @@
   // mode: "practice" plays a past day for fun (no rewards), even if it was unlocked with a key.
   function startDaily(day, mode) {
     day = day || TODAY;
+    if (mode !== "classic" && d5Wants(day, mode)) { startD5(day, mode); return; }
+    if (mode === "classic") mode = undefined;
     var replay = day !== TODAY;
     var catchup = replay && mode !== "practice" && !!S.unlocked[day];
     var prog = progressFor(day, catchup);
@@ -774,6 +797,347 @@
     show("case");
     loadCase();
   }
+
+  /* ---------- Daily 5: one story, five connected cases ----------
+     The cases come from Firebase one at a time (WLLB.d5 in leaderboard.js), and the run is kept there too, so a reload,
+     another device or a lost connection never counts as a wrong answer. The rules only open a case once the one before
+     is solved, and check every answer against a key players can't read. Past days replay from the public archive,
+     judged on this device. A day without a story plays the classic Daily. */
+  var D5 = LB.d5 || null, d5Edition = {}, d5Loading = {};
+  var D5_LEVEL = ["easy", "medium", "medium", "hard", "twist"];
+  function d5Today() {
+    var ed = d5Edition[TODAY], p = S.daily && S.daily.day === TODAY ? S.daily : null;
+    return ed && !(p && p.results.length && !p.d5) ? ed : null;
+  }
+  // Load a day's story (null: that day has none). Today's waits for this before it starts.
+  function d5Load(day) {
+    if (!D5 || (D5.mode === "local" && day !== TODAY)) { d5Edition[day] = null; return Promise.resolve(null); }
+    if (d5Edition[day] !== undefined) return Promise.resolve(d5Edition[day]);
+    if (!d5Loading[day]) {
+      d5Loading[day] = D5.edition(day).then(function (ed) { d5Edition[day] = ed || null; return d5Edition[day]; }, function (e) {
+        console.warn("[daily5]", e && e.message ? e.message : e);
+        delete d5Loading[day];
+        if (day === TODAY) d5Edition[day] = null; // no connection to the stories: today plays the classic Daily
+        return null;
+      });
+    }
+    return d5Loading[day];
+  }
+  function d5Wants(day, mode) {
+    if (!D5 || (D5.mode === "local" && day !== TODAY)) return false;
+    var catchup = day !== TODAY && mode !== "practice" && !!S.unlocked[day];
+    var p = day === TODAY ? (S.daily && S.daily.day === day ? S.daily : null) : catchup ? S.catchups[day] : (S.replay && S.replay.day === day ? S.replay : null);
+    if (p && p.results.length && !p.d5) return false; // started as a classic Daily: finish it that way
+    return day === TODAY ? d5Edition[day] !== null : !!d5Edition[day];
+  }
+  // What this device keeps of a story: the cases and reveals it opened (for the notebook), and the player's notes.
+  function d5St(day) {
+    S.d5 = S.d5 || {};
+    Object.keys(S.d5).forEach(function (k) { if (+k < TODAY - 3 && +k !== day) delete S.d5[k]; });
+    return (S.d5[day] = S.d5[day] || { cases: {}, reveals: {}, notes: {}, seen: 0 });
+  }
+  // Today goes through Firebase. A past day plays from its public archive and keeps its run in this save.
+  function d5Api(day, prog) {
+    if (day === TODAY) return D5;
+    var mine = function () { return prog.d5run; };
+    return {
+      run: function () { return Promise.resolve(mine() || null); },
+      start: function (d, strikes) { prog.d5run = { picks: {}, grid: "", strikes: strikes, hunch: 0 }; return Promise.resolve(prog.d5run); },
+      caseDoc: D5.caseDoc, reveal: D5.reveal, finale: D5.finale,
+      commit: function (d, n, pick) { var r = mine(); r.picks["c" + n] = r.picks["c" + n] || { s: pick.s, p: pick.p }; return Promise.resolve(r); },
+      resolve: function (d, n, letter) { var r = mine(); if (r.grid.length === n - 1) r.grid += letter; return Promise.resolve(r); },
+      hunch: function (d, n) { mine().hunch = n; return D5.hunchDoc(d, n); }
+    };
+  }
+  function reds(g) { return (String(g).match(/r/g) || []).length; }
+  function d5Over(r) { return r.grid.length >= 5 || reds(r.grid) >= (r.strikes || 1); }
+  function d5Results(r) { var out = r.grid.split(""); if (d5Over(r)) while (out.length < 5) out.push("-"); return out; }
+  function d5Failed(results, strikes) { return results.indexOf("-") >= 0 || reds(results.join("")) >= (strikes || 1); }
+  function verdictKey(v) { return Object.keys(v).sort().map(function (q) { return q + "=" + v[q]; }).join(";"); }
+  function d5Fail(e) {
+    var code = e && e.code;
+    console.warn("[daily5]", e);
+    toast(code === "permission-denied" ? (run && run.day !== TODAY ? "This story opens for replay at 6 AM the day after." : "The case file is locked. Reload to carry on.")
+      : LB.friendlyError(e).replace("leaderboard", "case file"), "", 3800);
+    if (screen === "case" && !run.revealed) { $("btn-accuse").disabled = false; $("confirm").hidden = false; }
+  }
+  // While Firebase answers: the daily button and the accuse bar say so, and can't be pressed twice.
+  function d5Busy(on, label) {
+    $("btn-daily").disabled = on;
+    if (on && screen === "hq") $("btn-daily").textContent = "Opening the case file…";
+    if (screen === "case") {
+      $("btn-accuse").disabled = on; $("btn-cancel").disabled = on;
+      if (on && label) $("btn-accuse").textContent = label;
+    }
+    if (!on && screen === "hq") renderToday();
+  }
+  function startD5(day, mode) {
+    var ed = d5Edition[day];
+    if (ed === undefined) { // still finding out whether this day has a story
+      d5Busy(true);
+      d5Load(day).then(function () { d5Busy(false); if (d5Wants(day, mode)) startD5(day, mode); else startDaily(day, "classic"); });
+      return;
+    }
+    var replay = day !== TODAY, catchup = replay && mode !== "practice" && !!S.unlocked[day];
+    var prog = progressFor(day, catchup), st = d5St(day), api = d5Api(day, prog);
+    prog.d5 = ed.id; prog.title = ed.title; prog.strikes = ed.strikes;
+    if (prog.done) { showDailyResults(day, prog, replay, null, catchup); return; }
+    d5Busy(true);
+    api.run(day).then(function (r) { return r || api.start(day, ed.strikes); }).then(function (r) {
+      st.run = r;
+      prog.results = d5Results(r); persist();
+      var away = prog.at ? Math.min(AWAY_MAX, Math.max(0, Date.now() - prog.at)) : 0;
+      run = { kind: replay ? "replay" : "daily", catchup: catchup, day: day, cases: [null, null, null, null, null], prog: prog, idx: r.grid.length,
+        elapsed: (prog.elapsed || 0) + away, d5: { ed: ed, st: st, api: api, r: r } };
+      if (d5Over(r)) { d5Busy(false); finishDaily(); return; }
+      if (!r.grid.length) WL.track(replay ? "replay_start" : "d5_start", { day: day, story: ed.id });
+      d5Open(r.grid.length + 1);
+    }).catch(function (e) { d5Busy(false); d5Fail(e); });
+  }
+  function d5Case(doc, n) {
+    var f = doc.facts || [], sus = doc.suspects || [];
+    return { d5: true, n: n, title: doc.title, setup: doc.intro, prev: doc.previously || "", ask: doc.ask, mode: doc.mode, level: D5_LEVEL[n - 1],
+      facts: f, clues: f.map(function (x) { return x.text; }), factIds: f.map(function (x) { return x.id; }),
+      suspects: sus.map(function (s) { return { name: s.name, role: s.role, says: s.says }; }),
+      sids: sus.map(function (s) { return s.sid; }), pids: sus.map(function (s) { return s.id; }),
+      parts: doc.parts || null, answer: -1, proof: new Array(doc.need || 0).fill(-1), alt: [], why: "" };
+  }
+  // Open case n: fetch it (the rules only allow the next one), show its intro card, and carry on an answer already on file.
+  function d5Open(n) {
+    var d5 = run.d5, st = d5.st, keep = run;
+    var have = st.cases[n] ? Promise.resolve(st.cases[n]) : d5.api.caseDoc(run.day, n).then(function (doc) { if (doc) { st.cases[n] = doc; persist(); } return doc; });
+    have.then(function (doc) {
+      if (run !== keep) return;
+      d5Busy(false);
+      if (!doc) throw new Error("This case is missing from the file.");
+      run.idx = n - 1; run.c = run.cases[n - 1] = d5Case(doc, n); run.vpick = {};
+      show("case");
+      var fresh = !(run.prog.cur && run.prog.cur.idx === run.idx);
+      loadCase();
+      var pk = d5.r.picks && d5.r.picks["c" + n];
+      if (pk) d5Judge(pk); // answered before a reload: finish judging it
+      else if (fresh) d5Intro(n);
+    }).catch(function (e) { if (run !== keep) return; d5Busy(false); d5Fail(e); goHQ(); });
+  }
+  // The card between cases: where the story stands, then the new case. The clock waits.
+  function d5Intro(n) {
+    var c = run.c, ed = run.d5.ed, el = $("stage-card"), keep = run;
+    $("stage-n").textContent = n === 1 ? "Daily 5 · " + ed.title : "Case " + n + " of 5";
+    $("stage-name").textContent = n === 1 ? "Case 1 · " + c.title : c.title;
+    $("stage-text").textContent = n === 1 ? ed.intro : c.prev;
+    el.querySelector(".stage-tap").textContent = "Tap to open the case";
+    el.classList.add("story"); el.hidden = false; run.hold = true;
+    Snd.play(n === 5 ? "twist" : "whoosh");
+    var done = function () { el.hidden = true; el.classList.remove("story"); el.querySelector(".stage-tap").textContent = "Tap to start"; if (run === keep) run.hold = false; el.onclick = null; };
+    el.onclick = function () { Snd.play("click"); done(); };
+  }
+  // Present the answer: commit it (it can't change after this), then judge it.
+  function d5Submit() {
+    var c = run.c, d5 = run.d5, n = c.n, keep = run, pick;
+    if (c.mode === "verdict") pick = { s: verdictKey(run.vpick), p: "" };
+    else pick = { s: c.sids[run.pick], p: run.sel.map(function (i) { return c.factIds[i]; }).sort().join(",") };
+    hideConfirm(); $("tools").hidden = true; $("confirm").hidden = false;
+    $("accuse-q").textContent = c.mode === "verdict" ? "Your verdict is in." : "Your proof is in.";
+    d5Busy(true, "Checking the file…");
+    d5.api.commit(run.day, n, pick).catch(function (e) {
+      // already on file (another tab, or a retry after a lost reply): carry on with the answer the file holds
+      return d5.api.run(run.day).then(function (r) { if (r && r.picks && r.picks["c" + n]) return r; throw e; });
+    }).then(function (r) {
+      if (run !== keep) return;
+      d5.r = d5.st.run = r;
+      WL.track("d5_answer", { day: run.day, case: n });
+      d5Judge(r.picks["c" + n]);
+    }).catch(function (e) { if (run !== keep) return; d5Busy(false); $("confirm").hidden = true; $("tools").hidden = false; d5Fail(e); });
+  }
+  // The answer is on file: open the reveal, record right or wrong, and show it.
+  function d5Judge(pk) {
+    var d5 = run.d5, c = run.c, n = c.n, keep = run;
+    d5Busy(true, "Checking the file…");
+    var have = d5.st.reveals[n] ? Promise.resolve(d5.st.reveals[n]) : d5.api.reveal(run.day, n);
+    have.then(function (rev) {
+      if (!rev) throw new Error("The reveal is missing.");
+      d5.st.reveals[n] = rev;
+      var right = pk.s === rev.answer.s && (c.mode === "verdict" || rev.answer.p.indexOf(pk.p) >= 0); // proofs are written "e7,f2", sorted
+      var letter = right ? (d5.r.hunch === n ? "y" : "g") : "r";
+      var saved = d5.r.grid.length >= n ? Promise.resolve(d5.r) : d5.api.resolve(run.day, n, letter, d5.r.grid);
+      return saved.then(function (r) {
+        if (run !== keep) return;
+        d5.r = d5.st.run = r; persist();
+        d5Busy(false); $("confirm").hidden = true;
+        d5Merge(c, rev, pk);
+        right = r.grid[n - 1] !== "r";
+        if (c.mode === "verdict") revealVerdict(right);
+        else reveal(right, right ? "ok" : pk.s !== rev.answer.s ? "pick" : "proof");
+        WL.track("d5_case", { day: run.day, n: n, ok: right, hunch: d5.r.hunch === n, ms: Math.round(run.caseElapsed) });
+        if (!right) WL.track("d5_fail", { day: run.day, n: n });
+      });
+    }).catch(function (e) { if (run !== keep) return; d5Busy(false); d5Fail(e); });
+  }
+  // The reveal turns the case into a normal one (answer, proof, why), so the usual verdict screen can show it.
+  function d5Merge(c, rev, pk) {
+    c.why = rev.why;
+    if (c.mode === "verdict") {
+      c.vanswer = rev.answer.parts;
+      pk.s.split(";").forEach(function (x) { var kv = x.split("="); run.vpick[kv[0]] = kv[1]; });
+      return;
+    }
+    var idx = function (id) { return c.factIds.indexOf(id); }, num = function (a, b) { return a - b; };
+    var sets = rev.answer.p.map(function (p) { return p.split(",").map(idx).sort(num); });
+    c.answer = c.sids.indexOf(rev.answer.s); c.proof = sets[0] || []; c.alt = sets.slice(1);
+    c.finding = rev.finding; c.timeline = rev.timeline || [];
+    if (run.pick == null) run.pick = c.sids.indexOf(pk.s);
+    if (!run.sel || !run.sel.length) run.sel = pk.p ? pk.p.split(",").map(idx) : [];
+  }
+  function revealVerdict(correct) {
+    var c = run.c;
+    run.revealed = true;
+    stopClock(); Plat.gameplayStop();
+    $("task").textContent = correct ? "Case closed." : "Here's what really happened.";
+    [].forEach.call($("suspects").querySelectorAll(".vopt"), function (b) {
+      var q = b.getAttribute("data-q"), o = b.getAttribute("data-o");
+      b.disabled = true;
+      if (c.vanswer[q] === o) b.classList.add("is-answer");
+      else if (run.vpick[q] === o) b.classList.add("is-wrong");
+    });
+    $("actionbar").hidden = true;
+    gameTrace.spike(!correct);
+    Snd.play("stamp");
+    setTimeout(function () { Snd.play(correct ? "correct" : "wrong"); }, 170);
+    if (!correct) FX.shake($("case-grid"));
+    verdictDaily(correct, "verdict");
+  }
+  // Case 5: one choice per question, then submit them together.
+  function renderVerdictParts(c) {
+    var box = $("suspects");
+    box.innerHTML = c.parts.map(function (q) {
+      return '<fieldset class="vpart"><legend class="vq">' + esc(q.ask) + '</legend><div class="vopts">' + q.options.map(function (o) {
+        return '<button type="button" class="vopt" aria-pressed="false" data-q="' + esc(q.id) + '" data-o="' + esc(o.id) + '">' + esc(o.label) + "</button>";
+      }).join("") + "</div></fieldset>";
+    }).join("");
+    [].forEach.call(box.querySelectorAll(".vopt"), function (b) { b.addEventListener("click", function () { pickVerdict(b); }); });
+  }
+  function pickVerdict(b) {
+    if (!run || run.revealed || b.disabled) return;
+    var q = b.getAttribute("data-q");
+    run.vpick[q] = b.getAttribute("data-o");
+    [].forEach.call($("suspects").querySelectorAll('.vopt[data-q="' + q + '"]'), function (x) { var on = x === b; x.classList.toggle("is-picked", on); x.setAttribute("aria-pressed", on ? "true" : "false"); });
+    Snd.play("tap");
+    var left = run.c.parts.filter(function (p) { return !run.vpick[p.id]; }).length;
+    if (left) { hideConfirm(); $("tool-note").textContent = left + " question" + (left > 1 ? "s" : "") + " left."; return; }
+    $("accuse-q").textContent = "Is this your final verdict? One try.";
+    $("btn-accuse").textContent = "Submit verdict";
+    $("tools").hidden = true; $("confirm").hidden = false;
+  }
+  // Next case: the next doc only opens once this one is solved, so fetch it now.
+  function d5Next() {
+    var res = run.prog.results;
+    if (res.length >= 5) { finishDaily(); return; }
+    persist();
+    $("verdict").hidden = true;
+    d5Busy(true);
+    d5Open(res.length + 1);
+  }
+  // The full story: everyone who finished all five gets it at once, everyone else at the next reset.
+  function fmtClock(t) { var h = +t.slice(0, 2), m = t.slice(3); return (h % 12 || 12) + ":" + m + (h < 12 ? " AM" : " PM"); }
+  function finaleHtml(f) {
+    return '<p class="end-text">' + esc(f.text) + '</p><ol class="end-time">' + (f.chronology || []).map(function (t) {
+      return '<li><span class="t">' + esc(fmtClock(t.at)) + "</span><span>" + esc(t.text) + (t.case ? ' <em class="end-case">Case ' + t.case + "</em>" : "") + "</span></li>";
+    }).join("") + "</ol>";
+  }
+  function openFinale(day) {
+    d5Load(day).then(function (ed) { return D5.finale(day).then(function (f) { return { ed: ed, f: f }; }); }).then(function (x) {
+      if (!x.f) { toast(WL.istHour() < 6 ? "That story's ending opens at 6 AM." : "That ending isn't open yet."); return; }
+      showNotice({ icon: "📜", eyebrow: "Daily #" + day + " · the ending", title: x.ed ? x.ed.title : "The ending", html: finaleHtml(x.f), yes: "Close" });
+      WL.track("d5_finale_view", { day: day, from: screen });
+    }).catch(function () { toast("Couldn't reach the case files. Try again in a moment."); });
+  }
+  function d5EndCard(day, p) {
+    var box = $("d5-end");
+    if (!box || !D5) return;
+    box.innerHTML = '<p class="muted small">Opening the full story…</p>';
+    D5.finale(day).then(function (f) {
+      if (f) { box.innerHTML = '<h3 class="sec">How it happened</h3>' + finaleHtml(f); WL.track("d5_finale_view", { day: day, from: "results" }); }
+      else box.innerHTML = '<div class="d5-locked"><b>The full story opens at midnight</b><span>Come back in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) +
+        "</strong> to see how “" + esc(p.title) + "” ended, and to start a new mystery.</span></div>";
+    }).catch(function () { box.innerHTML = '<p class="muted small">The ending will be in Case files once the day is over.</p>'; });
+  }
+
+  /* ---------- the Investigation Notebook ----------
+     Everything this player has legitimately opened today: evidence from every case so far, the findings of solved
+     cases, the suspects (what's confirmed apart from their own notes), and a timeline. Future cases were never
+     loaded, so they can't show up here. */
+  var nbTab = "evidence";
+  var KIND = { cctv: "CCTV", log: "Log", document: "Document", witness: "Witness", photo: "Photo", record: "Record", phone: "Phone", object: "Object", finding: "Finding" };
+  function nbData() {
+    var d5 = run.d5, st = d5.st, cur = run.c.n, ev = [], fi = [], tl = [], says = {};
+    for (var n = 1; n <= cur; n++) {
+      var c = st.cases[n], rv = st.reveals[n];
+      if (!c) continue;
+      (c.facts || []).forEach(function (f) { if (f.kind !== "finding") ev.push({ n: n, f: f }); });
+      (c.suspects || []).forEach(function (s) { (says[s.id] = says[s.id] || []).push({ n: n, text: s.says, liar: !!(rv && rv.answer && rv.answer.s === s.sid) }); });
+      (c.facts || []).forEach(function (f) { if (f.time && f.kind !== "finding") tl.push({ at: f.time, text: f.title + ": " + f.text, n: n, sure: false }); });
+      if (rv && rv.finding) fi.push({ n: n, f: rv.finding, why: rv.why });
+      if (rv && rv.timeline) rv.timeline.forEach(function (t) { tl.push({ at: t.at, text: t.text, n: n, sure: true }); });
+    }
+    tl.sort(function (a, b) { return a.at < b.at ? -1 : a.at > b.at ? 1 : (b.sure ? 1 : 0) - (a.sure ? 1 : 0); });
+    return { ev: ev, fi: fi, tl: tl, says: says };
+  }
+  function openNotebook(tab) {
+    if (!run || !run.d5) return;
+    nbTab = tab || nbTab;
+    var x = nbData();
+    run.d5.st.seen = x.ev.length + x.fi.length; persist();
+    $("nb-eyebrow").textContent = "Daily #" + run.day + " · " + run.d5.ed.title;
+    renderNotebook(x);
+    openDialog("dlg-notebook");
+    renderMeta();
+    WL.track("d5_notebook_open", { tab: nbTab, case: run.c.n });
+  }
+  function renderNotebook(x) {
+    x = x || nbData();
+    var count = { evidence: x.ev.length, findings: x.fi.length, suspects: run.d5.ed.cast.length, timeline: x.tl.length };
+    [].forEach.call(document.querySelectorAll("#dlg-notebook [data-tab]"), function (b) {
+      var on = b.getAttribute("data-tab") === nbTab;
+      b.setAttribute("aria-selected", on ? "true" : "false"); b.tabIndex = on ? 0 : -1;
+      b.querySelector("b").textContent = count[b.getAttribute("data-tab")];
+    });
+    var h = "", notes = run.d5.st.notes, NOTE = { ok: "Checks out", sus: "Suspicious" };
+    if (nbTab === "evidence") {
+      h = x.ev.length ? x.ev.slice().reverse().map(function (e, i) {
+        var f = e.f;
+        return '<details class="nb-item"' + (i === 0 ? " open" : "") + '><summary><span class="ev-kind">' + esc(KIND[f.kind] || f.kind) + "</span><b>" + esc(f.title) + "</b>" +
+          '<span class="nb-from">Case ' + e.n + (f.time ? " · " + esc(fmtClock(f.time)) : "") + "</span></summary><p>" + esc(f.text) + '</p><p class="nb-src">Source: ' + esc(f.source) + "</p></details>";
+      }).join("") : '<p class="nb-empty">No evidence yet.</p>';
+    } else if (nbTab === "findings") {
+      h = x.fi.length ? x.fi.map(function (e) {
+        return '<div class="nb-item nb-finding"><span class="nb-stamp">Confirmed · Case ' + e.n + "</span><p><b>" + esc(e.f.text) + "</b></p></div>";
+      }).join("") : '<p class="nb-empty">Solve a case to confirm what really happened. Findings go here, and the next case builds on them.</p>';
+    } else if (nbTab === "suspects") {
+      h = run.d5.ed.cast.map(function (p) {
+        var said = x.says[p.id] || [], mine = notes[p.id];
+        return '<div class="nb-item nb-person"><span class="mug">' + WL.avatar(p.name) + '</span><div><p class="nb-name"><b>' + esc(p.name) + "</b> · " + esc(p.role) +
+          (mine ? ' <span class="nb-note ' + mine + '">Your note: ' + NOTE[mine] + "</span>" : "") + '</p><p class="nb-bg">' + esc(p.background) + "</p>" +
+          (said.length ? '<ul class="nb-said">' + said.map(function (s) { return '<li class="' + (s.liar ? "lied" : "") + '"><span class="nb-from">Case ' + s.n + (s.liar ? " · caught lying" : "") + "</span>“" + esc(s.text) + "”</li>"; }).join("") + "</ul>"
+            : '<p class="nb-from">Hasn\'t spoken yet.</p>') + "</div></div>";
+      }).join("");
+    } else {
+      h = x.tl.length ? '<ol class="end-time nb-tl">' + x.tl.map(function (t) {
+        return '<li class="' + (t.sure ? "sure" : "") + '"><span class="t">' + esc(fmtClock(t.at)) + "</span><span>" + esc(t.text) + ' <em class="end-case">' + (t.sure ? "Confirmed · " : "Evidence · ") + "Case " + t.n + "</em></span></li>";
+      }).join("") + "</ol>" : '<p class="nb-empty">Nothing on the timeline yet.</p>';
+    }
+    $("nb-body").innerHTML = h;
+    $("nb-body").scrollTop = 0;
+  }
+  [].forEach.call(document.querySelectorAll("#dlg-notebook [data-tab]"), function (b) {
+    b.addEventListener("click", function () { Snd.play("tap"); nbTab = b.getAttribute("data-tab"); renderNotebook(); WL.track("d5_notebook_tab", { tab: nbTab }); });
+    b.addEventListener("keydown", function (e) {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      var tabs = [].slice.call(document.querySelectorAll("#dlg-notebook [data-tab]")), i = tabs.indexOf(b) + (e.key === "ArrowRight" ? 1 : -1);
+      var t = tabs[(i + tabs.length) % tabs.length]; t.click(); t.focus(); e.preventDefault();
+    });
+  });
+  $("nb-body").addEventListener("toggle", function (e) { if (e.target.open) WL.track("d5_evidence_open", {}); }, true);
+  $("btn-notebook").addEventListener("click", function () { Snd.play("click"); openNotebook(); });
   function startNight() {
     var st = nightState();
     if (st === "wait") { toast("The Night Shift opens at 8 PM. Come back tonight!"); return; }
@@ -902,11 +1266,13 @@
       setHud(run.preview ? "Your case" : "A friend's case", run.preview ? "Try it like your friends will" : "Written by " + c.by);
       $("case-kicker").textContent = "Written by " + c.by + " · One try";
     } else {
-      setHud("Daily #" + run.day + (run.catchup ? " catch-up" : run.kind === "replay" ? " practice" : ""), "Case " + (run.idx + 1) + " of 5");
-      $("case-kicker").textContent = (LEVEL[c.level] || "Case") + " · One try";
+      setHud("Daily #" + run.day + (run.catchup ? " catch-up" : run.kind === "replay" ? " practice" : ""), "Case " + (run.idx + 1) + " of 5" + (c.d5 ? " · " + run.d5.ed.title : ""));
+      $("case-kicker").textContent = c.d5 ? "Case " + c.n + " of 5 · " + (c.n === 5 ? "The verdict" : "One wrong answer ends the day") : (LEVEL[c.level] || "Case") + " · One try";
     }
     $("case-title").textContent = c.title;
     $("case-setup").textContent = c.setup;
+    $("case-prev").hidden = !c.prev;
+    $("case-prev").innerHTML = c.prev ? "<b>Previously</b> " + esc(c.prev) : "";
     var tw = $("twist");
     if (c.mode === "honest") { tw.innerHTML = "<strong>Twist!</strong><span>Two of them are lying. Find the only one telling the truth.</span>"; tw.hidden = false; }
     else if (planted) { tw.innerHTML = "<strong>Twist!</strong><span>All three are telling the truth. One of the facts was planted. Find the fake fact.</span>"; tw.hidden = false; }
@@ -917,12 +1283,18 @@
     c.clues.forEach(function (txt, i) {
       var li = document.createElement("li"), b = document.createElement("button");
       b.type = "button"; b.className = "clue" + (rule("fog") ? " fogged" : ""); b.textContent = txt;
+      var fact = c.d5 && c.facts[i];
+      if (fact) { // Daily 5 evidence says what it is and where it came from; a finding carried from an earlier case says so
+        b.className += fact.kind === "finding" ? " carried" : "";
+        b.innerHTML = '<span class="ev-tag">' + esc(fact.kind === "finding" ? fact.title : (KIND[fact.kind] || fact.kind) + " · " + fact.title + (fact.time ? " · " + fmtClock(fact.time) : "")) + "</span>" + esc(txt);
+      }
       if (rule("fog")) b.setAttribute("aria-description", "Blurred. Tap to read it.");
       b.addEventListener("click", function () { tap("clue", i); });
       li.appendChild(b); ul.appendChild(li);
     });
     var box = $("suspects"); box.innerHTML = "";
-    run.notes = [];
+    run.notes = c.d5 ? c.pids.map(function (id) { return run.d5.st.notes[id] || ""; }) : []; // Daily 5 notes follow a person through the story
+    if (c.mode === "verdict") renderVerdictParts(c);
     c.suspects.forEach(function (s, i) {
       var wrap = document.createElement("div"), el = document.createElement("button"), nb = document.createElement("button");
       wrap.className = "suspect-wrap";
@@ -944,6 +1316,7 @@
   function noteSuspect(i) {
     if (!run || run.revealed) return;
     run.notes[i] = { "": "ok", ok: "sus", sus: "" }[run.notes[i] || ""];
+    if (run.c.d5) { run.d5.st.notes[run.c.pids[i]] = run.notes[i]; persist(); }
     Snd.play("tap");
     renderNotes();
   }
@@ -981,12 +1354,16 @@
     scr.classList.toggle("proving", p === "proof");
     scr.classList.toggle("planted", c.mode === "planted");
     var ask = p === "proof" && c.mode !== "planted";
-    $("facts-h").textContent = ask ? (n > 1 ? "Tap the " + n + " facts that prove it" : "Tap the fact that proves it") : "Facts the police checked";
+    $("facts-h").textContent = ask ? (n > 1 ? "Tap the " + n + " facts that prove it" : "Tap the fact that proves it")
+      : c.mode === "verdict" ? "What your investigation proved" : c.d5 ? "Evidence on file" : "Facts the police checked";
     $("facts-h").classList.toggle("ask", ask);
     drawStrings();
-    var name = c.mode === "planted" ? "" : c.suspects[c.answer].name;
+    // Daily 5 doesn't know the answer until the file is checked, so the proof step names the player's own pick
+    var who = c.d5 && !run.revealed ? run.pick : c.answer;
+    var name = c.mode === "planted" || c.mode === "verdict" ? "" : (c.suspects[who] || {}).name || "";
     $("task").textContent = p === "pick"
-      ? (c.mode === "liar" ? "One of them is lying. Tap the liar." : c.mode === "honest" ? "Tap the one person telling the truth." : "Every story is true. Tap the fact that can't be right.")
+      ? (c.mode === "verdict" ? c.ask + " Answer every question, then submit." : c.d5 ? c.ask + " Tap the liar."
+        : c.mode === "liar" ? "One of them is lying. Tap the liar." : c.mode === "honest" ? "Tap the one person telling the truth." : "Every story is true. Tap the fact that can't be right.")
       : c.mode === "liar" ? "You accused " + name + ". Now prove it: tap the fact" + (n > 1 ? "s" : "") + " " + name + "'s story breaks."
       : c.mode === "honest" ? name + " is the honest one. Now prove the other two lied: tap the fact" + (n > 1 ? "s" : "") + " their stories break."
       : "That fact is fake. Now prove it: tap the story that shows it can't be true.";
@@ -1029,7 +1406,7 @@
   function act(a, silent) {
     if (!silent) run.acts.push(a);
     var c = run.c, el;
-    if (a[0] === "p") { startProof(silent); return; }
+    if (a[0] === "p") { if (a[1] != null) run.pick = a[1]; startProof(silent); return; } // Daily 5 keeps whom you accused
     if (a[0] === "c") {
       el = els(pickKind())[a[1]];
       el.classList.add("is-wrong");
@@ -1049,6 +1426,9 @@
   function renderMeta() {
     var k = run.kind;
     $("pips").hidden = !(k === "daily" || k === "replay");
+    var nb = $("btn-notebook");
+    nb.hidden = !run.d5;
+    if (run.d5 && run.c) { var nx = nbData(), fresh = nx.ev.length + nx.fi.length - (run.d5.st.seen || 0); $("nb-new").hidden = fresh <= 0; $("nb-new").textContent = fresh; nb.setAttribute("aria-label", "Open the notebook" + (fresh > 0 ? ", " + fresh + " new" : "")); }
     $("stars-live").hidden = k !== "career";
     $("lives").hidden = k !== "rush";
     $("replay-tag").hidden = !(k === "replay" || k === "night" || k === "friend" || k === "room" || (k === "career" && run.n < S.career.level && !run.revealed));
@@ -1069,7 +1449,7 @@
     } else {
       var res = run.prog.results;
       $("pips").innerHTML = run.cases.map(function (_, i) {
-        return '<span class="' + (res[i] ? "cell-" + res[i] : i === run.idx ? "now" : "") + '">' + (res[i] === "r" ? "✗" : res[i] ? "✓" : i + 1) + "</span>";
+        return '<span class="' + (res[i] ? "cell-" + cellClass(res[i]) : i === run.idx ? "now" : "") + '">' + (res[i] === "r" ? "✗" : res[i] === "-" ? "" : res[i] ? "✓" : i + 1) + "</span>";
       }).join("");
       $("pips").setAttribute("aria-label", "Case " + (Math.min(run.idx, 4) + 1) + " of 5. " + scoreOf(res) + " caught so far.");
       $("rec-left").textContent = "Case " + (Math.min(run.idx, 4) + 1) + " of 5";
@@ -1096,12 +1476,24 @@
   function hintMode() {
     if (!run || run.revealed || run.hint) return "used";
     if (run.kind === "friend" || run.kind === "room" || rule("nohint")) return "off"; // played straight: everyone on equal terms
+    if (run.c && run.c.d5) return run.d5.r.hunch ? "spent" : run.phase === "pick" ? "hunch" : "later"; // one free Hunch a day, checked by the file
     if ((S.inv.magnifier || 0) > 0) return "item";
     if (run.kind !== "rush" && canRewarded() && P.coolLeft("hintAd", 90) === 0) return "ad";
     return "none";
   }
   function renderTools() {
     var m = hintMode(), hb = $("btn-hint"), n = $("hint-n");
+    if (run.c && run.c.d5) {
+      var need = (run.c.proof || []).length;
+      hb.disabled = m !== "hunch"; n.classList.remove("ad");
+      $("hint-label").textContent = "Hunch"; n.textContent = m === "hunch" ? 1 : 0;
+      hb.setAttribute("aria-label", m === "hunch" ? "Use your Hunch: rule out one innocent suspect. One free Hunch a day." : "Hunch used");
+      $("btn-freeze").hidden = true;
+      $("tool-note").textContent = run.phase === "proof" ? "Tap the " + (need > 1 ? need + " facts that prove" : "fact that proves") + " it." :
+        m === "hunch" ? (run.c.mode === "verdict" ? "Your free Hunch rules out one wrong answer." : "Your free Hunch rules out one innocent suspect.") + " The case turns amber." :
+        m === "used" ? "Your Hunch ruled one out." : m === "spent" ? "You've used today's Hunch." : "";
+      return;
+    }
     hb.disabled = m === "used" || m === "none" || m === "off";
     n.classList.toggle("ad", m === "ad");
     if (m === "ad") { $("hint-label").textContent = "Hint"; n.textContent = "AD"; hb.setAttribute("aria-label", "Watch an ad for a hint"); }
@@ -1121,6 +1513,7 @@
     $("tool-note").textContent = note;
   }
   function useHint() {
+    if (run && run.c && run.c.d5) { useHunch(); return; }
     var m = hintMode();
     if (m !== "item" && m !== "ad") return;
     // Rules out one wrong option: an innocent suspect while picking, a fact that proves nothing while proving.
@@ -1147,6 +1540,28 @@
         if (ok) { toast("Hint unlocked"); give(); } else { adFailed(); renderTools(); }
       });
     }
+  }
+  // Daily 5's free Hunch: the file says which innocent suspect (or wrong answer) to rule out, once a day.
+  function useHunch() {
+    if (hintMode() !== "hunch") return;
+    var d5 = run.d5, c = run.c, n = c.n, keep = run;
+    $("btn-hint").disabled = true;
+    d5.api.hunch(run.day, n).then(function (h) {
+      if (run !== keep || !h) return;
+      d5.r.hunch = n; if (d5.st.run) d5.st.run.hunch = n;
+      run.hint = true;
+      if (c.mode === "verdict") {
+        var b = $("suspects").querySelector('.vopt[data-q="' + h.part + '"][data-o="' + h.out + '"]');
+        if (b) { b.classList.add("is-out"); b.classList.remove("is-picked"); b.disabled = true; if (run.vpick[h.part] === h.out) { delete run.vpick[h.part]; hideConfirm(); } }
+      } else {
+        var i = c.sids.indexOf(h.out);
+        if (run.pick === i) cancelPick();
+        if (i >= 0) { act(["o", "suspect", i]); els("suspect")[i].scrollIntoView({ block: "nearest" }); }
+      }
+      Snd.play("whoosh");
+      renderTools(); saveMemo(); persist();
+      WL.track("hint_used", { kind: "d5", type: "hunch", case: n });
+    }).catch(function (e) { if (run === keep) { renderTools(); d5Fail(e); } });
   }
   function useFreeze() {
     if (!run || run.kind !== "rush" || run.froze || run.revealed || !P.useItem("freeze")) return;
@@ -1181,7 +1596,7 @@
     drawStrings();
     hideConfirm();
   }
-  function confirmNow() { if (run && run.phase === "proof") present(); else accuse(false); }
+  function confirmNow() { if (run && run.c && run.c.mode === "verdict" && !run.revealed) d5Submit(); else if (run && run.phase === "proof") present(); else accuse(false); }
   function hideConfirm() { $("confirm").hidden = true; $("tools").hidden = false; }
   function stamp(el, text, cls) {
     var old = el.querySelector(".stamp"); if (old) old.remove();
@@ -1199,14 +1614,15 @@
     hideConfirm();
     hideCoach();
     if (timeout) { reveal(false, "timeout"); return; }
+    if (c.d5) { act(["p", pick]); return; } // Daily 5: accuse, then prove; the file is checked once both are in
     if (pick !== c.answer) { if (run.kind === "career") mistake(pick); else reveal(false, "pick"); return; }
     if (!(c.proof || []).length) { reveal(true, "ok"); return; }
     act(["p"]);
   }
   function startProof(silent) {
-    var c = run.c, el = els(pickKind())[c.answer];
+    var c = run.c, at = c.d5 ? run.pick : c.answer, el = els(pickKind())[at];
     setPhase("proof");
-    run.pick = c.answer;
+    run.pick = at;
     el.classList.add("is-accused");
     stamp(el, c.mode === "honest" ? "Honest" : c.mode === "planted" ? "Fake" : "Accused", "pending");
     renderTools();
@@ -1237,6 +1653,7 @@
   }
   function present() {
     if (!run || run.revealed || run.phase !== "proof") return;
+    if (run.c.d5) { d5Submit(); return; }
     hideConfirm(); hideCoach();
     var c = run.c, s = run.sel.slice().sort(function (a, b) { return a - b; }).join();
     if (proofSets(c).some(function (p) { return p.join() === s; })) reveal(true, "ok");
@@ -1314,7 +1731,7 @@
   function paintStrings() {
     var svg = $("strings"), pairs = [];
     if (run && run.c && screen === "case" && (run.phase === "proof" || run.revealed)) {
-      var c = run.c, g = svg.getBoundingClientRect(), from = els(pickKind())[c.answer], pf = els(proofKind());
+      var c = run.c, g = svg.getBoundingClientRect(), from = els(pickKind())[c.d5 && !run.revealed ? run.pick : c.answer], pf = els(proofKind());
       (run.revealed ? c.proof || [] : run.sel).forEach(function (i) { if (from && pf[i]) pairs.push([pinAt(from, g), pinAt(pf[i], g), i]); });
     }
     var key = pairs.map(function (p) { return p[2]; }).join() + (run && run.revealed ? "r" : "");
@@ -1348,6 +1765,7 @@
   }
   // The proof, spelled out: what they said, what the facts say, and why it can't be both.
   function proofHtml(c) {
+    if (c.mode === "verdict") return verdictHtml(c);
     var said = c.mode === "planted" ? c.proof.slice(0, 1) : c.mode === "honest" ? [0, 1, 2].filter(function (i) { return i !== c.answer; }) : [c.answer];
     var facts = c.mode === "planted" ? [c.answer] : c.proof;
     return said.map(function (i) { return '<p class="pb-said"><b>' + esc(c.suspects[i].name) + " said</b> <q>" + esc(c.suspects[i].says) + "</q></p>"; }).join("") +
@@ -1357,6 +1775,14 @@
       (c.motive ? '<p class="pb-motive"><b>Motive</b> ' + esc(c.motive) + "</p>" : "");
   }
 
+  // Case 5: each question, the right answer, and yours when it was different.
+  function verdictHtml(c) {
+    var lab = function (q, id) { var o = q.options.filter(function (x) { return x.id === id; })[0]; return o ? o.label : "–"; };
+    return '<ul class="pb-facts verdict-list">' + c.parts.map(function (q) {
+      var right = c.vanswer[q.id], mine = run.vpick[q.id];
+      return "<li><b>" + esc(q.ask) + "</b> " + esc(lab(q, right)) + (mine === right ? ' <span class="pb-ok">✓</span>' : ' <span class="pb-miss">You said: ' + esc(lab(q, mine)) + "</span>") + "</li>";
+    }).join("") + '</ul><p class="pb-so">' + esc(c.why) + "</p>";
+  }
   function setVerdict(o) {
     milestones();
     var v = $("verdict");
@@ -1387,6 +1813,7 @@
   }
   function answerLine() {
     var c = run.c;
+    if (c.mode === "verdict") return "";
     if (c.mode === "planted") return "You found the planted fact.";
     var n = c.suspects[c.answer].name;
     return c.mode === "honest" ? n + " was the only honest one." : n + " was the liar.";
@@ -1428,14 +1855,19 @@
   }
   function verdictDaily(correct, how) {
     var c = run.c, code = correct ? (run.hint ? "y" : "g") : "r";
-    run.prog.results.push(code); run.prog.hints.push(run.hint); run.prog.elapsed = run.elapsed; run.prog.cur = null; run.prog.at = 0;
-    var r = P.dailyCase({ correct: correct, hint: run.hint, twist: c.mode !== "liar", replay: run.kind === "replay", catchup: run.catchup });
+    if (run.d5) run.prog.results = d5Results(run.d5.r); // the file's record, with the cases locked after a wrong answer
+    else run.prog.results.push(code);
+    run.prog.hints.push(run.hint); run.prog.elapsed = run.elapsed; run.prog.cur = null; run.prog.at = 0;
+    var r = P.dailyCase({ correct: correct, hint: run.hint, twist: c.mode !== "liar" && !c.d5, replay: run.kind === "replay", catchup: run.catchup });
     persist();
-    var last = run.prog.results.length >= run.cases.length;
+    var last = run.prog.results.length >= run.cases.length, locked = c.d5 && !correct && last && c.n < 5;
     setVerdict({
-      head: correct ? pick(CAUGHT) : how === "proof" ? "Not proven." : "Not quite.", good: correct,
+      head: correct ? (c.mode === "verdict" ? "Case closed!" : pick(CAUGHT)) : how === "proof" ? "Not proven." : c.mode === "verdict" ? "Not the whole truth." : "Not quite.", good: correct,
+      banner: locked ? "The trail went cold. Cases " + (c.n + 1) + "-5 are locked." : c.d5 && correct && c.n === 4 ? "One step left: your final verdict" : "",
       rewards: rw(r.coins, r.xp),
-      sub: missLine(how) + answerLine(), next: last ? "See your result" : "Next case"
+      sub: c.mode === "verdict" ? (correct ? "You named everyone behind it." : "Here's what the file proves.") : missLine(how) + answerLine(),
+      story: c.d5 && c.finding ? "📓 New in your notebook: " + c.finding.text : "",
+      next: last ? (c.d5 && correct && c.n === 5 ? "See how it all happened" : "See your result") : "Next case"
     });
     if (r.coins) { FX.float("+" + r.coins, $("coins"), "coin"); renderCoins(true); }
     renderMeta();
@@ -1502,6 +1934,7 @@
       return;
     }
     if (run.kind === "night") { goHQ(); return; }
+    if (run.d5) { d5Next(); return; }
     run.idx = run.prog.results.length;
     if (run.idx >= run.cases.length) { finishDaily(); return; }
     run.c = run.cases[run.idx];
@@ -1583,9 +2016,11 @@
       S.history[day] = { score: score, grid: p.results.join(""), time: p.elapsed, replay: true };
     }
     if ((!replay || catchup) && WL.weekOf(day) === WEEK && WL.weekday(day) < 6) extra.clue = WL.weekday(day);
-    var r = P.dailyDone(score, replay, catchup);
+    if (run.d5 && S.history[day]) S.history[day].story = run.d5.ed.title;
+    var failed = !!run.d5 && d5Failed(p.results, run.d5.ed.strikes);
+    var r = P.dailyDone(score, replay, catchup, failed);
     persist();
-    WL.track("daily_complete", { day: day, score: score, replay: replay, catchup: catchup, seconds: Math.round(p.elapsed / 1000), days_played: st.played });
+    WL.track(run.d5 ? (failed ? "d5_over" : "d5_complete") : "daily_complete", { day: day, score: score, replay: replay, catchup: catchup, seconds: Math.round(p.elapsed / 1000), days_played: st.played });
     midgame("daily_done").then(function () {
       showDailyResults(day, p, replay, r, catchup, extra);
       Snd.play(score >= 3 ? "fanfare" : "fail");
@@ -1671,11 +2106,19 @@
     var label = catchup ? " catch-up" : replay ? " practice" : "";
     setHud("Daily #" + day, catchup ? "Catch-up" : replay ? "Practice" : "Results");
     var score = scoreOf(p.results), hints = p.results.filter(function (r) { return r === "y"; }).length;
-    $("res-kicker").textContent = "Daily #" + day + label + " complete";
+    $("res-kicker").textContent = "Daily #" + day + label + (p.d5 ? " · " + p.title : " complete");
     $("res-title").textContent = DAILY_TITLES[score];
     $("res-body").innerHTML = '<div class="res-grid" role="img" aria-label="' + score + ' of 5 caught">' + cells(p.results, 5) + "</div>" +
       '<p class="res-line">You caught <strong>' + score + " of 5</strong> liars" + (replay ? "" : " in <strong>" + WL.fmtTime(p.elapsed) + "</strong>") +
       (hints ? ", with " + hints + " hint" + (hints > 1 ? "s" : "") : "") + ".</p>";
+    if (p.d5) { // one story: how far the investigation got, then how it ends (now, or at midnight)
+      var cold = d5Failed(p.results, p.strikes), at = p.results.indexOf("r") + 1;
+      $("res-title").textContent = score === 5 ? "Case closed. Nobody fooled you." : cold ? "The trail went cold" + (at ? " at Case " + at : "") + "." : "Case closed.";
+      $("res-body").innerHTML = '<div class="res-grid" role="img" aria-label="' + score + ' of 5 solved">' + cells(p.results, 5) + "</div>" +
+        '<p class="res-line">You cracked <strong>' + score + " of 5</strong> cases" + (replay ? "" : " in <strong>" + WL.fmtTime(p.elapsed) + "</strong>") +
+        (hints ? ", with your Hunch" : "") + ".</p>" + (D5 ? '<div class="d5-end" id="d5-end"></div>' : "");
+      d5EndCard(day, p);
+    }
     $("res-rewards").innerHTML = (bonus && bonus.bonus ? '<span class="rw coin">' + COIN_SVG + "Daily done +" + bonus.bonus + "</span>" : "") +
       (bonus && bonus.perfect ? '<span class="rw coin">' + COIN_SVG + "Perfect day +" + bonus.perfect + "</span>" : "");
     var known = !replay && day === TODAY ? S.lb.ranks[day] : 0;
@@ -1707,9 +2150,17 @@
       acts.appendChild(actionBtn("Practice this day again", "ghost", function () { S.replay = null; persist(); startDaily(day, "practice"); }));
       acts.appendChild(actionBtn("Back to case files", "ghost", openFiles));
     }
-    var cases = WL.buildDay(day);
     $("review").hidden = false; $("review").open = false;
-    $("review-list").innerHTML = cases.map(function (c, i) {
+    var d5st = p.d5 && S.d5 && S.d5[day];
+    if (p.d5) $("review-list").innerHTML = [1, 2, 3, 4, 5].map(function (n) { // only the cases this player opened
+      var c = d5st && d5st.cases[n], rv = d5st && d5st.reveals[n], r = cellClass(p.results[n - 1]);
+      if (!c || !rv) return '<div class="review-item locked"><h4><span class="cell-' + r + '"></span>Case ' + n + ' · locked</h4><p class="muted">This case never opened.</p></div>';
+      var ans = c.mode === "verdict" ? c.parts.map(function (q) { var o = q.options.filter(function (x) { return x.id === rv.answer.parts[q.id]; })[0]; return q.ask + " " + (o ? o.label : ""); }).join(" · ")
+        : "The liar: " + ((c.suspects || []).filter(function (s) { return s.sid === rv.answer.s; })[0] || {}).name;
+      return '<div class="review-item"><h4><span class="cell-' + r + '"></span>' + esc(c.title) + '</h4><p class="ans">' + esc(ans) + "</p><p>" + esc(rv.why) + "</p></div>";
+    }).join("");
+    var cases = p.d5 ? [] : WL.buildDay(day);
+    if (!p.d5) $("review-list").innerHTML = cases.map(function (c, i) {
       var r = p.results[i] || "n";
       var ans = c.mode === "planted" ? "Planted fact: " + c.clues[c.answer]
         : (c.mode === "honest" ? "The honest one: " : "The liar: ") + c.suspects[c.answer].name + " (" + c.suspects[c.answer].role + ")";
@@ -1770,7 +2221,7 @@
   function challengeCode(day, p) { return day + "." + p.results.join("") + "." + Math.round(p.elapsed / 1000) + "." + (myName() || "A friend"); }
   function dailyShareText(day, p, replay, rank) {
     var grid = p.results.map(function (r) { return GRID[r]; }).join("");
-    var lines = [(CFG.siteName || "LiarHunt") + " #" + day + (replay ? " (replay)" : ""), grid + " " + scoreOf(p.results) + "/5  ⏱️ " + WL.fmtTime(p.elapsed)];
+    var lines = [(CFG.siteName || "LiarHunt") + " #" + day + (p.d5 ? " · " + p.title : "") + (replay ? " (replay)" : ""), grid + " " + scoreOf(p.results) + "/5  ⏱️ " + WL.fmtTime(p.elapsed)];
     var st = dailyStreak(), stand = !replay && S.lb.stand && S.lb.stand.day === day ? S.lb.stand : null;
     if (!replay && st > 1) lines.push("🔥 " + st + "-day streak");
     if (stand && stand.total >= RANK_MIN) lines.push("🕵️ Top " + Math.max(1, Math.ceil((100 * stand.rank) / stand.total)) + "% today");
@@ -2292,7 +2743,7 @@
     if (p.length < 4) return null;
     var day = parseInt(p[0], 10), grid = p[1], time = parseInt(p[2], 10);
     var name = p.slice(3).join(".").replace(/\s+/g, " ").trim().slice(0, 16);
-    if (!(day >= 1 && day <= TODAY + 1) || !/^[gyr]{5}$/.test(grid) || !(time >= 0 && time < 86400) || !name) return null;
+    if (!(day >= 1 && day <= TODAY + 1) || !/^[gyr-]{5}$/.test(grid) || !(time >= 0 && time < 86400) || !name) return null;
     return { day: day, grid: grid, time: time, name: name };
   }
   function versus(mine, c) {
@@ -2611,7 +3062,16 @@
     setHud("Case files", "Every Daily so far");
     filesUntil = Math.max(1, TODAY - 13);
     renderFiles();
+    filesStories();
   }
+  // Which past days had a Daily 5 story (one read each), so they replay as that story.
+  function filesStories() {
+    if (!D5 || D5.mode !== "firebase") return;
+    var days = []; for (var d = TODAY - 1; d >= filesUntil; d--) if (d5Edition[d] === undefined) days.push(d);
+    if (days.length) Promise.all(days.map(d5Load)).then(function () { if (screen === "files") renderFiles(); });
+  }
+  // A past story replays once its day is over everywhere: 6 AM IST the next morning.
+  function archiveOpen(d) { return d < TODAY - 1 || (d === TODAY - 1 && WL.istHour() >= 6); }
   function renderFiles() {
     var keys = S.inv.key || 0;
     $("files-keys").innerHTML = '<span class="key-ico" aria-hidden="true">🔑</span><span>You have <b>' + keys + " Case Key" + (keys === 1 ? "" : "s") +
@@ -2620,10 +3080,11 @@
     for (var d = TODAY; d >= filesUntil; d--) {
       var hist = S.history[d], played = hist && !hist.replay, today = d === TODAY, prog = today && S.daily && S.daily.day === TODAY ? S.daily : null;
       var date = dayName(d) + ", " + WL.formatDate(WL.dateForDay(d), "short"), status, acts;
+      var story = d5Edition[d];
       if (played) {
         status = '<span class="res-grid small">' + cells(hist.grid.split(""), 5) + "</span><span>" + hist.score + "/5" + (hist.catchup ? " · catch-up" : "") + "</span>";
         acts = today ? '<button class="btn small ghost" type="button" data-play="' + d + '">Result</button>'
-          : '<button class="btn small ghost" type="button" data-practice="' + d + '">Practice</button>';
+          : (story ? '<button class="btn small ghost" type="button" data-end="' + d + '">Ending</button>' : "") + '<button class="btn small ghost" type="button" data-practice="' + d + '">' + (story ? "Replay" : "Practice") + "</button>";
       } else if (today) {
         status = prog && prog.results.length ? "Case " + (prog.results.length + 1) + " of 5" : "New today";
         acts = '<button class="btn small danger" type="button" data-play="' + d + '">' + (prog && prog.results.length ? "Continue" : "Play") + "</button>";
@@ -2635,7 +3096,8 @@
         acts = '<button class="btn small primary" type="button" data-unlock="' + d + '">Catch up · 🔑</button>' +
           '<button class="link-btn" type="button" data-practice="' + d + '">Practice</button>';
       }
-      h += '<li class="file' + (played ? " played" : today ? " today" : S.unlocked[d] ? " open" : " missed") + '"><div class="file-head"><b>Daily #' + d + "</b>" +
+      if (story && !today && !played && !archiveOpen(d)) acts = '<span class="muted small">Replays from 6 AM</span>';
+      h += '<li class="file' + (played ? " played" : today ? " today" : S.unlocked[d] ? " open" : " missed") + '"><div class="file-head"><b>Daily #' + d + (story ? " · " + esc(story.title) : "") + "</b>" +
         '<span class="muted small">' + date + '</span></div><div class="file-status">' + status + '</div><div class="file-acts">' + acts + "</div></li>";
     }
     $("files-list").innerHTML = h;
@@ -2646,6 +3108,7 @@
       showNotice({ icon: "🔑", title: "No Case Keys left", text: "You get a key every 7 days in a row, on day 7 of the login calendar, or in the Shop.", yes: "Go to the Shop", no: "Close", onYes: function () { openShop(false); } });
       return;
     }
+    if (d5Edition[d] && !archiveOpen(d)) { toast("That story replays from 6 AM."); return; }
     P.useItem("key");
     S.unlocked[d] = true; persist();
     Snd.play("buy");
@@ -2653,14 +3116,15 @@
     startDaily(d);
   }
   $("files-list").addEventListener("click", function (e) {
-    var b = e.target.closest("[data-play],[data-practice],[data-unlock]");
+    var b = e.target.closest("[data-play],[data-practice],[data-unlock],[data-end]");
     if (!b) return;
     Snd.play("click");
-    if (b.dataset.unlock) unlockDay(+b.dataset.unlock);
+    if (b.dataset.end) openFinale(+b.dataset.end);
+    else if (b.dataset.unlock) unlockDay(+b.dataset.unlock);
     else if (b.dataset.practice) { S.replay = null; persist(); startDaily(+b.dataset.practice, "practice"); }
     else startDaily(+b.dataset.play);
   });
-  $("files-more").addEventListener("click", function () { filesUntil = Math.max(1, filesUntil - 14); renderFiles(); });
+  $("files-more").addEventListener("click", function () { filesUntil = Math.max(1, filesUntil - 14); renderFiles(); filesStories(); });
 
   /* ---------- Case of the Week board ---------- */
   var accusing = false;
@@ -3492,6 +3956,7 @@
       if (e.key === "Escape" && screen !== "hq" && screen !== "case") goHQ();
       return;
     }
+    if ((e.key === "n" || e.key === "N") && run.d5 && !e.ctrlKey && !e.metaKey) { openNotebook(); e.preventDefault(); return; }
     if (!$("verdict").hidden) {
       if ((e.key === "Enter" || e.key === " ") && e.target.tagName !== "BUTTON") { next(); e.preventDefault(); }
       return;
@@ -3544,6 +4009,7 @@
     applyTheme();
     Snd.init({ sound: S.settings.sound, music: S.settings.music });
     shownCoins = S.coins;
+    renderCoins(false); // a link can open straight into a case, before HQ ever draws the wallet
   }
   function route() {
     var rc = cloudOn() && LB.provider === "firebase" ? LB.cleanSaveCode(Plat.inviteParam("restore")) : "";
@@ -3566,6 +4032,7 @@
     var m = location.hash.match(/^#day-(\d+)$/) || location.search.match(/[?&]day=(\d+)/);
     if (m) { var d = parseInt(m[1], 10); if (d >= 1 && d < TODAY) { startDaily(d); return; } }
     if (location.hash === "#endless") { startRush(); return; }
+    if (D5 && D5.mode === "local") { startDaily(TODAY); return; } // a preview from the Daily 5 admin desk
     // New players go straight into their first case.
     if (!S.settings.tutorialDone && S.tot.solved === 0) { startCareer(1); return; }
     goHQ();
@@ -3619,7 +4086,9 @@
       Plat.loadingStop();
       document.body.classList.remove("booting");
       startupChecks();
+      d5Preview();
       route();
+      d5Load(TODAY).then(function () { if (screen === "hq") renderToday(); }); // is there a story today?
       var note = S.sync.note || "";
       delete S.sync.note;
       try { note = sessionStorage.getItem("wl-note") || note; sessionStorage.removeItem("wl-note"); } catch (e) { /* ignore */ }
@@ -3637,6 +4106,14 @@
       document.body.classList.remove("booting");
     });
   }
+  // Admin desk preview (?d5=local&fresh=1): start the draft from Case 1 in this preview save.
+  function d5Preview() {
+    if (!D5 || D5.mode !== "local" || !/[?&]fresh=1/.test(location.search)) return;
+    if (S.daily && S.daily.day === TODAY) S.daily = null;
+    delete S.history[TODAY]; if (S.d5) delete S.d5[TODAY]; delete S.lb.posted[TODAY];
+    if (S.stats.lastDay === TODAY) S.stats.lastDay = TODAY - 1;
+    try { history.replaceState(null, "", location.pathname + location.search.replace(/[?&]fresh=1/, "").replace(/^&/, "?")); } catch (e) { /* ignore */ }
+  }
   // No connection at start-up: the save is online, so say so and try again when the connection is back.
   function bootFailed(e) {
     console.warn("[save] couldn't load progress", e);
@@ -3652,7 +4129,8 @@
   if (/[?&]test=1/.test(location.search)) window.__WLtest = {
     run: function () { return run; }, state: function () { return S; }, persist: persist,
     hq: goHQ, career: startCareer, rush: startRush, daily: startDaily, night: startNight, week: openWeek, files: openFiles,
-    cloud: function () { return cloud; }, push: function () { S.sync.dirty = true; return cloudPush(); }
+    cloud: function () { return cloud; }, push: function () { S.sync.dirty = true; return cloudPush(); },
+    d5: function () { return { editions: d5Edition, store: S.d5, run: run && run.d5 ? run.d5.r : null }; }, notebook: openNotebook
   };
   boot();
 })();

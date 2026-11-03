@@ -1352,6 +1352,105 @@ html.game body {
 }
 /* thumbs: header and dialog buttons at least 44 px */
 html.game .icon-btn, html.game .coins { min-width: 44px; min-height: 44px; }
+/* ---------- Daily 5: one story in five connected cases ---------- */
+/* a case that never opened after a wrong answer */
+.cell-l { background: var(--grid); color: var(--pencil); }
+.res-grid .cell-l { background: var(--grid); border-color: var(--grid-strong); border-style: dashed; color: var(--pencil); }
+.res-grid .cell-l svg { stroke-width: 2.4; width: 52%; height: 52%; }
+.pips span.cell-l { background: var(--grid); border-style: dashed; border-color: var(--grid-strong); }
+.review-item.locked { opacity: 0.6; }
+.review-item h4 span.cell-l { border-style: dashed; }
+/* "Previously" line above the case setup */
+.case-prev { margin: 0; font-size: var(--s-1); line-height: 1.4; color: var(--pencil); border-left: 3px solid var(--needle); padding: 0.1rem 0 0.1rem 0.6rem; text-wrap: pretty; }
+.case-prev b { font-family: var(--display); font-weight: 800; font-size: 1rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--needle); margin-right: 0.3rem; }
+/* evidence says what it is; a finding carried from an earlier case looks like a notebook page */
+.clue .ev-tag { display: block; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; opacity: 0.72; margin-bottom: 0.1rem; }
+.clue.carried { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 2px var(--ok); }
+.clue.carried::before { background: var(--ok); box-shadow: none; }
+.clue.carried .ev-tag { color: var(--ok); opacity: 1; }
+/* the notebook button in the case header */
+.nb-btn {
+  position: relative; display: inline-flex; align-items: center; gap: 0.3rem; min-height: 2.75rem; padding: 0 0.7rem; cursor: pointer;
+  border: 2px solid var(--ink); border-radius: 99px; background: var(--surface); color: var(--ink); font: inherit; font-weight: 700; font-size: var(--s-1);
+  box-shadow: 0 2px 0 var(--ink);
+}
+.nb-btn:active { transform: translateY(2px); box-shadow: none; }
+.nb-btn svg { width: 1.15rem; height: 1.15rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.nb-new { position: absolute; top: -0.45rem; right: -0.35rem; min-width: 1.2rem; height: 1.2rem; padding: 0 0.3rem; border-radius: 99px; background: var(--needle); color: var(--needle-ink, #fff); font-size: 0.72rem; line-height: 1.2rem; text-align: center; }
+@media (max-width: 420px) { .nb-btn span { display: none; } .nb-btn { padding: 0 0.6rem; } }
+/* case 5: the final verdict, one answer per question */
+.vpart { border: 2px solid var(--grid-strong); border-radius: var(--r); background: var(--surface); padding: 0.55rem 0.65rem 0.65rem; margin: 0; display: grid; gap: 0.45rem; }
+.vq { font-family: var(--display); font-weight: 800; font-size: 1.2rem; line-height: 1.1; padding: 0; }
+.vopts { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.vopt {
+  min-height: 2.75rem; padding: 0.35rem 0.8rem; cursor: pointer; font: inherit; font-weight: 700; text-align: left;
+  border: 2px solid var(--grid-strong); border-radius: 99px; background: var(--paper); color: var(--ink);
+}
+.vopt:hover:not(:disabled) { border-color: var(--ink); }
+.vopt.is-picked { border-color: var(--needle); background: var(--needle); color: var(--needle-ink, #fff); }
+.vopt.is-out { opacity: 0.45; text-decoration: line-through; }
+.vopt.is-answer { border-color: var(--ok); background: var(--ok); color: var(--surface); }
+.vopt.is-wrong { border-style: dashed; border-color: var(--needle); color: var(--needle); background: transparent; }
+.vopt:disabled { cursor: default; }
+.verdict-list li b { margin-right: 0.3rem; }
+.pb-ok { color: var(--ok); font-weight: 900; }
+.pb-miss { font-weight: 700; color: var(--needle); white-space: nowrap; }
+/* the card between cases */
+.stage-card.story .stage-in { width: min(28rem, 100%); transform: rotate(-1deg); gap: 0.45rem; padding: 1.2rem 1.4rem 1.05rem; }
+.stage-card.story .stage-name { font-size: clamp(1.9rem, 7vw, 2.6rem); line-height: 1; text-wrap: balance; }
+.stage-card.story .stage-text { font-weight: 400; line-height: 1.45; text-wrap: pretty; }
+/* the full story at the end */
+.d5-end { display: grid; gap: 0.55rem; margin-top: 0.6rem; text-align: left; }
+.end-text { margin: 0; line-height: 1.5; text-wrap: pretty; }
+.end-time { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; border-left: 2px solid var(--grid-strong); margin-left: 0.3rem; }
+.end-time li { position: relative; display: grid; grid-template-columns: 4.6rem minmax(0, 1fr); gap: 0.5rem; padding: 0.3rem 0 0.3rem 0.8rem; font-size: var(--s-1); line-height: 1.35; }
+.end-time li::before { content: ""; position: absolute; left: -0.36rem; top: 0.62rem; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--paper); border: 2px solid var(--ink); }
+.end-time .t { font-weight: 700; font-variant-numeric: tabular-nums; }
+.end-case { font-style: normal; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--pencil); margin-left: 0.25rem; white-space: nowrap; }
+.end-time li.sure::before { background: var(--ok); border-color: var(--ok); }
+.d5-locked { display: grid; gap: 0.2rem; border: 2px dashed var(--grid-strong); border-radius: var(--r); padding: 0.7rem 0.8rem; }
+.d5-locked b { font-family: var(--display); font-weight: 800; font-size: 1.25rem; }
+#notice-body .end-text { margin-bottom: 0.4rem; }
+#notice-body .end-time { max-height: 40vh; overflow-y: auto; }
+/* the Investigation Notebook: a bottom sheet on phones, a wider card on big screens */
+dialog.nb-dlg { width: min(40rem, calc(100% - 28px)); }
+.nb { gap: 0.6rem; }
+.nb-top { display: grid; gap: 0.1rem; margin-top: -0.4rem; }
+.nb-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.25rem; background: var(--grid); padding: 0.25rem; border-radius: 99px; }
+.nb-tabs button { min-height: 2.6rem; border: 0; border-radius: 99px; background: transparent; color: var(--pencil); font: inherit; font-weight: 700; font-size: var(--s-1); cursor: pointer; padding: 0 0.3rem; }
+.nb-tabs button b { font-size: 0.72rem; margin-left: 0.15rem; opacity: 0.8; }
+.nb-tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
+.nb-body { overflow-y: auto; overscroll-behavior: contain; display: grid; gap: 0.5rem; align-content: start; min-height: 12rem; max-height: 60vh; padding-right: 0.15rem; }
+.nb-item { background: var(--paper); border: 2px solid var(--grid-strong); border-radius: var(--r); padding: 0.55rem 0.7rem; display: grid; gap: 0.3rem; }
+.nb-item p { margin: 0; line-height: 1.4; }
+details.nb-item summary { cursor: pointer; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.45rem; list-style: none; }
+details.nb-item summary::-webkit-details-marker { display: none; }
+details.nb-item summary::after { content: "+"; margin-left: auto; font-weight: 900; color: var(--pencil); }
+details.nb-item[open] summary::after { content: "–"; }
+.ev-kind { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; background: var(--tag); color: var(--tag-ink); border-radius: 4px; padding: 0.05rem 0.35rem; }
+.nb-from { font-size: 0.75rem; color: var(--pencil); font-weight: 700; }
+.nb-src { font-size: 0.78rem; color: var(--pencil); }
+.nb-finding { border-color: var(--ok); }
+.nb-stamp { justify-self: start; font-family: var(--display); font-weight: 800; font-size: 0.9rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ok); border: 2px solid var(--ok); border-radius: 4px; padding: 0 0.35rem; transform: rotate(-2deg); }
+.nb-person { grid-template-columns: 3.3rem minmax(0, 1fr); gap: 0.65rem; align-items: start; }
+.nb-person .mug { width: 3.3rem; height: 3.8rem; }
+.nb-name { line-height: 1.25; }
+.nb-bg { color: var(--pencil); font-size: var(--s-1); }
+.nb-note { display: inline-block; font-size: 0.72rem; font-weight: 700; border-radius: 99px; padding: 0 0.45rem; border: 2px solid var(--pencil); color: var(--pencil); }
+.nb-note.sus { border-color: var(--needle); color: var(--needle); }
+.nb-said { list-style: none; margin: 0.15rem 0 0; padding: 0; display: grid; gap: 0.25rem; font-size: var(--s-1); }
+.nb-said li { display: grid; gap: 0.05rem; }
+.nb-said li.lied { color: var(--needle); }
+.nb-empty { color: var(--pencil); padding: 0.6rem 0.2rem; }
+.nb-tl { border-left-color: var(--grid-strong); }
+@media (max-width: 719px) {
+  dialog.nb-dlg { width: 100%; max-width: 100%; max-height: 88dvh; margin: auto 0 0; border-radius: 18px 18px 0 0; border-bottom: 0; box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3); }
+  dialog.nb-dlg[open] { animation: sheetup 0.28s var(--ease-out, ease-out) both; }
+  dialog.nb-dlg .nb { max-height: 88dvh; padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); }
+  .nb-body { max-height: calc(88dvh - 12rem); }
+}
+@keyframes sheetup { from { transform: translateY(100%); } to { transform: none; } }
+
 @media (max-width: 380px) {
   .brand { font-size: 1.3rem; }
   .mode-txt b { font-size: 1.2rem; }

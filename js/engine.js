@@ -51,10 +51,12 @@
   // Testing only: ?test=1&today=20 makes today Daily #20, to try a season before it starts.
   var TEST_DAY = 0;
   try { var tm = /[?&]test=1/.test(location.search) && location.search.match(/[?&]today=(\d+)/); if (tm) TEST_DAY = +tm[1]; } catch (e) { /* no location */ }
+  // The day turns over at midnight in India (IST, UTC+5:30) for everyone, the same moment the Firestore rules use.
+  var IST_MS = 330 * 60000;
   function dayNumber(date) {
     if (TEST_DAY && !date) return TEST_DAY;
-    var d = date || new Date();
-    var today = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+    var d = new Date((date || new Date()).getTime() + IST_MS); // its UTC fields now read as the date in India
+    var today = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
     return Math.max(1, Math.floor((today - launchUTC()) / DAY_MS) + 1);
   }
   function dateForDay(n) {
@@ -69,10 +71,11 @@
     } catch (e) { return date.toDateString(); }
   }
   function msToNextDay() {
-    var n = new Date();
-    var next = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1);
-    return next - n;
+    var t = Date.now() + IST_MS;
+    return (Math.floor(t / DAY_MS) + 1) * DAY_MS - t; // until the next midnight in India
   }
+  // Hours since the day began in India (0-24), e.g. to know when yesterday's Daily 5 archive opens (6 AM).
+  function istHour() { return ((Date.now() + IST_MS) % DAY_MS) / 3600000; }
 
   /* ---------- generator data ----------
      Each fact belongs to a group. A case never uses two facts from the same
@@ -1303,7 +1306,7 @@
 
   window.WL = {
     cfg: CFG, rngFrom: rngFrom, shuffle: shuffle, pick: pick,
-    dayNumber: dayNumber, dateForDay: dateForDay, formatDate: formatDate, msToNextDay: msToNextDay,
+    dayNumber: dayNumber, dateForDay: dateForDay, formatDate: formatDate, msToNextDay: msToNextDay, istHour: istHour,
     buildDay: buildDay, generateCase: generateCase, endlessSpec: endlessSpec, endlessSeconds: endlessSeconds,
     careerSpec: careerSpec, buildCareerLevel: buildCareerLevel, careerRetry: careerRetry, chapterOf: chapterOf, CHAPTER_NEWS: CHAPTER_NEWS, chapterStory: chapterStory, FACT_AT: FACT_AT,
     generateCase2: generateCase2, rushCase: rushCase, roomCase: roomCase, newAvoid: newAvoid, packFor: packFor, seasonOf: seasonOf, seasonStart: seasonStart,
