@@ -80,5 +80,20 @@ eq("code wins", WL.avatar("Raj", "f03"), WL.avatar("Zoe", "f03"));
 eq("bad code falls back", WL.avatar("Raj", "nope"), WL.avatar("Raj"));
 eq("name faces unchanged", ["Raj", "Detective", "Priya"].map((n) => sha(WL.avatar(n))), ["7e642afcddd41fe3", "e1a0efa769e99969", "c4dd278d05bf28d1"]);
 
+/* ---------- the season ladder ---------- */
+const L = WL.ladderDay;
+eq("perfect day", L("ggggg", 1), 150);
+eq("helped", L("ggyyg", 1), 130);
+eq("fail at 1", L("r----", 1), -50);
+eq("bronze is safe", L("r----", 0), 0);
+eq("fail at 3", L("ggr--", 2), 30);
+eq("classic day", [L("gyrgr", 1), L("gyrgr", 0)], [40, 80]);
+eq("tiers", [0, 399, 400, 999, 1000, 1800, 2799, 2800, 99999].map((x) => WL.tierOf(x)), [0, 0, 1, 1, 2, 3, 3, 4, 4]);
+eq("season start", [null, 0, 1, 2, 4].map((x) => WL.seasonStartLp(x)), [0, 0, 0, 400, 1800]);
+eq("first day", WL.ladderApply(null, 15, "ggggg", 0), { lp: 150, tier: 0, days: 1, solved: 5, cases: 5, fails: 0, rate: 1000, failRate: 0, last: 15 });
+eq("drop to bronze", WL.ladderApply({ lp: 410, tier: 1, days: 3, solved: 12, cases: 15, fails: 1, last: 17 }, 18, "r----", 0),
+  { lp: 360, tier: 0, days: 4, solved: 12, cases: 20, fails: 2, rate: 600, failRate: 500, last: 18 });
+eq("same day twice", WL.ladderApply({ lp: 10, tier: 0, days: 1, solved: 1, cases: 5, fails: 1, last: 18 }, 18, "ggggg", 0), null);
+
 console.log(problems ? `\n${problems} problem(s) found.` : "\nAll social checks passed.");
 process.exit(problems ? 1 : 0);

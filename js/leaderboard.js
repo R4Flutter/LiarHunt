@@ -110,23 +110,28 @@
     "SharpEyes", "Watson2", "Nadia", "Poirot_fan", "Arjun", "Jonas", "Mei", "Diego", "Ingrid", "Kwame"];
   function bots(kind, key) {
     var W = window.WL, r = W.rngFrom("bots-" + kind + "-" + key), names = BOT_NAMES.slice(), out = [];
-    var played = kind === "season" ? Math.max(0, Math.min(W.SEASON_DAYS, W.dayNumber() - (W.SEASON_ONE + (key - 1) * W.SEASON_DAYS) + 1)) : 0;
-    for (var i = 0; i < 12; i++) {
+    var played = kind === "season" || kind === "ladder" ? Math.max(0, Math.min(W.SEASON_DAYS, W.dayNumber() - (W.SEASON_ONE + (key - 1) * W.SEASON_DAYS) + 1)) : 0;
+    for (var i = 0; i < (kind === "ladder" ? 30 : 12); i++) {
       var b = { uid: "bot-" + i, name: names.splice(Math.floor(r() * names.length), 1)[0], badge: r() < 0.3 ? TIERS[Math.floor(r() * TIERS.length)].icon : "" };
       if (kind === "daily") { b.day = key; b.score = 5 - Math.floor(Math.pow(r(), 1.4) * 4); b.timeMs = Math.round(75000 + r() * 180000); }
       else if (kind === "endless") b.best = Math.round(3 + Math.pow(r(), 1.5) * 30);
+      else if (kind === "ladder") {
+        b.season = key; b.days = played ? Math.max(1, Math.round(played * (0.4 + 0.6 * r()))) : 0; b.lp = Math.round(Math.pow(r(), 1.3) * 3200);
+        b.tier = W.tierOf(b.lp); b.rate = Math.round(500 + r() * 480); b.failRate = Math.round(r() * 700); b.av = "f" + String(Math.floor(r() * 16)).padStart(2, "0");
+      }
       else { b.days = Math.round(played * (0.5 + r() * 0.5)); b.pts = Math.round(b.days * (3 + r() * 1.6)); b.timeMs = b.days * Math.round(90000 + r() * 120000); }
-      if (kind !== "season" || b.days) out.push(b);
+      if ((kind !== "season" && kind !== "ladder") || b.days) out.push(b);
     }
     return out;
   }
   var ORDER = {
     daily: function (a, b) { return b.score - a.score || a.timeMs - b.timeMs; },
     endless: function (a, b) { return b.best - a.best; },
-    season: function (a, b) { return b.pts - a.pts || a.timeMs - b.timeMs; }
+    season: function (a, b) { return b.pts - a.pts || a.timeMs - b.timeMs; },
+    ladder: function (a, b) { return b.lp - a.lp || b.rate - a.rate || a.failRate - b.failRate; }
   };
-  function withBots(kind, key) {
-    return function (rows) { return provider !== "demo" ? rows : rows.concat(bots(kind, key)).sort(ORDER[kind]).slice(0, LIMIT); };
+  function withBots(kind, key, n) {
+    return function (rows) { return provider !== "demo" ? rows : rows.concat(bots(kind, key)).sort(ORDER[kind]).slice(0, n || LIMIT); };
   }
   // The standing { rank, total }; the demo preview counts its made-up players too.
   function plusBots(kind, key, me) {
@@ -163,13 +168,74 @@
     ]).then(function (n) { var rank = n[1] + n[2] + 1; return { rank: rank, total: Math.max(n[0], rank) }; });
   }
 
+  /* ---------- season ladder ----------
+     One entry per player per season (ladder/{season}_{uid}). Each Daily adds one day, scored by WL.ladderApply;
+     firebase/firestore.rules checks the same sums against the player's posted score, so LP can't be made up. */
+  var LADDER_TOP = 40;
+  function demoLadder() { var s = demoStore(); s.ladder = s.ladder || {}; return s; }
+  var ladder = {
+    mine: function (season) {
+      if (season < 1) return Promise.resolve(null);
+      return ready().then(function () {
+        if (provider === "demo") return demoLadder().ladder[season + "_" + uid] || null;
+        return db.collection("ladder").doc(season + "_" + uid).get().then(function (s) { return s.exists ? s.data() : null; });
+      });
+    },
+    // e: { name, av, badge, day, grid }. Adds that day to its season's entry. -> the entry, or null (already in, or before Season 1)
+    post: function (e) {
+      var W = window.WL, season = W.seasonOf(e.day);
+      if (!season) return Promise.resolve(null);
+      return Promise.all([ladder.mine(season), ladder.mine(season - 1)]).then(function (r) {
+        var cur = r[0], f = W.ladderApply(cur, e.day, e.grid, W.seasonStartLp(r[1] ? r[1].tier : null));
+        if (!f) return null;
+        var doc = Object.assign({ uid: uid, name: e.name, badge: e.badge || "", season: season }, f);
+        if (W.okFace(e.av)) doc.av = e.av;
+        if (provider === "demo") { var s = demoLadder(); s.ladder[season + "_" + uid] = Object.assign({}, cur || {}, doc); demoSave(s); return doc; }
+        doc.updatedAt = window.firebase.firestore.FieldValue.serverTimestamp();
+        var ref = db.collection("ladder").doc(season + "_" + uid);
+        return (cur ? ref.update(doc) : ref.set(doc)).then(function () { return doc; });
+      });
+    },
+    // A new name, face or badge on this season's entry (only if there is one).
+    profile: function (season, p) {
+      var u = { name: p.name, badge: p.badge || "" };
+      if (window.WL.okFace(p.av)) u.av = p.av;
+      return ladder.mine(season).then(function (cur) {
+        if (!cur) return;
+        if (provider === "demo") { var s = demoLadder(); Object.assign(s.ladder[season + "_" + uid], u); demoSave(s); return; }
+        u.updatedAt = window.firebase.firestore.FieldValue.serverTimestamp();
+        return db.collection("ladder").doc(season + "_" + uid).update(u);
+      });
+    },
+    // The season's top 40: most LP first (so the higher league first), then solve rate, then fewer fails.
+    top: function (season) {
+      return ready().then(function () {
+        if (provider === "demo") { var s = demoLadder(); return Object.keys(s.ladder).map(function (k) { return s.ladder[k]; }).filter(function (d) { return d.season === season; }); }
+        return db.collection("ladder").where("season", "==", season).orderBy("lp", "desc").orderBy("rate", "desc").orderBy("failRate", "asc").limit(LADDER_TOP).get()
+          .then(function (snap) { return snap.docs.map(function (d) { return d.data(); }); });
+      }).then(withBots("ladder", season, LADDER_TOP));
+    },
+    // { rank, total } by LP alone.
+    standing: function (season, lp) {
+      if (provider === "demo") {
+        return ladder.top(season).then(function () {
+          var all = bots("ladder", season), mine = demoLadder().ladder[season + "_" + uid];
+          if (mine) all.push(mine);
+          return { rank: all.filter(function (b) { return b.lp > lp; }).length + 1, total: all.length };
+        });
+      }
+      if (provider !== "firebase") return demoOff();
+      var base = [["season", "EQUAL", season]];
+      return Promise.all([restCount("ladder", base), restCount("ladder", base.concat([["lp", "GREATER_THAN", lp]]), [["lp", "DESCENDING"]])])
+        .then(function (n) { return { rank: n[1] + 1, total: Math.max(n[0], n[1] + 1) }; });
+    },
+    TOP: LADDER_TOP
+  };
+
   /* ---------- weekly league ----------
      One doc per player per week. Points = liars caught in that week's Dailies (from the
      player's own posted scores, which the rules re-add to check). 5 tiers. */
-  var LEAGUES = [
-    { name: "Bronze", icon: "🥉" }, { name: "Silver", icon: "🥈" }, { name: "Gold", icon: "🥇" },
-    { name: "Platinum", icon: "💠" }, { name: "Diamond", icon: "💎" }
-  ];
+  var LEAGUES = window.WL.LADDER.names.map(function (n, i) { return { name: n, icon: window.WL.LADDER.icons[i] }; });
   // Top 20% move up, bottom 20% move down (only when there are 5+ players in the tier).
   function leagueMove(tier, rank, total, pts) {
     var up = Math.max(1, Math.round(total * 0.2)), down = total >= 5 ? Math.floor(total * 0.2) : 0;
@@ -643,6 +709,7 @@
       return standing("seasons", [["season", season]], "pts", pts, timeMs).then(plusBots("season", season, { pts: pts, timeMs: timeMs }));
     },
 
+    ladder: ladder,
     LEAGUES: LEAGUES,
     leagueMove: leagueMove,
     // Writes this week's league entry from the player's posted Daily scores. -> the entry

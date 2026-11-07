@@ -236,6 +236,52 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ---------- Season ladder: league points (LP) from each Daily ----------
+    // One entry per player per season. Every write adds exactly one new day, scored from the player's own posted
+    // Daily grid (g +30, y +20, a wrong answer at case 1-5 costs 50/40/30/20/10 except in Bronze), or only changes
+    // the name, face or badge. Keep the numbers in step with LADDER in js/engine.js. Season s = Dailies 15+28(s-1) to 42+28(s-1).
+    function sFirst(s) { return 15 + (s - 1) * 28; }
+    function tierOf(lp) { return lp >= 2800 ? 4 : lp >= 1800 ? 3 : lp >= 1000 ? 2 : lp >= 400 ? 1 : 0; }
+    function cnt(g, re) { return g.size() - g.replace(re, '').size(); }
+    function lost(g) {
+      return (g.matches('^r.*') ? 50 : 0) + (g.matches('^.r.*') ? 40 : 0) + (g.matches('^..r.*') ? 30 : 0)
+        + (g.matches('^...r.*') ? 20 : 0) + (g.matches('^....r.*') ? 10 : 0);
+    }
+    function dayPts(g, tier) { return cnt(g, 'g') * 30 + cnt(g, 'y') * 20 - (tier > 0 ? lost(g) : 0); }
+    function gridOf(d) { return get(/databases/$(database)/documents/scores/$(string(d) + '_' + request.auth.uid)).data.grid; }
+    function prevLadder(s) { return /databases/$(database)/documents/ladder/$(string(s - 1) + '_' + request.auth.uid); }
+    function startLp(s) { return exists(prevLadder(s)) ? [0, 0, 400, 1000, 1800][get(prevLadder(s)).data.tier] : 0; }
+    function okLadder(d, id) {
+      return signedIn()
+        && d.keys().hasAll(['uid', 'name', 'badge', 'season', 'lp', 'tier', 'days', 'solved', 'cases', 'fails', 'rate', 'failRate', 'last', 'updatedAt'])
+        && d.keys().hasOnly(['uid', 'name', 'badge', 'av', 'season', 'lp', 'tier', 'days', 'solved', 'cases', 'fails', 'rate', 'failRate', 'last', 'updatedAt'])
+        && d.uid == request.auth.uid
+        && d.season is int && d.season >= 1 && d.season <= 2000
+        && id == string(d.season) + '_' + request.auth.uid
+        && okName(d.name) && okBadge(d.badge) && avOk(d)
+        && d.last is int && d.last >= sFirst(d.season) && d.last <= sFirst(d.season) + 27
+        && d.updatedAt == request.time;
+    }
+    // n: the new entry. base*: the entry before this day (all 0 and the season's start LP for a first entry).
+    function okStep(n, baseLp, baseTier, solved, cases, days, fails) {
+      let g = gridOf(n.last);
+      let lp = baseLp + dayPts(g, baseTier);
+      return n.lp == (lp > 0 ? lp : 0) && n.tier == tierOf(n.lp)
+        && n.solved == solved + cnt(g, '[gy]') && n.cases == cases + 5 && n.days == days + 1
+        && n.fails == fails + (g.matches('.*r.*') ? 1 : 0)
+        && n.rate == int(n.solved * 1000 / n.cases) && n.failRate == int(n.fails * 1000 / n.days);
+    }
+    match /ladder/{id} {
+      allow read: if true;
+      allow create: if okLadder(request.resource.data, id)
+        && okStep(request.resource.data, startLp(request.resource.data.season), tierOf(startLp(request.resource.data.season)), 0, 0, 0, 0);
+      allow update: if okLadder(request.resource.data, id) && resource.data.uid == request.auth.uid
+        && ((request.resource.data.last > resource.data.last
+              && okStep(request.resource.data, resource.data.lp, resource.data.tier, resource.data.solved, resource.data.cases, resource.data.days, resource.data.fails))
+          || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'av', 'badge', 'updatedAt']));
+      allow delete: if false;
+    }
+
     // ---------- Daily 5: one story a day in five connected cases ----------
     // Stories are uploaded ahead of time by the admin tool (Admin SDK, which skips these rules) and open on their day.
     // The day turns over at midnight India time (UTC+5:30) for everyone. A day's story stays playable until 6 AM IST

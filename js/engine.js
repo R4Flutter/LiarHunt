@@ -1082,6 +1082,36 @@
     return "";
   }
 
+  /* ---------- the season ladder: league points (LP) from each Daily ----------
+     firebase/firestore.rules checks every change with the same numbers: keep the two in step. */
+  var LADDER = {
+    marks: [0, 400, 1000, 1800, 2800], names: ["Bronze", "Silver", "Gold", "Platinum", "Diamond"], icons: ["🥉", "🥈", "🥇", "💠", "💎"],
+    perfect: 30, helped: 20, penalty: [50, 40, 30, 20, 10], rewards: [100, 250, 500, 1000, 2000]
+  };
+  function tierOf(lp) { var t = 0; LADDER.marks.forEach(function (m, i) { if (lp >= m) t = i; }); return t; }
+  // The LP change for one day's grid (g solved, y solved with help, r wrong, - locked). Bronze (tier 0) never loses LP.
+  function ladderDay(grid, tier) {
+    var pts = 0;
+    String(grid).split("").forEach(function (c, i) {
+      if (c === "g") pts += LADDER.perfect;
+      else if (c === "y") pts += LADDER.helped;
+      else if (c === "r" && tier > 0) pts -= LADDER.penalty[i];
+    });
+    return pts;
+  }
+  // A new season starts one league below where the last one ended.
+  function seasonStartLp(prevTier) { return prevTier == null ? 0 : LADDER.marks[Math.max(0, prevTier - 1)]; }
+  // The ladder entry after one more day, or null when that day is already in it.
+  function ladderApply(doc, day, grid, startLp) {
+    if (doc && day <= doc.last) return null;
+    var base = doc ? doc.lp : startLp, tier = doc ? doc.tier : tierOf(startLp), g = String(grid);
+    var lp = Math.max(0, base + ladderDay(g, tier));
+    var solved = (doc ? doc.solved : 0) + g.replace(/[^gy]/g, "").length, cases = (doc ? doc.cases : 0) + 5;
+    var days = (doc ? doc.days : 0) + 1, fails = (doc ? doc.fails : 0) + (g.indexOf("r") >= 0 ? 1 : 0);
+    return { lp: lp, tier: tierOf(lp), days: days, solved: solved, cases: cases, fails: fails,
+      rate: Math.floor(solved * 1000 / cases), failRate: Math.floor(fails * 1000 / days), last: day };
+  }
+
   // A player picks a name once and may change it once after that.
   function nameRule(st) {
     var left = st && st.playerName ? Math.max(0, 1 - (st.nameChanges || 0)) : 1;
@@ -1089,6 +1119,7 @@
   }
 
   window.WL = {
+    LADDER: LADDER, tierOf: tierOf, ladderDay: ladderDay, seasonStartLp: seasonStartLp, ladderApply: ladderApply,
     inAppBrowser: inAppBrowser, nameRule: nameRule, now: now, seasonEndsAt: seasonEndsAt, seasonClock: seasonClock, fmtLong: fmtLong,
     cfg: CFG, rngFrom: rngFrom, shuffle: shuffle, pick: pick,
     dayNumber: dayNumber, dateForDay: dateForDay, formatDate: formatDate, msToNextDay: msToNextDay, istHour: istHour,

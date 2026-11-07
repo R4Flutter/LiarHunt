@@ -4,28 +4,94 @@
       "collectionGroup": "scores",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "day", "order": "ASCENDING" },
-        { "fieldPath": "score", "order": "DESCENDING" },
-        { "fieldPath": "timeMs", "order": "ASCENDING" }
+        {
+          "fieldPath": "day",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "score",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "timeMs",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "league",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "week", "order": "ASCENDING" },
-        { "fieldPath": "tier", "order": "ASCENDING" },
-        { "fieldPath": "pts", "order": "DESCENDING" },
-        { "fieldPath": "timeMs", "order": "ASCENDING" }
+        {
+          "fieldPath": "week",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tier",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "pts",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "timeMs",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "seasons",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "season", "order": "ASCENDING" },
-        { "fieldPath": "pts", "order": "DESCENDING" },
-        { "fieldPath": "timeMs", "order": "ASCENDING" }
+        {
+          "fieldPath": "season",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "pts",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "timeMs",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "ladder",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "season",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "lp",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "rate",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "failRate",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "ladder",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "season",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "lp",
+          "order": "DESCENDING"
+        }
       ]
     }
   ],
