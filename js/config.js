@@ -27,9 +27,9 @@ window.WL_CONFIG = {
   },
 
   analytics: {
-    // Your site's domain as added at plausible.io (for example "liarhunt.com").
-    // Leave "" to keep analytics off. The game's events are then sent to Plausible (web only).
-    plausibleDomain: ""
+    // Your Google Analytics 4 measurement ID (for example "G-ABC123XYZ"), from
+    // analytics.google.com > Admin > Data streams. Leave "" to keep analytics off (web only).
+    gaId: ""
   },
 
   crazygames: {

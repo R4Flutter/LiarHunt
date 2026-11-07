@@ -127,7 +127,7 @@
             </button>
             <button class="mode-tile room web-only" id="tile-room" type="button" hidden>
               <span class="mode-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3.5 19.5c0-3.2 2.5-5.5 5.5-5.5s5.5 2.3 5.5 5.5M15 14.2c2.9 0 5.2 1.9 5.2 4.8"/></svg></span>
-              <span class="mode-txt"><b>Play live</b><span>One link, up to 10 friends, the same cases</span></span>
+              <span class="mode-txt"><b>Play with friends</b><span>Race, team up as Partners, or play a Story Night</span></span>
             </button>
             <button class="mode-tile write web-only" id="tile-write" type="button">
               <span class="mode-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg></span>
@@ -200,6 +200,7 @@
           </div>
           <div class="twist" id="twist" hidden></div>
           <h3 class="sec" id="facts-h">Facts the police checked</h3>
+          <p class="pt-note" id="pt-note" hidden></p>
           <ul class="clues" id="clues" aria-labelledby="facts-h"></ul>
         </article>
         <section class="pane pane-suspects" aria-labelledby="task">
@@ -355,6 +356,7 @@
         <p class="eyebrow" id="room-eyebrow"></p>
         <h2 class="page-h" id="room-h">Live room</h2>
         <p class="muted" id="room-sub"></p>
+        <div class="room-extra" id="room-extra" aria-live="polite"></div>
         <div class="room-code" id="room-code"></div>
         <ol class="room-players" id="room-players" aria-live="polite"></ol>
         <div class="dlg-row" id="room-acts"></div>
@@ -675,14 +677,17 @@
 <script src="js/ads.js"></script>
 <script src="js/leaderboard.js"></script>
 <script>
-  // Analytics: off until analytics.plausibleDomain is set in js/config.js. Events sent before the script loads are queued.
-  (function (domain) {
-    if (!domain) return;
-    window.plausible = window.plausible || function () { (window.plausible.q = window.plausible.q || []).push(arguments); };
+  // Analytics: off until analytics.gaId is set in js/config.js. Events sent before the script loads wait in dataLayer.
+  (function (id) {
+    if (!id) return;
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function () { window.dataLayer.push(arguments); };
+    window.gtag("js", new Date());
+    window.gtag("config", id);
     var s = document.createElement("script");
-    s.defer = true; s.src = "https://plausible.io/js/script.js"; s.setAttribute("data-domain", domain);
+    s.async = true; s.src = "https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(id);
     document.head.appendChild(s);
-  })((window.WL_CONFIG.analytics || {}).plausibleDomain);
+  })((window.WL_CONFIG.analytics || {}).gaId);
 </script>
 <!-- WEB-ONLY:END -->
 <script src="js/platform.js"></script>

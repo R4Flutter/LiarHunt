@@ -166,7 +166,7 @@ Brief for this mystery:
 - Red herring: ${brief.herring}
 - The mastermind is ${brief.mastermind}
 - Cast size: ${brief.cast} people
-${avoid.length ? "- Don't reuse these titles or names from recent stories: " + avoid.join(", ") : ""}`
+${brief.remixOf ? "- This is a fresh retelling for a group game night, in the same setting as an earlier story. Invent a completely new cast, a different culprit, a different twist and different clues, so nobody who played the earlier story can guess any answer.\n" : ""}${avoid.length ? "- Don't reuse these titles or names from recent stories: " + avoid.join(", ") : ""}`
   };
 }
 

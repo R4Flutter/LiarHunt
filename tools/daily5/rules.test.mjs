@@ -143,6 +143,38 @@ await t("nobody can write stories, keys or other docs from the game", async () =
   await assertFails(setDoc(doc(ana, "d5keys", String(TODAY + 5)), { c1: {} }));
 });
 
+// Friends' rooms: Race, Partners and Story Night
+const room = (db, code) => doc(db, "rooms", code);
+const newRoom = (db, uid, code, extra = {}) => setDoc(room(db, code), Object.assign({ host: uid, hostName: "Host", seed: "abcd1234", season: 1, state: "lobby", round: 0, rounds: 5, roundAt: serverTimestamp(), createdAt: serverTimestamp() }, extra));
+const seat = (db, code, uid, extra = {}) => setDoc(doc(db, `rooms/${code}/players/${uid}`), Object.assign({ name: "Pat", score: 0, ans: {}, joinedAt: serverTimestamp(), at: serverTimestamp() }, extra));
+await t("rooms: race, partners and night can open; other modes and stray story fields can't", async () => {
+  await assertSucceeds(newRoom(ana, "ana", "RACE22"));
+  await assertSucceeds(newRoom(ana, "ana", "PART22", { mode: "partners" }));
+  await assertSucceeds(newRoom(ana, "ana", "NITE22", { mode: "night", story: "" }));
+  await assertFails(newRoom(ana, "ana", "BADM22", { mode: "chaos" }));
+  await assertFails(newRoom(ana, "ana", "BADS22", { mode: "partners", story: "x" }));
+});
+await t("rooms: a player saves a seat with a ping and a seen flag, only their own", async () => {
+  await assertSucceeds(seat(ben, "RACE22", "ben"));
+  await assertSucceeds(updateDoc(doc(ben, "rooms/RACE22/players/ben"), { at: serverTimestamp(), seen: true }));
+  await assertFails(updateDoc(doc(ben, "rooms/RACE22/players/ben"), { seen: "yes" }));
+  await assertFails(seat(ben, "RACE22", "cy"));
+});
+await t("rooms: only a Story Night host can pick its story", async () => {
+  await assertSucceeds(seat(ben, "NITE22", "ben"));
+  await assertSucceeds(updateDoc(room(ana, "NITE22"), { story: "demo-crown" }));
+  await assertFails(updateDoc(room(ben, "NITE22"), { story: "other" }));
+  await assertFails(updateDoc(room(ana, "RACE22"), { story: "demo-crown" }));
+  await assertSucceeds(updateDoc(room(ana, "NITE22"), { state: "lobby", round: 0, story: "", seed: "newseed1" }));
+});
+await t("Story Night stories are public to read, and nobody writes them from the game", async () => {
+  await env.withSecurityRulesDisabled((ctx) => setDoc(doc(ctx.firestore(), "nights/demo-crown"), { title: "x" }));
+  await assertSucceeds(getDoc(doc(anon, "nights/demo-crown")));
+  await assertSucceeds(getDoc(doc(anon, "nights/demo-crown/cases/1")));
+  await assertFails(setDoc(doc(ana, "nights/mine"), { title: "x" }));
+  await assertFails(setDoc(doc(ana, "nights/demo-crown/cases/1"), { title: "x" }));
+});
+
 await env.cleanup();
 console.log(failed ? `\n${failed} rules test(s) failed.` : "\nAll Daily 5 rules tests passed.");
 process.exit(failed ? 1 : 0);

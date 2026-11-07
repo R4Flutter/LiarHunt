@@ -3,6 +3,8 @@
 //   node tools/daily5/generate.mjs --resume <job>        finish a batch that stopped part way; finished steps are never redone
 //   node tools/daily5/generate.mjs --redo <draft-id>     write that draft again from a fresh blueprint
 //   node tools/daily5/generate.mjs --redo <draft-id> --case 3   rewrite only case 3's wording, keeping the logic
+//   node tools/daily5/generate.mjs --remix <draft-id>    a Story Night remix of a past Daily: same setting and kind of crime,
+//                                                        a new cast, a different mastermind and a different innocent liar
 //   --dry-run                                            every step without calling the API (answers with the Crown Job), free
 // Needs ANTHROPIC_API_KEY (or `ant auth login`) and `npm install` in tools/daily5.
 // Drafts go to ~/.liarhunt/daily5 (LIARHUNT_DATA moves it), never into this repo: they hold the answers.
@@ -165,6 +167,14 @@ function pickBrief(jobId, k, taken) {
   return { setting: from(P.SETTINGS, recent), crime: from(P.CRIMES, recentCrime), herring: from(P.HERRINGS, new Set()), mastermind: from(P.MASTERMINDS, new Set()), cast: r() < 0.5 ? 5 : 6 };
 }
 function avoidList() { return history().slice(-20).flatMap((x) => [x.title].concat(x.names || [])); }
+// A Story Night remix keeps the original's setting, crime and cast size, and swaps the twist: a different mastermind
+// and a different innocent liar. Every name of the original is banned, so the five answers can't carry over.
+function remixBrief(orig, jobId) {
+  const b = orig.meta.brief || {}, r = rng(jobId + ":remix");
+  const other = (list, not) => { const l = list.filter((x) => x !== not); return l[Math.floor(r() * l.length)]; };
+  return { setting: b.setting || orig.story.setting.place, crime: b.crime || P.CRIMES[0], herring: other(P.HERRINGS, b.herring), mastermind: other(P.MASTERMINDS, b.mastermind),
+    cast: b.cast || orig.story.people.length, for: "night", remixOf: orig.meta.id, avoid: [orig.story.title].concat(orig.story.people.map((p) => p.name)) };
+}
 
 /* ---------- one draft, step by step; each step is saved, so a re-run picks up where it stopped ---------- */
 async function runSlot(jobId, k, taken, redo) {
@@ -179,7 +189,7 @@ async function runSlot(jobId, k, taken, redo) {
     log(`${id}: ${brief.setting} · ${brief.crime}`);
     let bp = readJson(f("blueprint"), null);
     if (!bp) {
-      const a = await stageA(cost, brief, avoidList()); saveCost();
+      const a = await stageA(cost, brief, avoidList().concat(brief.avoid || [])); saveCost();
       bp = a.blueprint; writeJson(f("blueprint"), bp);
       if (a.errors.length) return finish(id, jobId, k, brief, null, { stage: "blueprint", errors: a.errors }, cost);
     }
@@ -203,6 +213,11 @@ async function runSlot(jobId, k, taken, redo) {
   }
 }
 function finish(id, jobId, k, brief, story, report, cost) {
+  if (story && brief.avoid) { // a remix must not bring back anyone from the original
+    const first = (n) => n.toLowerCase().split(/\s+/)[0], full = brief.avoid.slice(1).map((n) => n.toLowerCase());
+    const reused = story.people.map((p) => p.name).filter((n) => full.includes(n.toLowerCase()) || full.some((o) => first(o) === first(n)));
+    if (reused.length) report.errors = (report.errors || []).concat(`reuses names from the original story: ${reused.join(", ")}`);
+  }
   const blockers = (report.critic && report.critic.issues || []).filter((i) => i.severity === "blocker");
   const solverOk = !!report.solved && report.solved.every((c) => c.right.every(Boolean));
   const gate = report.stage === "done" && !report.errors.length && solverOk && !blockers.length && report.critic.verdict !== "reject";
@@ -210,7 +225,8 @@ function finish(id, jobId, k, brief, story, report, cost) {
   const draft = {
     meta: { id, job: jobId, slot: k, brief, createdAt: (old && old.meta.createdAt) || new Date().toISOString(), updatedAt: new Date().toISOString(),
       status: gate ? "ready" : "failed", report: Object.assign(report, { gate, solverOk }), cost, hash: story ? hashOf(story) : "",
-      day: old && old.meta.day || 0, notes: old && old.meta.notes || [] },
+      day: old && old.meta.day || 0, notes: old && old.meta.notes || [],
+      for: brief.for || "daily", remixOf: brief.remixOf || "" },
     story
   };
   writeJson(join(DRAFTS, id + ".json"), draft);
@@ -224,7 +240,19 @@ async function main() {
   if (!DRY && !process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {
     console.log("Set ANTHROPIC_API_KEY first (or run `ant auth login`). Add --dry-run to test the pipeline for free.");
   }
-  const redoId = opt("redo"), resume = opt("resume");
+  const redoId = opt("redo"), resume = opt("resume"), remixId = opt("remix");
+  if (remixId) {
+    const orig = readJson(join(DRAFTS, remixId + ".json"), null);
+    if (!orig || !orig.story) throw new Error("No finished draft " + remixId);
+    const jobId = "r" + new Date().toISOString().slice(0, 16).replace(/\D/g, ""), dir = dataDir("jobs", jobId, "s1");
+    writeJson(join(dataDir("jobs", jobId), "job.json"), { id: jobId, count: 1, remixOf: remixId, createdAt: new Date().toISOString() });
+    const brief = remixBrief(orig, jobId);
+    writeJson(join(dir, "brief.json"), brief);
+    log(`Remix ${jobId} of ${remixId} (“${orig.story.title}”) for Story Night${DRY ? " (dry run, no API calls)" : ""}`);
+    const d = await runSlot(jobId, 1, []);
+    if (!d) process.exitCode = 1;
+    return;
+  }
   if (redoId) {
     const d = readJson(join(DRAFTS, redoId + ".json"), null);
     if (!d) throw new Error("No draft " + redoId);

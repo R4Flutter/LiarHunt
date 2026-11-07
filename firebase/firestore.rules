@@ -143,16 +143,20 @@ service cloud.firestore {
         && (resource == null || request.resource.data.xp >= resource.data.xp);
     }
 
-    // Live rooms: one link, up to 10 detectives playing the same cases at the same time.
+    // Live rooms: one link, friends playing the same cases at the same time. mode: 'race' (when missing), 'partners'
+    // (two players share each case) or 'night' (Story Night: story is the nights/{id} the room plays, '' until picked).
     // Rooms aren't listed anywhere: you need the code. The host starts the room and moves it on;
     // a player in the room can move a stuck round on by one (the host's tab may have closed).
     // Each player writes only their own entry: their name, their answers and their score.
+    function okStory(s) { return s is string && s.size() <= 40; }
     function inRoom(code) { return exists(/databases/$(database)/documents/rooms/$(code)/players/$(request.auth.uid)); }
     match /rooms/{code} {
       allow read: if true;
       allow create: if signedIn()
         && code.matches('^[A-Z2-9]{6}$')
-        && request.resource.data.keys().hasOnly(['host', 'hostName', 'seed', 'season', 'state', 'round', 'rounds', 'roundAt', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['host', 'hostName', 'seed', 'season', 'state', 'round', 'rounds', 'roundAt', 'createdAt', 'mode', 'story'])
+        && (!('mode' in request.resource.data) || request.resource.data.mode in ['race', 'partners', 'night'])
+        && (!('story' in request.resource.data) || (request.resource.data.get('mode', '') == 'night' && okStory(request.resource.data.story)))
         && request.resource.data.host == request.auth.uid
         && okName(request.resource.data.hostName)
         && request.resource.data.seed is string && request.resource.data.seed.size() >= 4 && request.resource.data.seed.size() <= 40
@@ -166,7 +170,8 @@ service cloud.firestore {
         && request.resource.data.seed is string && request.resource.data.seed.size() >= 4 && request.resource.data.seed.size() <= 40
         && (
           (resource.data.host == request.auth.uid
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['state', 'round', 'roundAt', 'seed']))
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['state', 'round', 'roundAt', 'seed', 'story'])
+            && (!('story' in request.resource.data) || (resource.data.get('mode', '') == 'night' && okStory(request.resource.data.story))))
           || (inRoom(code) && resource.data.state == 'play'
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['state', 'round', 'roundAt'])
             && ((request.resource.data.state == 'play' && request.resource.data.round == resource.data.round + 1)
@@ -176,11 +181,23 @@ service cloud.firestore {
       match /players/{uid} {
         allow read: if true;
         allow create, update: if signedIn() && uid == request.auth.uid
-          && request.resource.data.keys().hasOnly(['name', 'score', 'ans', 'joinedAt'])
+          && request.resource.data.keys().hasOnly(['name', 'score', 'ans', 'joinedAt', 'at', 'seen'])
+          && (!('seen' in request.resource.data) || request.resource.data.seen is bool)
           && okName(request.resource.data.name)
           && request.resource.data.score is int && request.resource.data.score >= 0 && request.resource.data.score <= 2000
           && request.resource.data.ans is map && request.resource.data.ans.size() <= 10;
         allow delete: if signedIn() && uid == request.auth.uid;
+      }
+    }
+
+    // Story Night: stories made for friends' rooms. The admin desk publishes them with the Admin SDK (which skips
+    // these rules). Everything is public, answers too: friends' rooms check answers on each player's phone.
+    match /nights/{id} {
+      allow read: if true;
+      allow write: if false;
+      match /{sub}/{n} {
+        allow read: if true;
+        allow write: if false;
       }
     }
 

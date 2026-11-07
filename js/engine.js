@@ -1016,11 +1016,10 @@
     var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
     return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") + ":" + String(sec).padStart(2, "0");
   }
-  /* Analytics hook: forwards to Google Analytics (gtag) or Plausible if you add one. */
+  /* Analytics hook: forwards to Google Analytics (gtag), loaded in index.html when analytics.gaId is set. */
   function track(name, data) {
     try {
       if (typeof window.gtag === "function") window.gtag("event", name, data || {});
-      if (typeof window.plausible === "function") window.plausible(name, { props: data || {} });
     } catch (e) { /* ignore */ }
   }
   function siteUrl() {

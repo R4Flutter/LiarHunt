@@ -621,7 +621,7 @@
   // The Daily and Rush have leaderboards, so they count real time: switching tabs or opening Settings
   // doesn't stop their clock. Time away still counts, up to AWAY_MAX a go.
   var AWAY_MAX = 120000; // ponytail: 2 min cap, so a phone call doesn't wreck a run but thinking off-screen still costs
-  function realClock() { return !!run && (run.kind === "daily" || run.kind === "replay" || run.kind === "rush"); }
+  function realClock() { return !!run && (run.kind === "daily" || run.kind === "replay" || run.kind === "rush" || run.kind === "room"); }
   function counting() { return clock.running && run && !paused.ad && !run.revealed && !run.coachHold && !run.hold; }
   function startClock() {
     clock.running = true; clock.last = performance.now(); clock.lastTickSec = -1;
@@ -672,8 +672,9 @@
       cloudFlush();
     } else {
       if (realClock() && counting() && clock.hiddenAt) {
-        var away = Math.min(AWAY_MAX, performance.now() - clock.hiddenAt);
-        if (run.kind === "rush") run.time -= away; else run.elapsed += away;
+        var away = performance.now() - clock.hiddenAt;
+        if (run.kind === "room") run.caseElapsed += away; // a live room's clock runs for everyone, even while you're in WhatsApp
+        else if (run.kind === "rush") run.time -= Math.min(AWAY_MAX, away); else run.elapsed += Math.min(AWAY_MAX, away);
       }
       clock.last = performance.now();
       traces.forEach(function (t) { if (t.wasActive) { t.wasActive = false; t.start(); } });
@@ -811,12 +812,13 @@
     }).catch(function (e) { d5Busy(false); d5Fail(e); });
   }
   function d5Case(doc, n) {
-    var f = doc.facts || [], sus = doc.suspects || [];
+    // Story files often list the liar, the proof and the right verdict first, so show them in a fixed shuffled order.
+    var rng = WL.rngFrom((doc.title || "") + ":" + n), f = WL.shuffle(doc.facts || [], rng), sus = WL.shuffle(doc.suspects || [], rng);
     return { d5: true, n: n, title: doc.title, setup: doc.intro, prev: doc.previously || "", ask: doc.ask, mode: doc.mode, level: D5_LEVEL[n - 1],
       facts: f, clues: f.map(function (x) { return x.text; }), factIds: f.map(function (x) { return x.id; }),
       suspects: sus.map(function (s) { return { name: s.name, role: s.role, says: s.says }; }),
       sids: sus.map(function (s) { return s.sid; }), pids: sus.map(function (s) { return s.id; }),
-      parts: doc.parts || null, answer: -1, proof: new Array(doc.need || 0).fill(-1), alt: [], why: "" };
+      parts: doc.parts ? doc.parts.map(function (q) { return Object.assign({}, q, { options: WL.shuffle(q.options || [], rng) }); }) : null, answer: -1, proof: new Array(doc.need || 0).fill(-1), alt: [], why: "" };
   }
   // Open case n: fetch it (the rules only allow the next one), show its intro card, and carry on an answer already on file.
   function d5Open(n) {
@@ -830,6 +832,7 @@
       show("case");
       var fresh = !(run.prog.cur && run.prog.cur.idx === run.idx);
       loadCase();
+      if (run.night) nightOpened();
       var pk = d5.r.picks && d5.r.picks["c" + n];
       if (pk) d5Judge(pk); // answered before a reload: finish judging it
       else if (fresh) d5Intro(n);
@@ -838,7 +841,7 @@
   // The card between cases: where the story stands, then the new case. The clock waits.
   function d5Intro(n) {
     var c = run.c, ed = run.d5.ed, el = $("stage-card"), keep = run;
-    $("stage-n").textContent = n === 1 ? "Daily 5 · " + ed.title : "Case " + n + " of 5";
+    $("stage-n").textContent = n === 1 ? (run.night ? "Story Night · " : "Daily 5 · ") + ed.title : "Case " + n + " of 5";
     $("stage-name").textContent = n === 1 ? "Case 1 · " + c.title : c.title;
     $("stage-text").textContent = n === 1 ? ed.intro : c.prev;
     el.querySelector(".stage-tap").textContent = "Tap to open the case";
@@ -861,7 +864,7 @@
     }).then(function (r) {
       if (run !== keep) return;
       d5.r = d5.st.run = r;
-      WL.track("d5_answer", { day: run.day, case: n });
+      if (!run.night) WL.track("d5_answer", { day: run.day, case: n });
       d5Judge(r.picks["c" + n]);
     }).catch(function (e) { if (run !== keep) return; d5Busy(false); $("confirm").hidden = true; $("tools").hidden = false; d5Fail(e); });
   }
@@ -882,8 +885,9 @@
         d5Busy(false); $("confirm").hidden = true;
         d5Merge(c, rev, pk);
         right = r.grid[n - 1] !== "r";
-        if (c.mode === "verdict") revealVerdict(right);
-        else reveal(right, right ? "ok" : pk.s !== rev.answer.s ? "pick" : "proof");
+        if (c.mode === "verdict") revealVerdict(right, run.timedOut ? "timeout" : "verdict");
+        else reveal(right, run.timedOut ? "timeout" : right ? "ok" : pk.s !== rev.answer.s ? "pick" : "proof");
+        if (run.night) return;
         WL.track("d5_case", { day: run.day, n: n, ok: right, hunch: d5.r.hunch === n, ms: Math.round(run.caseElapsed) });
         if (!right) WL.track("d5_fail", { day: run.day, n: n });
       });
@@ -904,7 +908,7 @@
     if (run.pick == null) run.pick = c.sids.indexOf(pk.s);
     if (!run.sel || !run.sel.length) run.sel = pk.p ? pk.p.split(",").map(idx) : [];
   }
-  function revealVerdict(correct) {
+  function revealVerdict(correct, how) {
     var c = run.c;
     run.revealed = true;
     stopClock(); Plat.gameplayStop();
@@ -920,7 +924,7 @@
     Snd.play("stamp");
     setTimeout(function () { Snd.play(correct ? "correct" : "wrong"); }, 170);
     if (!correct) FX.shake($("case-grid"));
-    verdictDaily(correct, "verdict");
+    if (run.kind === "room") verdictRoom(correct, how || "verdict"); else verdictDaily(correct, "verdict");
   }
   // Case 5: one choice per question, then submit them together.
   function renderVerdictParts(c) {
@@ -987,7 +991,7 @@
   function nbData() {
     var d5 = run.d5, st = d5.st, cur = run.c.n, ev = [], fi = [], tl = [], says = {};
     for (var n = 1; n <= cur; n++) {
-      var c = st.cases[n], rv = st.reveals[n];
+      var c = st.cases[n], rv = n < cur || run.revealed ? st.reveals[n] : null; // never the open case's answer
       if (!c) continue;
       (c.facts || []).forEach(function (f) { if (f.kind !== "finding") ev.push({ n: n, f: f }); });
       (c.suspects || []).forEach(function (s) { (says[s.id] = says[s.id] || []).push({ n: n, text: s.says, liar: !!(rv && rv.answer && rv.answer.s === s.sid) }); });
@@ -1003,7 +1007,7 @@
     nbTab = tab || nbTab;
     var x = nbData();
     run.d5.st.seen = x.ev.length + x.fi.length; persist();
-    $("nb-eyebrow").textContent = "Daily #" + run.day + " · " + run.d5.ed.title;
+    $("nb-eyebrow").textContent = (run.night ? "Story Night" : "Daily #" + run.day) + " · " + run.d5.ed.title;
     renderNotebook(x);
     openDialog("dlg-notebook");
     renderMeta();
@@ -1161,9 +1165,12 @@
     } else if (run.kind === "rush") {
       setHud("Rush", "Case " + run.n + " · " + (run.rule ? run.rule.name : "Stage 1"));
       $("case-kicker").textContent = LEVEL[c.level] || "Case";
+    } else if (run.kind === "room" && run.night) {
+      setHud("Story Night", "Case " + c.n + " of 5 · " + run.d5.ed.title);
+      $("case-kicker").textContent = "Story Night · Case " + c.n + " of 5 · " + (c.n === 5 ? "The verdict" : "One try");
     } else if (run.kind === "room") {
-      setHud("Live room", "Case " + run.round + " of " + (room && room.data ? room.data.rounds : 5));
-      $("case-kicker").textContent = (LEVEL[c.level] || "Case") + " · Everyone has the same case · One try";
+      setHud(run.pt ? "Partners" : "Live room", "Case " + run.round + " of " + (room && room.data ? room.data.rounds : 5));
+      $("case-kicker").textContent = (LEVEL[c.level] || "Case") + (run.pt ? " · You have the " + (run.pt.side === "suspects" ? "stories" : "facts") + " · One try" : " · Everyone has the same case · One try");
     } else if (run.kind === "friend") {
       setHud(run.preview ? "Your case" : "A friend's case", run.preview ? "Try it like your friends will" : "Written by " + c.by);
       $("case-kicker").textContent = "Written by " + c.by + " · One try";
@@ -1210,6 +1217,8 @@
       wrap.appendChild(el); wrap.appendChild(nb);
       box.appendChild(wrap);
     });
+    ptClear();
+    if (run.pt) ptApply();
     setPhase("pick");
     renderTools();
   }
@@ -1269,9 +1278,11 @@
       : c.mode === "liar" ? "You accused " + name + ". Now prove it: tap the fact" + (n > 1 ? "s" : "") + " " + name + "'s story breaks."
       : c.mode === "honest" ? name + " is the honest one. Now prove the other two lied: tap the fact" + (n > 1 ? "s" : "") + " their stories break."
       : "That fact is fake. Now prove it: tap the story that shows it can't be true.";
+    ptGate();
   }
   function tap(kind, i) {
     if (!run || run.revealed) return;
+    if (run.pt && (!els(kind)[i] || els(kind)[i].disabled)) return; // Partners: number keys can't tap your partner's half
     var fe = kind === "clue" && els("clue")[i];
     if (fe && fe.classList.contains("fogged")) { fe.classList.remove("fogged"); fe.removeAttribute("aria-description"); Snd.play("tap"); return; }
     if (run.phase === "pick" && kind === "clue" && run.c.mode !== "planted") {
@@ -1372,7 +1383,7 @@
       $("btn-freeze").hidden = true;
       $("tool-note").textContent = run.phase === "proof" ? "Tap the " + (need > 1 ? need + " facts that prove" : "fact that proves") + " it." :
         m === "hunch" ? (run.c.mode === "verdict" ? "Your free Hunch rules out one wrong answer." : "Your free Hunch rules out one innocent suspect.") + " The case turns amber." :
-        m === "used" ? "Your Hunch ruled one out." : m === "spent" ? "You've used today's Hunch." : "";
+        m === "used" ? "Your Hunch ruled one out." : m === "spent" ? "You've used today's Hunch." : m === "off" ? "No Hunch in Story Night. One try per case." : "";
       return;
     }
     hb.disabled = m === "used" || m === "none" || m === "off";
@@ -1384,7 +1395,8 @@
     fb.disabled = run.froze || (S.inv.freeze || 0) <= 0 || run.revealed;
     $("freeze-n").textContent = S.inv.freeze || 0;
     var note = "", n = (run.c.proof || []).length;
-    if (run.phase === "proof") note = run.c.mode === "planted" ? "Tap the story that proves it." : "Tap the " + (n > 1 ? n + " facts that prove" : "fact that proves") + " it.";
+    if (run.phase === "proof" && run.pt && run.pt.picker) note = "Your partner taps the proof.";
+    else if (run.phase === "proof") note = run.c.mode === "planted" ? "Tap the story that proves it." : "Tap the " + (n > 1 ? n + " facts that prove" : "fact that proves") + " it.";
     else if (m === "used") note = run.hint ? "One option ruled out." : "";
     else if (m === "off") note = run.kind === "rush" ? "No magnifier in this stage." : run.kind === "room" ? "No hints in a live room. One try." : "No hints in a friend's case. One try.";
     else if (m === "none") note = "Out of magnifiers. Get more in the Shop.";
@@ -1493,8 +1505,9 @@
     if (!timeout && pick == null) return;
     hideConfirm();
     hideCoach();
-    if (timeout) { reveal(false, "timeout"); return; }
-    if (c.d5) { act(["p", pick]); return; } // Daily 5: accuse, then prove; the file is checked once both are in
+    if (timeout) { if (c.d5) { run.timedOut = true; d5Judge({ s: "", p: "" }); } else reveal(false, "timeout"); return; }
+    if (c.d5) { act(["p", pick]); return; }
+    if (run.pt) { ptPick(pick); return; } // Daily 5: accuse, then prove; the file is checked once both are in
     if (pick !== c.answer) { if (run.kind === "train") mistake(pick); else reveal(false, "pick"); return; }
     if (!(c.proof || []).length) { reveal(true, "ok"); return; }
     act(["p"]);
@@ -1562,6 +1575,7 @@
   function reveal(correct, how) {
     var c = run.c, pk = els(pickKind()), pf = els(proofKind());
     run.revealed = true;
+    if (run.pt) ptClear(); // the verdict shows both halves
     renderNotes();
     stopClock();
     Plat.gameplayStop();
@@ -3116,15 +3130,33 @@
     shareOut(lines.join("\n"));
   }
 
-  /* ---------- live rooms: one link, up to 10 players, the same cases at the same time ----------
-     The host opens a room and shares the link; everyone who opens it joins. When the host starts, everyone
-     plays the same cases (WL.roomCase) at once: one try, no hints, a clock per case. A proven catch scores
-     100, plus up to 50 for speed. The host's game moves the room on once everyone has answered or time is
-     up; anyone else's game does it if the host has gone quiet. Answers carry the game's seed (s), so a
-     new game in the same room never mixes with the last one. */
-  var ROUND_MS = 90000, room = null;
-  function roomLimit(c) { return c.mode === "liar" ? ROUND_MS : ROUND_MS + 30000; }
+  /* ---------- live rooms: one link, friends playing together (they talk on a call or WhatsApp) ----------
+     Three kinds of room (room.data.mode):
+       race      up to 10 players race through the same 5 cases (WL.roomCase). A proven catch scores 100, plus up to 50 for speed.
+       partners  2 players share each case. One sees the suspects' stories, the other the police facts. Whoever can see the
+                 pick makes it, the other proves it, so neither can finish alone. Sides swap every case. One team score.
+       night     Story Night: up to 10 players play one five-case story from nights/{id} on the Daily 5 case screen. No strikes:
+                 a wrong answer scores 0 and the story carries on. Between cases everyone sees what the case revealed, and
+                 the host moves the room on (anyone else can after NIGHT_WAIT).
+     One try per case, no hints. The host's game moves the room on; anyone else's does it if the host has gone quiet.
+     Answers carry the game's seed (s), so a new game in the same room never mixes with the last one. Every player pings
+     "still here" every PING_MS; one quiet for LB.rooms.STALE (phone locked in WhatsApp, tab closed) doesn't hold the
+     room up. Friends' rooms run on the honor system: each phone checks its own answers. */
+  var ROUND_MS = 90000, PING_MS = 30000, NIGHT_WAIT = 90000, room = null;
+  function rmode() { return (room && room.data && room.data.mode) || "race"; }
+  function roomLimit(c) {
+    var m = rmode();
+    if (m === "night") return 300000;
+    if (m === "partners") return 180000; // talking it through takes time
+    return c && c.mode === "liar" ? ROUND_MS : ROUND_MS + 30000;
+  }
   function roomAns(p, r) { var a = p && p.ans && p.ans[r]; return a && room && a.s === room.seed ? a : null; }
+  function roomDone(p, r) { var a = roomAns(p, r); return a && a.ok != null ? a : null; } // a partner's pick is saved before the case is done
+  function isLive(id) { var p = room.players[id]; return id === room.me || !p || !p.at || Date.now() - p.at < LB.rooms.STALE; }
+  function liveIds() { return Object.keys(room.players).filter(isLive); }
+  function mateId() { return Object.keys(room.players).filter(function (id) { return id !== room.me; })[0] || ""; }
+  // Partners: the host has the suspects' stories in odd cases, the facts in even ones.
+  function ptSide(id, r) { return (id === room.data.host) === (r % 2 === 1) ? "suspects" : "facts"; }
   function roomTotal(p) { var t = 0; if (p && p.ans) Object.keys(p.ans).forEach(function (r) { var a = roomAns(p, r); if (a) t += a.pts || 0; }); return t; }
   function roomRanked() {
     return Object.keys(room.players).map(function (id) {
@@ -3133,31 +3165,62 @@
       return { id: id, name: p.name, score: roomTotal(p), ms: ms, p: p };
     }).sort(function (a, b) { return b.score - a.score || a.ms - b.ms; });
   }
+  function newSeed() { return Math.random().toString(36).slice(2, 10); }
+  function once(key) { try { if (localStorage.getItem(key)) return false; localStorage.setItem(key, "1"); } catch (e) { /* count it */ } return true; }
+  function nightsPlayed() { try { return JSON.parse(localStorage.getItem("wl-nights")) || {}; } catch (e) { return {}; } }
+  function markNight(id) { var m = nightsPlayed(); m[id] = 1; try { localStorage.setItem("wl-nights", JSON.stringify(m)); } catch (e) { /* ignore */ } }
   function withName(cb, why) {
     if (myName()) { cb(myName()); return; }
     askName(function () { cb(myName()); }, why);
   }
+
+  var ROOM_MODES = [
+    ["race", "🏁", "Race", "Up to 10 friends, the same 5 cases at the same time. The fastest proven catches win."],
+    ["partners", "🤝", "Partners", "Two of you, one case. One sees the stories, the other sees the facts. Talk it out."],
+    ["night", "📖", "Story Night", "One five-case mystery for the whole group, made for playing together."]
+  ];
   function openRoom() {
-    withName(function (name) {
-      toast("Opening a room...");
-      LB.rooms.create({ name: name, seed: Math.random().toString(36).slice(2, 10), season: Math.max(1, SEASON), rounds: 5 }).then(function (code) {
-        WL.track("room_create", {});
-        return joinRoom(code, name);
-      }).catch(function (e) { toast(esc(LB.friendlyError(e))); });
+    withName(function () {
+      showNotice({ icon: "🕵️", title: "Play with friends", text: "Get everyone on a call or WhatsApp, then pick a game.", yes: "Not now",
+        html: '<div class="rmode-list">' + ROOM_MODES.map(function (m) {
+          return '<button class="rmode" type="button" data-rmode="' + m[0] + '"><span class="rmode-ico" aria-hidden="true">' + m[1] +
+            '</span><span class="rmode-txt"><b>' + m[2] + "</b><span>" + m[3] + "</span></span></button>";
+        }).join("") + "</div>" });
+      var nb = $("notice-body").querySelector('[data-rmode="night"]'), soon = function () {
+        if (!nb.isConnected) return;
+        nb.disabled = true; nb.querySelector(".rmode-txt span").textContent = "Coming soon: the first stories are on their way.";
+      };
+      if (!LB.nights) { soon(); return; }
+      LB.nights.list().then(function (l) { if (!l.length) soon(); }).catch(function () { /* checked again in the lobby */ });
     }, "room");
   }
+  $("notice-body").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-rmode]");
+    if (!b || b.disabled) return;
+    Snd.play("click"); closeNotice(false); createRoom(b.getAttribute("data-rmode"));
+  });
+  function createRoom(mode) {
+    var name = myName();
+    toast("Opening a room...");
+    LB.rooms.create({ name: name, seed: newSeed(), season: Math.max(1, SEASON), rounds: 5, mode: mode }).then(function (code) {
+      WL.track("room_create", { mode: mode });
+      return joinRoom(code, name);
+    }).catch(function (e) { toast(esc(LB.friendlyError(e))); });
+  }
   function joinRoom(code, name) {
-    return LB.rooms.join(code, name).then(function () { enterRoom(code); WL.track("room_join", {}); })
-      .catch(function (e) { goHQ(); toast(esc(LB.friendlyError(e)), "", 4000); });
+    return LB.rooms.join(code, name).then(function (d) {
+      enterRoom(code);
+      if (once("wl-rj:" + code)) WL.track("room_join", { mode: (d && d.mode) || "race", host: !!d && d.host === LB.rooms.me() }); // a reload isn't a new join
+    }).catch(function (e) { goHQ(); toast(esc(LB.friendlyError(e)), "", 4000); });
   }
   function enterRoom(code) {
     if (!room || room.code !== code) {
       leaveRoom(true);
-      room = { code: code, me: LB.rooms.me(), data: null, players: {}, gotPlayers: false, seed: "", pts: {} };
+      room = { code: code, me: LB.rooms.me(), data: null, players: {}, gotPlayers: false, seed: "", pts: {}, pinged: Date.now(), night: null, nightList: null };
       room.stop = LB.rooms.watch(code, function (d) { if (room) { onRoomData(d); } }, function (p) {
         if (!room) return;
         room.players = p; room.gotPlayers = true;
-        syncRound(); renderRoom(); roomTick();
+        syncRound(); partnerSync(); renderRoom(); roomTick();
       });
       room.tick = setInterval(roomTick, 1000);
     }
@@ -3176,30 +3239,164 @@
     try { history.replaceState(null, "", location.pathname); } catch (e) { /* ignore */ }
     if (!quiet) toast("You left the room.");
   }
+  // Back from WhatsApp: say "still here" at once and catch up with the room.
+  document.addEventListener("visibilitychange", function () { if (room && !document.hidden) { room.pinged = 0; roomTick(); } });
   function onRoomData(d) {
-    if (room.seed && d.seed !== room.seed) { room.pts = {}; LB.rooms.reset(room.code).catch(function () {}); } // the host started a new game
+    if (room.seed && d.seed !== room.seed) { room.pts = {}; room.night = null; LB.rooms.reset(room.code).catch(function () {}); } // the host started a new game
     room.seed = d.seed; room.data = d;
-    // the game ended while this player was still on a case: show the final scores
-    if (d.state === "end" && screen === "case" && run && run.kind === "room" && !run.revealed) { stopClock(); show("room"); }
+    if (room.overRound !== d.round) { room.overRound = d.round; room.overAt = 0; } // a new case isn't closed yet (or Story Night would load its answer)
+    if (d.state === "end" && once("wl-re:" + room.code + ":" + d.seed)) {
+      WL.track("room_end", { mode: rmode(), players: room.gotPlayers ? liveIds().length : 0, host: d.host === room.me });
+      if (rmode() === "night" && d.story) markNight(d.story);
+    }
+    // the game ended (or went back to the lobby) while this player was still on a case: show the room
+    if (d.state !== "play" && screen === "case" && run && run.kind === "room" && !run.revealed) { stopClock(); show("room"); }
+    if (rmode() === "night") {
+      if (d.story && room.seenFor !== d.story) { room.seenFor = d.story; LB.rooms.ping(room.code, { seen: !!nightsPlayed()[d.story] }).catch(function () {}); }
+      if (d.story) loadNight(d.story).then(function () { renderRoom(); }, function () {});
+      if (d.state === "lobby" && d.host === room.me && !room.nightList) {
+        room.nightList = [];
+        LB.nights.list().then(function (l) { if (room) { room.nightList = l; renderRoom(); } }).catch(function () { if (room) room.nightList = null; });
+      }
+    }
     syncRound(); renderRoom(); roomTick();
   }
-  // Start the room's current case here, unless this player already answered it (or is playing it).
+  // Start the room's current case here, unless this player already finished it (or is playing it).
   function syncRound() {
     var d = room && room.data;
     if (!d || !room.gotPlayers || d.state !== "play" || d.round < 1) return;
-    if (roomAns(room.players[room.me], d.round) || room.pts[d.round] != null) return;
+    if (roomDone(room.players[room.me], d.round) || room.pts[d.round] != null) return;
     if (run && run.kind === "room" && run.round === d.round && run.seed === d.seed) return;
+    if (room.starting === d.seed + d.round) return; // a Story Night case is still loading
     startRoomRound(d.round);
   }
   function startRoomRound(r) {
     var d = room.data;
+    if (rmode() === "night") { startNightRound(r); return; }
     run = { kind: "room", round: r, seed: d.seed, c: WL.roomCase(d.seed, r, d.season), elapsed: 0 };
     run.limit = roomLimit(run.c);
+    if (rmode() === "partners") run.pt = { side: ptSide(room.me, r) };
     show("case");
     loadCase();
+    roomLate(d);
+    partnerSync();
   }
+  // Joined late or reloaded: the clock already ran since the case opened for everyone.
+  // ponytail: trusts this phone's clock against the server's; kept to at least 15 s left in case it runs fast
+  function roomLate(d) { var late = Date.now() - d.roundAt; if (late > 3000) run.caseElapsed = Math.min(late, run.limit - 15000); }
+
+  /* Partners: hide the other player's half, and let only the right player tap. */
+  function ptApply() {
+    var c = run.c, side = run.pt.side, scr = $("scr-case");
+    run.pt.picker = (pickKind() === "suspect") === (side === "suspects");
+    scr.classList.add("pt"); scr.classList.toggle("pt-suspects", side === "suspects"); scr.classList.toggle("pt-facts", side === "facts");
+    $("pt-note").hidden = side !== "suspects";
+    $("pt-note").innerHTML = "<b>Your partner has the police facts.</b> Read them every story, word for word, and ask what the facts say.";
+    if (side === "facts") [].forEach.call($("suspects").querySelectorAll(".says"), function (el, i) { el.textContent = "Your partner has " + c.suspects[i].name + "'s story. Ask them what they said."; });
+  }
+  function ptClear() {
+    var scr = $("scr-case");
+    scr.classList.remove("pt", "pt-suspects", "pt-facts"); $("pt-note").hidden = true;
+    if (run && run.c && run.pt) [].forEach.call($("suspects").querySelectorAll(".says"), function (el, i) { el.textContent = run.c.suspects[i].says; });
+  }
+  function ptGate() {
+    if (!run || !run.pt || run.revealed) return;
+    var c = run.c, pick = run.phase === "pick", actor = pick ? run.pt.picker : !run.pt.picker, n = (c.proof || []).length;
+    var who = c.mode === "planted" ? "" : (c.suspects[run.pick] || {}).name || "";
+    if (!actor) { els(pick ? pickKind() : proofKind()).forEach(function (e) { e.disabled = true; e.classList.add("static"); }); hideConfirm(); }
+    $("task").textContent = pick
+      ? (actor
+        ? (c.mode === "planted" ? "Every story is true, but one fact was planted. Your partner has the stories: check each fact with them, then tap the fake one."
+          : c.mode === "honest" ? "Two of them are lying. Your partner has the facts: talk it through, then tap the only honest one."
+            : "One of them is lying. Your partner has the facts: talk it through, then tap the liar.")
+        : run.pt.side === "facts" ? "Your partner has the stories and makes the call. Read out the facts and ask what each suspect said."
+          : "Your partner has the facts and picks the fake one. Read out every story.")
+      : actor
+        ? (c.mode === "planted" ? "Your partner found the fake fact. Tap the story that proves it can't be true."
+          : "Your partner " + (c.mode === "honest" ? "says " + who + " is the honest one" : "accused " + who) + ". Ask exactly what " + (c.mode === "honest" ? "the other two" : who) +
+            " said, then tap the fact" + (n > 1 ? "s" : "") + " that break" + (n > 1 ? "" : "s") + " it.")
+        : (c.mode === "planted" ? "You found the fake fact. Now your partner proves it with one of the stories."
+          : "You " + (c.mode === "honest" ? "picked " + who + " as the honest one" : "accused " + who) + ". Now your partner taps the proof: tell them exactly what " +
+            (c.mode === "honest" ? "the other two" : who) + " said.");
+  }
+  // The picker's choice: a wrong one ends the case for both; a right one goes to the partner to prove.
+  function ptPick(i) {
+    if (i !== run.c.answer) { reveal(false, "pick"); return; }
+    if (!(run.c.proof || []).length) { reveal(true, "ok"); return; }
+    LB.rooms.answer(room.code, run.round, { s: run.seed, pick: i }, roomTotal(room.players[room.me])).catch(function () { /* the next write carries it */ });
+    ptProof(i);
+  }
+  function ptProof(i) {
+    if (run.phase === "proof") return;
+    var c = run.c, el = els(pickKind())[i];
+    run.pick = i;
+    setPhase("proof");
+    if (el) { el.classList.add("is-accused"); stamp(el, c.mode === "honest" ? "Honest" : c.mode === "planted" ? "Fake" : "Accused", "pending"); }
+    renderTools();
+    Snd.play("stamp");
+  }
+  // Catch up with the partner: their pick opens the proof step, their finished case closes it the same way here.
+  function partnerSync() {
+    if (!room || !run || !run.pt || run.revealed || run.seed !== room.seed || screen !== "case") return;
+    var r = run.round, a = roomAns(room.players[mateId()], r), mine = roomAns(room.players[room.me], r);
+    if (a && a.ok != null) {
+      run.ptShared = a;
+      if (a.pick != null) run.pick = a.pick;
+      run.sel = a.proof ? a.proof.slice() : [];
+      reveal(!!a.ok, a.how || (a.ok ? "ok" : "pick"));
+      return;
+    }
+    var pk = a && a.pick != null ? a.pick : mine && mine.pick != null ? mine.pick : null;
+    if (pk != null && run.phase === "pick") ptProof(pk);
+  }
+
+  /* Story Night: the story's docs come from nights/{id}; the run lives in room.night, never in the Daily's save. */
+  function loadNight(id) {
+    if (room.night && room.night.id === id) return room.night.ready;
+    var n = room.night = { id: id, ed: null, finale: null, st: { cases: {}, reveals: {}, notes: {}, seen: 0 }, r: { picks: {}, grid: "", strikes: 99, hunch: 0 } };
+    n.ready = LB.nights.edition(id).then(function (ed) { if (!ed) throw new Error("That story isn't there any more."); n.ed = ed; return n; });
+    n.ready.catch(function (e) { if (room && room.night === n) { room.night = null; toast(esc(LB.friendlyError(e))); } });
+    return n.ready;
+  }
+  function nightApi(n) {
+    return {
+      caseDoc: function (d, k) { return LB.nights.caseDoc(n.id, k); },
+      reveal: function (d, k) { return LB.nights.reveal(n.id, k); },
+      run: function () { return Promise.resolve(n.r); },
+      commit: function (d, k, pick) { n.r.picks["c" + k] = n.r.picks["c" + k] || { s: pick.s, p: pick.p }; return Promise.resolve(n.r); },
+      resolve: function (d, k, letter) { n.r.grid = (n.r.grid + "-----").slice(0, k - 1) + letter; return Promise.resolve(n.r); },
+      hunch: function () { return Promise.reject(new Error("No Hunch in Story Night")); }
+    };
+  }
+  function startNightRound(r) {
+    var d = room.data, keep = room, key = d.seed + r;
+    if (!d.story) return;
+    room.starting = key;
+    loadNight(d.story).then(function (n) {
+      // the notebook carries every earlier case and what it revealed, even for someone who just joined
+      var need = [];
+      for (var k = 1; k < r; k++) (function (k) {
+        if (!n.st.cases[k]) need.push(LB.nights.caseDoc(n.id, k).then(function (doc) { n.st.cases[k] = doc; }));
+        if (!n.st.reveals[k]) need.push(LB.nights.reveal(n.id, k).then(function (rev) { n.st.reveals[k] = rev; }));
+      })(k);
+      return Promise.all(need).then(function () {
+        if (room !== keep || room.starting !== key) return;
+        room.starting = "";
+        if (!room.data || room.data.state !== "play" || room.data.round !== r) return;
+        run = { kind: "room", night: true, round: r, seed: d.seed, day: 0, cases: [null, null, null, null, null], idx: r - 1, elapsed: 0,
+          prog: { results: [], cur: null }, d5: { ed: n.ed, st: n.st, api: nightApi(n), r: n.r } };
+        run.limit = roomLimit(null);
+        if (r === 1) markNight(n.id);
+        d5Open(r);
+      });
+    }).catch(function (e) { if (room === keep) { room.starting = ""; toast(esc(LB.friendlyError(e))); } });
+  }
+  // Called by the case screen once it's open (d5Open's loadCase): the shared clock may already have run.
+  function nightOpened() { if (room && room.data) roomLate(room.data); }
+
   function verdictRoom(correct, how) {
-    var pts = correct ? 100 + Math.max(0, 50 - Math.floor(run.caseElapsed / 1000)) : 0;
+    var m = rmode(), sh = run.ptShared, ms = Math.min(run.caseElapsed, run.limit);
+    var pts = sh ? sh.pts || 0 : !correct ? 0 : m === "race" ? 100 + Math.max(0, 50 - Math.floor(ms / 1000)) : 100 + Math.max(0, Math.round(50 * (1 - ms / run.limit)));
     if (room && room.seed === run.seed) {
       room.pts[run.round] = pts;
       // total = this game's points so far: what's saved online, plus answers not saved yet
@@ -3207,86 +3404,173 @@
       Object.keys(mine.ans || {}).forEach(function (r) { var a = roomAns(mine, r); if (a) byRound[r] = a.pts || 0; });
       Object.keys(room.pts).forEach(function (r) { byRound[r] = room.pts[r]; });
       Object.keys(byRound).forEach(function (r) { total += byRound[r]; });
-      LB.rooms.answer(room.code, run.round, { ok: correct, ms: Math.round(run.caseElapsed), pts: pts, s: run.seed }, total).catch(function () { /* retried on the next answer */ });
+      var a = { ok: correct, ms: Math.round(ms), pts: pts, s: run.seed };
+      if (m === "partners") {
+        a.how = how;
+        if (!sh && run.pick != null && run.pick >= 0) a.pick = run.pick;
+        if (!sh && how !== "pick" && run.sel && run.sel.length) a.proof = run.sel.slice();
+      }
+      LB.rooms.answer(room.code, run.round, a, total).catch(function () { /* retried on the next answer */ });
     }
+    var head = correct ? (m === "partners" ? "Cracked it together!" : pick(CAUGHT)) : how === "timeout" ? "Time's up." : how === "proof" ? "Not proven." : "Not quite.";
     setVerdict({
-      head: correct ? pick(CAUGHT) : how === "timeout" ? "Time's up." : how === "proof" ? "Not proven." : "Not quite.", good: correct,
-      rewards: pts ? '<span class="rw coin">+' + pts + " points</span>" : "",
-      sub: missLine(how) + answerLine(), next: "See the scores", hq: "Leave room"
+      head: head, good: correct,
+      rewards: pts ? '<span class="rw coin">+' + pts + (m === "partners" ? " team points" : " points") + "</span>" : "",
+      sub: missLine(how) + answerLine(), next: m === "night" ? "Back to the group" : "See the scores", hq: "Leave room"
     });
-    WL.track("room_answer", { round: run.round, correct: correct });
+    WL.track("room_answer", { round: run.round, correct: correct, mode: m });
   }
   // The host's game moves the room on 5 s after everyone answered (or time ran out); anyone else's after 25 s.
+  // Story Night waits for the host, so the group can read what the case revealed; anyone else can after NIGHT_WAIT.
   function roomTick() {
     if (!room || !room.data || !room.gotPlayers) return;
-    var d = room.data;
+    if (Date.now() - (room.pinged || 0) > PING_MS && room.players[room.me]) {
+      room.pinged = Date.now();
+      LB.rooms.ping(room.code).catch(function () { if (room) room.pinged = 0; });
+    }
+    var d = room.data, m = rmode();
     if (d.state !== "play" || d.round < 1) return;
-    var c = WL.roomCase(d.seed, d.round, d.season), ids = Object.keys(room.players);
-    var allIn = ids.length > 0 && ids.every(function (id) { return roomAns(room.players[id], d.round); });
+    var ids = liveIds(), done = function (id) { return roomDone(room.players[id], d.round); };
+    var lim = m === "race" ? roomLimit(WL.roomCase(d.seed, d.round, d.season)) : roomLimit(null);
+    var allIn = ids.length > 0 && (m === "partners" ? ids.some(done) : ids.every(done)); // partners: one finished case is the team's
     if (room.overRound !== d.round) { room.overRound = d.round; room.overAt = 0; }
-    if (!allIn && Date.now() - d.roundAt < roomLimit(c) + 8000) return;
-    room.overAt = room.overAt || Date.now();
-    if (screen === "room") renderRoom();
-    if (Date.now() - room.overAt < (d.host === room.me ? 5000 : 25000) || room.moving === d.seed + d.round) return;
+    if (!allIn && Date.now() - d.roundAt < lim + 8000) return;
+    if (!room.overAt) { room.overAt = Date.now(); if (screen === "room") renderRoom(); }
+    var wait = m === "night" ? (d.host === room.me && isLive(d.host) ? Infinity : NIGHT_WAIT) : d.host === room.me ? 5000 : 25000;
+    if (m === "night" && d.host !== room.me && !isLive(d.host)) wait = 5000; // the host has gone: don't keep everyone waiting
+    if (Date.now() - room.overAt < wait || room.moving === d.seed + d.round) return;
     room.moving = d.seed + d.round;
-    LB.rooms.update(room.code, d.round < d.rounds ? { round: d.round + 1, roundAt: true } : { state: "end" }).catch(function () { room.moving = ""; });
+    LB.rooms.update(room.code, d.round < d.rounds ? { round: d.round + 1, roundAt: true } : { state: "end" }).catch(function () { if (room) room.moving = ""; });
   }
+
+  var MODE_NAME = { race: "Live room", partners: "Partners", night: "Story Night" };
   function renderRoom() {
     if (!room || screen !== "room") return;
-    var d = room.data, host = d && d.host === room.me, list = d ? roomRanked() : [], acts = [];
-    if (!d) { $("room-h").textContent = "Joining the room..."; return; }
+    var d = room.data, m = rmode(), host = d && d.host === room.me, list = d ? roomRanked() : [], acts = [], extra = "";
+    if (!d) { $("room-h").textContent = "Joining the room..."; $("room-extra").innerHTML = ""; return; }
+    setHud(MODE_NAME[m], "Room " + room.code);
+    var live = list.filter(function (x) { return isLive(x.id); }), n = room.night, story = n && n.ed && n.id === d.story ? n.ed : null;
     $("room-code").innerHTML = d.state === "end" ? "" : '<span class="room-code-big" aria-label="Room code">' + room.code + "</span>" +
-      '<button class="btn small primary" type="button" data-room="invite">Invite friends</button>';
-    var r = d.round, waiting = list.filter(function (x) { return !roomAns(x.p, r); }).length;
+      '<button class="btn small primary" type="button" data-room="invite">' + (m === "partners" ? "Invite your partner" : "Invite friends") + "</button>";
+    var r = d.round, waiting = live.filter(function (x) { return !roomDone(x.p, r); }).length;
     if (d.state === "lobby") {
-      $("room-eyebrow").textContent = "Live room · " + list.length + " of " + LB.rooms.MAX + " detectives";
-      $("room-h").textContent = host ? "Get your friends in" : "You're in!";
-      $("room-sub").textContent = host ? "Send the link. Everyone who opens it joins this room, and you all get the same " + d.rounds + " cases at the same time. 3 or more is best."
-        : "Waiting for " + d.hostName + " to start. Everyone gets the same " + d.rounds + " cases at the same time.";
-      if (host) acts.push('<button class="btn danger big wide" type="button" data-room="start"' + (list.length < 2 ? " disabled" : "") + ">" +
-        (list.length < 2 ? "Waiting for a friend to join" : "Start the game (" + list.length + " detectives)") + "</button>");
+      var max = LB.rooms.maxFor(d), ready = m === "partners" ? live.length === 2 : live.length >= 2;
+      $("room-eyebrow").textContent = MODE_NAME[m] + " · " + live.length + " of " + max + " detectives";
+      if (m === "partners") {
+        $("room-h").textContent = host ? (ready ? "Your partner is in" : "Get your partner in") : "You're in!";
+        $("room-sub").textContent = (host ? "Send the link to one friend and get on a call or WhatsApp. " : "Waiting for " + d.hostName + " to start. ") +
+          "One of you sees the suspects' stories, the other sees the police facts. Neither of you can solve a case alone. You swap sides every case.";
+      } else if (m === "night") {
+        $("room-h").textContent = host ? (story ? "Tonight: " + story.title : "Pick tonight's story") : "You're in!";
+        $("room-sub").textContent = (host ? "Send the link and get everyone on a call. " : "Waiting for " + d.hostName + " to " + (story ? "start." : "pick a story.") + " ") +
+          "Everyone plays the same five connected cases. After each one, you all see what it revealed.";
+        if (host) extra = nightPicker(d);
+        else if (story) extra = '<div class="night-card"><b>' + esc(story.title) + "</b><span>" + esc(story.place || "") + "</span></div>";
+        ready = ready && !!story;
+      } else {
+        $("room-h").textContent = host ? "Get your friends in" : "You're in!";
+        $("room-sub").textContent = host ? "Send the link. Everyone who opens it joins this room, and you all get the same " + d.rounds + " cases at the same time. 3 or more is best."
+          : "Waiting for " + d.hostName + " to start. Everyone gets the same " + d.rounds + " cases at the same time.";
+      }
+      if (host) acts.push('<button class="btn danger big wide" type="button" data-room="start"' + (ready ? "" : " disabled") + ">" +
+        (ready ? "Start the game (" + live.length + " detectives)" : m === "night" && live.length >= 2 ? "Pick a story to start" : m === "partners" ? "Waiting for your partner to join" : "Waiting for a friend to join") + "</button>");
     } else if (d.state === "play") {
-      var over = !waiting || room.overAt;
-      $("room-eyebrow").textContent = "Case " + r + " of " + d.rounds;
-      $("room-h").textContent = over ? "Case " + r + " is closed" : roomAns(room.players[room.me], r) || room.pts[r] != null ? "Waiting for " + waiting + " more" : "Case " + r + " is on";
-      $("room-sub").textContent = over ? (r < d.rounds ? "The next case starts in a moment." : "The final scores are coming.") : "The next case starts when everyone has answered, or when time runs out.";
-      if (!roomAns(room.players[room.me], r) && room.pts[r] == null && !over) acts.push('<button class="btn danger wide" type="button" data-room="back">Back to the case</button>');
-      if (host && over) acts.push('<button class="btn primary wide" type="button" data-room="next">' + (r < d.rounds ? "Next case now" : "Final scores now") + "</button>");
+      var over = room.gotPlayers && (!waiting || room.overAt) || (m === "partners" && live.some(function (x) { return roomDone(x.p, r); }));
+      var mate = m === "partners" ? room.players[mateId()] : null;
+      $("room-eyebrow").textContent = (m === "night" && story ? story.title + " · " : "") + "Case " + r + " of " + d.rounds +
+        (m === "partners" ? " · You have the " + (ptSide(room.me, r) === "suspects" ? "stories" : "facts") : "");
+      if (m === "partners" && !mate) {
+        $("room-h").textContent = "Your partner left the room";
+        $("room-sub").textContent = host ? "Send the link to someone else and start again." : "Wait for " + d.hostName + " to start a new game.";
+        if (host) acts.push('<button class="btn primary wide" type="button" data-room="lobby">Back to the lobby</button>');
+      } else {
+        $("room-h").textContent = over ? "Case " + r + " is closed" : roomDone(room.players[room.me], r) || room.pts[r] != null ? "Waiting for " + waiting + " more" : "Case " + r + " is on";
+        $("room-sub").textContent = m === "partners" && mate && !isLive(mateId()) ? "Your partner seems to be away. The case clock keeps running."
+          : over ? (m === "night" ? (host ? "Read what it revealed together, then move on when everyone's ready." : (r < d.rounds ? "The next case starts when " : "The ending opens when ") + d.hostName + " is ready.")
+            : r < d.rounds ? "The next case starts in a moment." : "The final scores are coming.")
+            : "The next case starts when everyone has answered, or when time runs out.";
+        if (m === "night" && over) extra = nightReveal(r);
+        if (!roomDone(room.players[room.me], r) && room.pts[r] == null && !over) acts.push('<button class="btn danger wide" type="button" data-room="back">Back to the case</button>');
+        if (host && over) acts.push('<button class="btn primary wide" type="button" data-room="next">' + (r < d.rounds ? "Next case now" : m === "night" ? "See how it ended" : "Final scores now") + "</button>");
+      }
     } else {
-      $("room-eyebrow").textContent = "Final scores";
-      $("room-h").textContent = list[0] && list[0].id === room.me ? "You won!" : list[0] ? list[0].name + " wins!" : "Game over";
-      $("room-sub").textContent = "Everyone played the same " + d.rounds + " cases. Points: 100 for a proven catch, up to 50 more for speed.";
-      if (host) acts.push('<button class="btn danger wide" type="button" data-room="again">Play again with new cases</button>');
+      var solved = Object.keys((room.players[room.me] || {}).ans || {}).filter(function (k) { var a = roomAns(room.players[room.me], k); return a && a.ok; }).length;
+      $("room-eyebrow").textContent = m === "partners" ? "Partners · final score" : "Final scores";
+      if (m === "partners") {
+        $("room-h").textContent = "Team score: " + ((list[0] && list[0].score) || 0);
+        $("room-sub").textContent = "You cracked " + solved + " of " + d.rounds + " cases together. Points: 100 for a proven catch, up to 50 more for speed.";
+      } else {
+        $("room-h").textContent = list[0] && list[0].id === room.me ? "You won!" : list[0] ? list[0].name + " wins!" : "Game over";
+        $("room-sub").textContent = m === "night" ? "Everyone played the same story. Here's how it really happened." : "Everyone played the same " + d.rounds + " cases. Points: 100 for a proven catch, up to 50 more for speed.";
+      }
+      if (m === "night") extra = nightFinale();
+      if (host) acts.push('<button class="btn danger wide" type="button" data-room="again">' + (m === "night" ? "Play another story" : "Play again with new cases") + "</button>");
       acts.push('<button class="btn primary wide" type="button" data-room="share">Share the result</button>');
     }
     acts.push('<button class="btn ghost wide" type="button" data-room="leave">Leave room</button>');
     $("room-acts").innerHTML = acts.join("");
+    $("room-extra").innerHTML = extra;
     $("room-players").innerHTML = list.map(function (x, i) {
-      var a = roomAns(x.p, r), mark = d.state !== "play" ? "" : a ? (a.ok ? '<span class="rm-mark ok">✓ +' + a.pts + "</span>" : '<span class="rm-mark no">✕</span>')
-        : '<span class="rm-mark wait">' + (room.overAt ? "no answer" : "thinking…") + "</span>";
-      var place = d.state === "end" ? ["🥇", "🥈", "🥉"][i] || i + 1 : d.state === "lobby" ? "🕵️" : i + 1;
-      return '<li class="' + (x.id === room.me ? "me" : "") + (d.state === "end" && i === 0 ? " win" : "") + '"><span class="rm-rank">' + place + '</span><span class="rm-name">' + esc(x.name) +
-        (x.id === d.host ? " <em>host</em>" : "") + (x.id === room.me ? " <em>(you)</em>" : "") + "</span>" + mark +
-        '<span class="rm-score">' + (d.state === "lobby" ? "" : x.score) + "</span></li>";
+      var a = roomDone(x.p, r), away = !isLive(x.id), mark = d.state !== "play" ? "" : a ? (a.ok ? '<span class="rm-mark ok">✓ +' + a.pts + "</span>" : '<span class="rm-mark no">✕</span>')
+        : '<span class="rm-mark wait">' + (away ? "away" : room.overAt ? "no answer" : "thinking…") + "</span>";
+      var place = d.state === "end" && m !== "partners" ? ["🥇", "🥈", "🥉"][i] || i + 1 : d.state === "play" && m !== "partners" ? i + 1 : m === "partners" ? "🤝" : "🕵️";
+      var tags = (x.id === d.host ? " <em>host</em>" : "") + (x.id === room.me ? " <em>(you)</em>" : "") +
+        (m === "partners" && d.state === "play" ? " <em>" + (ptSide(x.id, r) === "suspects" ? "stories" : "facts") + "</em>" : "") +
+        (m === "night" && d.state === "lobby" && x.p.seen ? ' <em class="seen">played it</em>' : "") + (away && d.state !== "play" ? " <em>away</em>" : "");
+      return '<li class="' + (x.id === room.me ? "me" : "") + (away ? " away" : "") + (d.state === "end" && i === 0 && m !== "partners" ? " win" : "") + '"><span class="rm-rank">' + place + '</span><span class="rm-name">' + esc(x.name) +
+        tags + "</span>" + mark + '<span class="rm-score">' + (d.state === "lobby" ? "" : x.score) + "</span></li>";
     }).join("");
+  }
+  function nightPicker(d) {
+    var l = room.nightList, played = nightsPlayed();
+    if (!l || !l.length) return '<p class="muted small">' + (l ? "No stories yet. The first Story Nights are on their way." : "Opening the story shelf…") + "</p>";
+    return '<div class="night-list" role="list">' + l.map(function (s) {
+      var on = s.id === d.story;
+      return '<button class="night-pick' + (on ? " on" : "") + '" type="button" role="listitem" aria-pressed="' + on + '" data-room="story" data-id="' + esc(s.id) + '"><b>' + esc(s.title) +
+        "</b><span>" + esc(s.place || "") + (played[s.id] ? " · you've played it" : "") + "</span></button>";
+    }).join("") + "</div>";
+  }
+  function nightReveal(r) {
+    var n = room.night, rev = n && n.st.reveals[r];
+    if (!n) return "";
+    if (rev === undefined) { n.st.reveals[r] = null; LB.nights.reveal(n.id, r).then(function (x) { n.st.reveals[r] = x; renderRoom(); }, function () { delete n.st.reveals[r]; }); }
+    if (!rev || !rev.finding) return r === 5 ? '<p class="muted small">The verdict is in. The full story is next.</p>' : "";
+    return '<div class="night-card reveal"><span class="eyebrow">What case ' + r + " revealed</span><b>" + esc(rev.finding.text) + "</b></div>";
+  }
+  function nightFinale() {
+    var n = room.night;
+    if (!n) return "";
+    if (n.finale === null) { n.finale = false; LB.nights.finale(n.id).then(function (f) { n.finale = f || false; renderRoom(); }, function () { n.finale = null; }); }
+    return n.finale ? '<div class="night-card end"><h3 class="sec">How it happened</h3>' + finaleHtml(n.finale) + "</div>" : '<p class="muted small">Opening the full story…</p>';
   }
   $("scr-room").addEventListener("click", function (e) {
     var b = e.target.closest("[data-room]");
     if (!b || b.disabled || !room) return;
     Snd.play("click");
-    var k = b.dataset.room, d = room.data;
+    var k = b.dataset.room, d = room.data, m = rmode();
     if (k === "invite") {
-      WL.track("room_invite", {});
-      shareOut("🕵️ Join my live LiarHunt room! We all get the same cases at the same time. Can you catch the liars faster than me?\n" +
-        Plat.shareLink({ room: room.code }) + "\nRoom code: " + room.code, "Link copied. Send it to your friends!");
-    } else if (k === "start") LB.rooms.update(room.code, { state: "play", round: 1, roundAt: true }).catch(function (er) { toast(esc(LB.friendlyError(er))); });
+      WL.track("room_invite", { mode: m });
+      var pitch = m === "partners" ? "🤝 Be my LiarHunt partner! One of us gets the suspects' stories, the other gets the facts. We crack the case together on a call."
+        : m === "night" ? "📖 Join my LiarHunt Story Night! One mystery in five connected cases, and we play it together. Get on the call!"
+          : "🕵️ Join my live LiarHunt room! We all get the same cases at the same time. Can you catch the liars faster than me?";
+      shareOut(pitch + "\n" + Plat.shareLink({ room: room.code }) + "\nRoom code: " + room.code, "Link copied. Send it on WhatsApp!");
+    } else if (k === "start") {
+      WL.track("room_start", { mode: m, players: liveIds().length });
+      LB.rooms.update(room.code, { state: "play", round: 1, roundAt: true }).catch(function (er) { toast(esc(LB.friendlyError(er))); });
+    } else if (k === "story") LB.rooms.update(room.code, { story: b.dataset.id }).catch(function (er) { toast(esc(LB.friendlyError(er))); });
     else if (k === "next") { room.moving = d.seed + d.round; LB.rooms.update(room.code, d.round < d.rounds ? { round: d.round + 1, roundAt: true } : { state: "end" }); }
-    else if (k === "again") LB.rooms.update(room.code, { state: "play", round: 1, seed: Math.random().toString(36).slice(2, 10), roundAt: true });
-    else if (k === "back") startRoomRound(d.round);
+    else if (k === "again") {
+      WL.track("room_rematch", { mode: m, players: liveIds().length });
+      room.nightList = null;
+      LB.rooms.update(room.code, m === "night" ? { state: "lobby", round: 0, story: "", seed: newSeed() } : { state: "play", round: 1, seed: newSeed(), roundAt: true });
+    } else if (k === "lobby") LB.rooms.update(room.code, { state: "lobby", round: 0, seed: newSeed() });
+    else if (k === "back") { room.starting = ""; startRoomRound(d.round); }
     else if (k === "leave") { leaveRoom(); goHQ(); }
     else if (k === "share") {
-      var list = roomRanked(), i = list.map(function (x) { return x.id; }).indexOf(room.me), me = list[i];
-      shareOut("🕵️ I came " + (i === 0 ? "first" : "#" + (i + 1)) + " of " + list.length + " in a live LiarHunt room, with " + (me ? me.score : 0) + " points.\nPlay with us next time: " + Plat.shareLink({}));
+      var list = roomRanked(), i = list.map(function (x) { return x.id; }).indexOf(room.me), me = list[i], u = Plat.shareLink({});
+      shareOut(m === "partners" ? "🤝 My partner and I scored " + (me ? me.score : 0) + " points cracking LiarHunt cases together. Team up with me next time: " + u
+        : m === "night" ? "📖 I came " + (i === 0 ? "first" : "#" + (i + 1)) + " of " + list.length + " at a LiarHunt Story Night" + (room.night && room.night.ed ? ", “" + room.night.ed.title + "”" : "") + ". Join the next one: " + u
+          : "🕵️ I came " + (i === 0 ? "first" : "#" + (i + 1)) + " of " + list.length + " in a live LiarHunt room, with " + (me ? me.score : 0) + " points.\nPlay with us next time: " + u);
     }
   });
 
@@ -3885,7 +4169,7 @@
   }
   // Test hook for automated checks (only with ?test=1 in the address).
   if (/[?&]test=1/.test(location.search)) window.__WLtest = {
-    run: function () { return run; }, state: function () { return S; }, persist: persist,
+    run: function () { return run; }, room: function () { return room; }, state: function () { return S; }, persist: persist,
     hq: goHQ, train: startTraining, book: Book, rush: startRush, daily: startDaily, files: openFiles,
     cloud: function () { return cloud; }, push: function () { S.sync.dirty = true; return cloudPush(); },
     d5: function () { return { editions: d5Edition, store: S.d5, run: run && run.d5 ? run.d5.r : null }; }, notebook: openNotebook

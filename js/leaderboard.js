@@ -83,6 +83,7 @@
     if (code === "full") return "That group is full (50 detectives).";
     if (code === "no-room") return "That room doesn't exist any more. Ask for a new link.";
     if (code === "room-full") return "That room is full (10 detectives).";
+    if (code === "room-full-2") return "This Partners room is full. Ask your friend for a new link.";
     if (code === "failed-precondition") {
       console.warn("[leaderboard] Firestore needs an index. Open the link in this message to create it:", e.message);
       return "The leaderboard is still being set up. Try again in a few minutes.";
@@ -308,11 +309,17 @@
   function cleanSaveCode(raw) { var c = String(raw || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); return /^[A-Z2-9]{12}$/.test(c) ? c : ""; }
 
   /* ---------- live rooms: one link, several players, the same cases at the same time ----------
-     rooms/{code}: host, hostName, seed, season, state (lobby, play, end), round, rounds, roundAt
-     rooms/{code}/players/{uid}: name, score, ans { round: { ok, ms, pts } }
+     rooms/{code}: host, hostName, seed, season, state (lobby, play, end), round, rounds, roundAt,
+       mode ("race" when missing, "partners" or "night") and story (Story Night: the nights/{id} it plays)
+     rooms/{code}/players/{uid}: name, score, ans { round: { ok, ms, pts } }, at (last "still here" ping), seen (played this story before)
+     A player who hasn't pinged for STALE ms (phone locked, tab closed, link reopened in another browser) doesn't hold a seat.
      In demo mode (?lb=demo) a room lives in localStorage, so tabs on one computer can play together:
      each tab is its own player. */
-  var ROOM_MAX = 10, DEMO_ROOM = "whoslying:room:", roomWatchers = {};
+  var ROOM_MAX = 10, STALE = 180000, DEMO_ROOM = "whoslying:room:", roomWatchers = {};
+  function roomMax(room) { return room && room.mode === "partners" ? 2 : ROOM_MAX; }
+  function seated(players, me) {
+    return Object.keys(players).filter(function (id) { var p = players[id]; return id === me || !p.at || Date.now() - p.at < STALE; }).length;
+  }
   function tabId() {
     try { var id = sessionStorage.getItem("wl-tab"); if (!id) { id = "tab-" + Math.random().toString(36).slice(2, 8); sessionStorage.setItem("wl-tab", id); } return id; }
     catch (e) { return "tab-me"; }
@@ -328,10 +335,14 @@
   var rooms = {
     MAX: ROOM_MAX,
     me: roomMe,
-    // o: { name, seed, season, rounds } -> Promise of the new room code
+    STALE: STALE,
+    maxFor: roomMax,
+    // o: { name, seed, season, rounds, mode } -> Promise of the new room code
     create: function (o) {
       return ready().then(function () {
         var doc = { host: roomMe(), hostName: o.name, seed: o.seed, season: o.season, state: "lobby", round: 0, rounds: o.rounds };
+        if (o.mode && o.mode !== "race") doc.mode = o.mode;
+        if (o.mode === "night") doc.story = "";
         if (provider === "demo") {
           var c = newCode();
           demoRoomSave(c, { room: Object.assign(doc, { roundAt: Date.now(), createdAt: Date.now() }), players: {} });
@@ -355,18 +366,19 @@
         if (provider === "demo") {
           var r = demoRoom(code);
           if (!r) throw err("no-room", "No such room");
-          if (!r.players[me] && Object.keys(r.players).length >= ROOM_MAX) throw err("room-full", "Room full");
-          r.players[me] = Object.assign({ score: 0, ans: {}, joinedAt: Date.now() }, r.players[me] || {}, { name: name });
+          if (!r.players[me] && seated(r.players, me) >= roomMax(r.room)) throw err(r.room.mode === "partners" ? "room-full-2" : "room-full", "Room full");
+          r.players[me] = Object.assign({ score: 0, ans: {}, joinedAt: Date.now() }, r.players[me] || {}, { name: name, at: Date.now() });
           demoRoomSave(code, r);
           return r.room;
         }
         return roomRef(code).get().then(function (s) {
           if (!s.exists) throw err("no-room", "No such room");
           return roomRef(code).collection("players").get().then(function (ps) {
-            var mine = ps.docs.some(function (d) { return d.id === uid; });
-            if (!mine && ps.size >= ROOM_MAX) throw err("room-full", "Room full");
+            var mine = ps.docs.some(function (d) { return d.id === uid; }), all = {};
+            ps.docs.forEach(function (d) { var x = d.data(); all[d.id] = { at: x.at ? ms(x.at) : 0 }; });
+            if (!mine && seated(all, uid) >= roomMax(s.data())) throw err(s.data().mode === "partners" ? "room-full-2" : "room-full", "Room full");
             var p = roomRef(code).collection("players").doc(uid);
-            return (mine ? p.update({ name: name }) : p.set({ name: name, score: 0, ans: {}, joinedAt: stamp() })).then(function () { return s.data(); });
+            return (mine ? p.update({ name: name, at: stamp() }) : p.set({ name: name, score: 0, ans: {}, joinedAt: stamp(), at: stamp() })).then(function () { return s.data(); });
           });
         });
       });
@@ -386,7 +398,7 @@
       }, function (e) { console.warn("[room]", e && e.message); });
       var stop2 = roomRef(code).collection("players").onSnapshot(function (q) {
         var out = {};
-        q.docs.forEach(function (d) { out[d.id] = d.data(); });
+        q.docs.forEach(function (d) { var x = d.data(); if (x.at) x.at = ms(x.at); out[d.id] = x; });
         onPlayers(out);
       }, function (e) { console.warn("[room]", e && e.message); });
       return function () { stop1(); stop2(); };
@@ -413,6 +425,17 @@
         return Promise.resolve();
       }
       var u = { score: score }; u["ans." + round] = a;
+      return ready().then(function () { return roomRef(code).collection("players").doc(uid).update(u); });
+    },
+    // "Still here", plus any of this player's own fields (seen). Keeps the seat while they flip to WhatsApp and back.
+    ping: function (code, patch) {
+      if (provider === "demo") {
+        var r = demoRoom(code), me = roomMe();
+        if (!r || !r.players[me]) return Promise.resolve();
+        Object.assign(r.players[me], patch || {}, { at: Date.now() }); demoRoomSave(code, r);
+        return Promise.resolve();
+      }
+      var u = Object.assign({}, patch || {}, { at: stamp() });
       return ready().then(function () { return roomRef(code).collection("players").doc(uid).update(u); });
     },
     // Clears this player's answers and score (the host started a new game in the same room).
@@ -489,9 +512,33 @@
     finale: function (day) { return ready().then(function () { return d5doc(day, "end", "finale").get(); }).then(dataOf, deniedIsNull); }
   };
 
+  /* ---------- Story Night: stories made for friends' rooms, never a Daily ----------
+     nights/{id}: the edition (title, place, intro, cast, cases), with cases/{n}, reveals/{n} and end/finale.
+     All public: friends' rooms check answers on each player's own phone, like every live room.
+     Demo mode (?lb=demo) plays one built-in story. */
+  var nightDemo = null;
+  function demoNight() {
+    return nightDemo = nightDemo || fetch("tools/daily5/fixtures/night-demo.json").then(function (r) { if (!r.ok) throw err("unavailable", "no demo story"); return r.json(); });
+  }
+  function nightDoc(id, sub, n) { var r = db.collection("nights").doc(String(id)); return sub ? r.collection(sub).doc(String(n)) : r; }
+  function nightGet(id, sub, n) { return ready().then(function () { return nightDoc(id, sub, n).get(); }).then(dataOf); }
+  var nights = provider === "none" ? null : {
+    // -> Promise of [{ id, title, place, intro }], newest first
+    list: function () {
+      if (provider === "demo") return demoNight().then(function (x) { return [x.edition]; });
+      return ready().then(function () { return db.collection("nights").orderBy("publishedAt", "desc").limit(40).get(); })
+        .then(function (q) { return q.docs.map(function (d) { return Object.assign({}, d.data(), { id: d.id }); }); });
+    },
+    edition: function (id) { return provider === "demo" ? demoNight().then(function (x) { return x.edition; }) : nightGet(id).then(function (e) { return e && Object.assign(e, { id: id }); }); },
+    caseDoc: function (id, n) { return provider === "demo" ? demoNight().then(function (x) { return x.cases[n]; }) : nightGet(id, "cases", n); },
+    reveal: function (id, n) { return provider === "demo" ? demoNight().then(function (x) { return x.reveals[n]; }) : nightGet(id, "reveals", n); },
+    finale: function (id) { return provider === "demo" ? demoNight().then(function (x) { return x.finale; }) : nightGet(id, "end", "finale"); }
+  };
+
   /* ---------- public API ---------- */
   window.WLLB = {
     d5: d5,
+    nights: nights,
     rooms: rooms,
     provider: provider,
     TIERS: TIERS,

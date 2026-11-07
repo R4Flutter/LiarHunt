@@ -35,14 +35,15 @@ function summary(d) {
   return { id: d.meta.id, title: d.story ? d.story.title : "(no story)", place: d.story ? d.story.setting.place : "", status: d.meta.status, day: d.meta.day || 0,
     date: d.meta.day ? dayDate(d.meta.day) : "", createdAt: d.meta.createdAt, gate: !!r.gate, stage: r.stage, solverOk: !!r.solverOk,
     errors: (r.errors || []).length, warnings: (r.warnings || []).length, critic: r.critic ? r.critic.verdict : "",
-    blockers: issues.filter((i) => i.severity === "blocker").length, majors: issues.filter((i) => i.severity === "major").length, usd: d.meta.cost ? d.meta.cost.usd : 0 };
+    blockers: issues.filter((i) => i.severity === "blocker").length, majors: issues.filter((i) => i.severity === "major").length, usd: d.meta.cost ? d.meta.cost.usd : 0,
+    for: d.meta.for || "daily", remixOf: d.meta.remixOf || "" };
 }
 function stock(list) {
   const today = istDay(), taken = new Map();
   list.forEach((d) => { if (d.meta.day && ["scheduled", "published"].includes(d.meta.status)) taken.set(d.meta.day, d.meta); });
   let ahead = 0; while (taken.has(today + ahead)) ahead++;
   const upcoming = [...taken.keys()].filter((n) => n >= today).length;
-  const approved = list.filter((d) => d.meta.status === "approved").length;
+  const approved = list.filter((d) => d.meta.status === "approved" && d.meta.for !== "night").length;
   let next = today; while (taken.has(next)) next++;
   return { today, todayDate: dayDate(today), ahead, upcoming, approved, unpublished: list.filter((d) => d.meta.status === "scheduled").length,
     nextEmpty: next, nextEmptyDate: dayDate(next), warn: ahead < STOCK_WARN };
@@ -83,6 +84,27 @@ async function publish(d) {
   await b.commit(); // all or nothing
   d.meta.status = "published"; d.meta.publishedHash = out.edition.hash; d.meta.publishedAt = new Date().toISOString(); saveDraft(d);
   return `Published as Daily #${day} (${dayDate(day)}). It opens at midnight IST.`;
+}
+// Story Night: the same split as a Daily, minus the keys and the Hunch (friends' rooms check answers on each phone).
+const NIGHT_PATHS = (id) => [`nights/${id}`, `nights/${id}/end/finale`].concat([1, 2, 3, 4, 5].flatMap((n) => [`nights/${id}/cases/${n}`, `nights/${id}/reveals/${n}`]));
+async function nightPublish(d) {
+  if (d.meta.for !== "night") throw httpErr(400, "Only Story Night remixes go to Story Night.");
+  if (d.meta.status !== "approved") throw httpErr(400, "Approve it first.");
+  const id = d.meta.id, out = split(d.story, 0);
+  const { db, FieldValue } = await firestore();
+  const b = db.batch();
+  b.set(db.doc(`nights/${id}`), Object.assign({}, out.edition, { id, publishedAt: FieldValue.serverTimestamp() }));
+  b.set(db.doc(`nights/${id}/end/finale`), out.finale);
+  for (let n = 1; n <= 5; n++) { b.set(db.doc(`nights/${id}/cases/${n}`), out.cases[n]); b.set(db.doc(`nights/${id}/reveals/${n}`), out.reveals[n]); }
+  await b.commit();
+  d.meta.status = "night"; d.meta.publishedHash = out.edition.hash; d.meta.publishedAt = new Date().toISOString(); saveDraft(d);
+  return "Published to Story Night. Hosts can pick it in the lobby now.";
+}
+async function nightUnpublish(d) {
+  const { db } = await firestore();
+  const b = db.batch(); NIGHT_PATHS(d.meta.id).forEach((p) => b.delete(db.doc(p))); await b.commit();
+  d.meta.status = "approved"; delete d.meta.publishedHash; saveDraft(d);
+  return "Taken off Story Night. Rooms already playing it may lose it mid-story.";
 }
 async function unpublish(d) {
   if (!d.meta.day || istDay() >= d.meta.day) throw httpErr(409, "That day has started (or passed). Players are on it, so it stays.");
@@ -195,13 +217,17 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && m[1] === "stats") return send(200, await stats(parseInt(url.searchParams.get("day"), 10) || istDay() - 1));
     if (req.method === "POST" && m[1] === "generate") {
       const b = await body(req);
-      if (b.redo) startJob(["--redo", String(b.redo)].concat(b.case ? ["--case", String(b.case)] : []).concat(b.dry ? ["--dry-run"] : []));
+      if (b.remix) startJob(["--remix", String(b.remix)].concat(b.dry ? ["--dry-run"] : []));
+      else if (b.redo) startJob(["--redo", String(b.redo)].concat(b.case ? ["--case", String(b.case)] : []).concat(b.dry ? ["--dry-run"] : []));
       else startJob(["--count", String(Math.max(1, Math.min(10, +b.count || 5)))].concat(b.dry ? ["--dry-run"] : []));
       return send(200, { ok: true });
     }
     if (req.method === "POST" && m[1] === "draft") {
       const d = loadDraft(m[2]), action = m[3], b = await body(req), list = allDrafts();
       const note = (t) => { d.meta.notes = (d.meta.notes || []).concat({ at: new Date().toISOString(), text: t }); };
+      if (action === "night-publish") { const msg = await nightPublish(d); note(msg); saveDraft(d); return send(200, { message: msg }); }
+      if (action === "night-unpublish") { if (d.meta.status !== "night") throw httpErr(400, "It isn't on Story Night."); const msg = await nightUnpublish(d); note(msg); saveDraft(d); return send(200, { message: msg }); }
+      if (d.meta.status === "night" && action !== "note") throw httpErr(409, "This story is on Story Night. Take it off first.");
       if (["published"].includes(d.meta.status) && action !== "unpublish") throw httpErr(409, "This story is live. Take it down first (only possible before its day starts).");
       if (action === "approve") {
         const r = check(d.story);
@@ -211,6 +237,7 @@ const server = http.createServer(async (req, res) => {
       if (action === "reject") { d.meta.status = "rejected"; d.meta.day = 0; note("Rejected: " + (b.reason || "no reason given")); saveDraft(d); return send(200, { message: "Rejected." }); }
       if (action === "schedule") {
         if (!["approved", "scheduled"].includes(d.meta.status)) throw httpErr(400, "Approve it first.");
+        if (d.meta.for === "night") throw httpErr(400, "This is a Story Night remix. Players may have it on Story Night, so it can't be a Daily.");
         const day = b.date ? dayOf(b.date) : +b.day;
         if (!(day > istDay())) throw httpErr(400, "Pick a day after today (IST).");
         const clash = list.find((x) => x.meta.id !== d.meta.id && x.meta.day === day && ["scheduled", "published"].includes(x.meta.status));

@@ -68,7 +68,7 @@ function api(path, data) {
     .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.statusText); return j; }); });
 }
 function toast(msg) { var t = document.createElement("div"); t.className = "toast"; t.textContent = msg; document.body.appendChild(t); setTimeout(function () { t.remove(); }, 4200); }
-var LABEL = { published: "Live / uploaded", scheduled: "Scheduled", approved: "Approved", ready: "Ready for review", failed: "Needs work", rejected: "Rejected" };
+var LABEL = { night: "On Story Night", published: "Live / uploaded", scheduled: "Scheduled", approved: "Approved", ready: "Ready for review", failed: "Needs work", rejected: "Rejected" };
 
 function load() {
   return api("/api/state").then(function (s) {
@@ -79,10 +79,10 @@ function load() {
     $("stock").textContent = k.ahead + " day" + (k.ahead === 1 ? "" : "s") + " covered from today · " + k.approved + " approved waiting" + (k.unpublished ? " · " + k.unpublished + " scheduled but not uploaded" : "") + (k.warn ? " · below 14: generate more" : "");
     var groups = {};
     s.drafts.forEach(function (d) { (groups[d.status] = groups[d.status] || []).push(d); });
-    $("list").innerHTML = ["published", "scheduled", "ready", "approved", "failed", "rejected"].filter(function (g) { return groups[g]; }).map(function (g) {
+    $("list").innerHTML = ["night", "published", "scheduled", "ready", "approved", "failed", "rejected"].filter(function (g) { return groups[g]; }).map(function (g) {
       return '<div class="group"><h3>' + LABEL[g] + " (" + groups[g].length + ")</h3>" + groups[g].map(function (d) {
         var badge = d.gate ? '<span class="ok">✓ checks</span>' : d.stage === "done" ? '<span class="meh">review</span>' : '<span class="bad">✗ ' + esc(d.stage || "") + "</span>";
-        return '<button class="item' + (current === d.id ? " on" : "") + '" data-id="' + esc(d.id) + '"><b>' + esc(d.title) + "</b><small>" +
+        return '<button class="item' + (current === d.id ? " on" : "") + '" data-id="' + esc(d.id) + '"><b>' + (d.for === "night" ? "📖 " : "") + esc(d.title) + "</b><small>" + (d.for === "night" ? "Story Night remix · " : "") +
           (d.day ? "Daily #" + d.day + " · " + d.date + " · " : "") + esc(d.place) + "<br>" + badge + " · critic: " + esc(d.critic || "–") + (d.blockers ? ' · <span class="bad">' + d.blockers + " blocker</span>" : "") + " · $" + d.usd.toFixed(2) + "</small></button>";
       }).join("") + "</div>";
     }).join("") || '<p class="muted">No drafts yet. Generate a batch, or try a dry run.</p>';
@@ -113,11 +113,15 @@ function render(res) {
   h += '<div class="row">';
   if (s && res.check && res.check.ok) h += '<button class="primary" id="a-play">▶ Play it in the game</button>';
   if (["ready", "failed", "rejected"].includes(m.status)) h += '<button id="a-approve">Approve</button>';
-  if (!["published", "rejected"].includes(m.status)) h += '<button class="danger" id="a-reject">Reject</button>';
-  if (["approved", "scheduled"].includes(m.status)) h += '<input type="date" id="a-date" value="' + (res.date || state.stock.nextEmptyDate) + '"><button id="a-schedule">' + (m.status === "scheduled" ? "Move" : "Schedule") + "</button>";
+  if (!["published", "rejected", "night"].includes(m.status)) h += '<button class="danger" id="a-reject">Reject</button>';
+  var night = m.for === "night";
+  if (night && m.status === "approved") h += '<button class="primary" id="a-npub">Publish to Story Night</button>';
+  if (m.status === "night") h += '<button class="danger" id="a-nunpub">Take off Story Night</button>';
+  if (!night && m.status === "published") h += '<button id="a-remix">📖 Remix for Story Night</button>';
+  if (!night && ["approved", "scheduled"].includes(m.status)) h += '<input type="date" id="a-date" value="' + (res.date || state.stock.nextEmptyDate) + '"><button id="a-schedule">' + (m.status === "scheduled" ? "Move" : "Schedule") + "</button>";
   if (m.status === "scheduled") h += '<button id="a-unschedule">Unschedule</button><button class="primary" id="a-publish">Publish to Firebase</button>';
   if (m.status === "published") h += '<button class="danger" id="a-unpublish">Take down (before its day)</button>';
-  if (!["published", "scheduled"].includes(m.status)) h += '<button id="a-redo">Regenerate whole story</button><select id="a-case"><option value="">Rewrite case…</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>';
+  if (!["published", "scheduled", "night"].includes(m.status)) h += '<button id="a-redo">Regenerate whole story</button><select id="a-case"><option value="">Rewrite case…</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>';
   h += "</div>";
   // checks
   var errs = res.check ? res.check.errors : (r.errors || []), warns = res.check ? res.check.warnings : (r.warnings || []);
@@ -163,6 +167,9 @@ function wire(d, res) {
   var id = d.meta.id, on = function (el, f) { if ($(el)) $(el).onclick = f; };
   on("a-play", function () { api("/api/play/" + id + "/reset/0", {}).then(function () { window.open("/index.html?test=1&lb=demo&d5=local&fresh=1&draft=" + encodeURIComponent(id), "_blank"); }); });
   on("a-approve", function () { act(id, "approve"); });
+  on("a-npub", function () { if (confirm("Publish this story to Story Night? Hosts can pick it at once.")) act(id, "night-publish"); });
+  on("a-nunpub", function () { if (confirm("Take this story off Story Night?")) act(id, "night-unpublish"); });
+  on("a-remix", function () { if (confirm("Write a Story Night remix of this story: same setting, a new cast and a different twist? It costs about the same as a new story (free with dry run).")) api("/api/generate", { remix: id, dry: $("dry").checked }).then(function () { toast("Remix started."); load(); }).catch(function (e) { toast(e.message); }); });
   on("a-reject", function () { var why = prompt("Why reject it? (kept in the history so new stories avoid it)"); if (why !== null) act(id, "reject", { reason: why }); });
   on("a-schedule", function () { act(id, "schedule", { date: $("a-date").value }); });
   on("a-unschedule", function () { act(id, "unschedule"); });
