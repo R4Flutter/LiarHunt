@@ -5,7 +5,7 @@
   "crazygames"  The CrazyGames build (tools/build-crazygames.mjs adds the SDK).
                 Ads, saves (Data module), username, mute setting, invite links
                 and gameplay/loading events all go through the CrazyGames SDK v3.
-  "web"         Your own site (GitHub Pages). Ads use js/ads.js (AdSense or none),
+  "web"         Your own site (Cloudflare). Ads use js/ads.js (AdSense or none),
                 sharing uses WhatsApp / X / copy. Saves go to the player's Firebase account
                 (game.js); localStorage is only used when Firebase isn't set up.
 */

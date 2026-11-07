@@ -1,0 +1,12 @@
+// Cloudflare hosting: the repo root is served as static files (no Worker code, so requests are free and unlimited).
+// .assetsignore lists what is not uploaded. _headers sets the response headers.
+{
+  "name": "liarhunt",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": ".",
+    // Serve /privacy.html as-is, like GitHub Pages did (the default would redirect it to /privacy).
+    "html_handling": "none",
+    "not_found_handling": "404-page"
+  }
+}

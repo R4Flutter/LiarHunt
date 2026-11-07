@@ -5,3 +5,4 @@ dist/
 _store
 .claude/
 .worktrees/
+.wrangler/

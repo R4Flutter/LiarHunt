@@ -4,7 +4,7 @@
 
 A detective game for the browser. In every case the police checked a few facts and three suspects tell their story. One story can't be true. Tap the liar.
 
-It is plain HTML, CSS and JavaScript with no build step. The web version is hosted free on GitHub Pages. A one-command build makes the CrazyGames version (section 3).
+It is plain HTML, CSS and JavaScript with no build step. The web version is hosted free on Cloudflare. A one-command build makes the CrazyGames version (section 3).
 
 ---
 
@@ -102,9 +102,9 @@ To start over, clear the site's data in your browser (the save is in `localStora
 
 ---
 
-## 2. Web hosting (GitHub Pages)
+## 2. Web hosting (Cloudflare)
 
-The game is live at **https://liarhunt.com**. Every push to `main` updates it within a minute or two.
+The game is live at **https://liarhunt.com**, served free by Cloudflare (unlimited bandwidth and requests for static files). Every push to `main` updates it within a minute or two.
 
 ```
 git add -A
@@ -112,27 +112,34 @@ git commit -m "Describe your change"
 git push
 ```
 
-### Move to your own domain (players keep their progress)
+`wrangler.jsonc` tells Cloudflare to serve the repo root as plain files. `_headers` sets response headers, `_redirects` makes `/` serve `index.html`, and `.assetsignore` lists what is not uploaded. Pages keep their `.html` addresses (`/privacy.html`), exactly as on GitHub Pages.
 
-A player's account sign-in is kept by the browser separately for each web address. Players signed in with Google just sign in again at the new address. For everyone else, the **old address forwards them to the new one and brings their progress along** (with a one-time save code). Add the new domain to Firebase's authorized domains too. For that, the old address has to stay online: the new domain goes in a **new repository**, and this repository stays behind as the old address. Example domain: `whoslying.com`.
+Try it on your computer the way Cloudflare serves it: `npx wrangler dev`, then open http://localhost:8787.
 
-1. At your domain seller, add these DNS records:
-   - 4 × `A` records for `@`: `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`
-   - 1 × `CNAME` record for `www`: `r4flutter.github.io`
-2. On GitHub, create a new empty repository, for example `whoslying-site`.
-3. In this folder, keep the current repository as `old` and add the new one:
-   ```
-   git remote rename origin old
-   git remote add origin https://github.com/R4Flutter/whoslying-site.git
-   ```
-4. In `js/config.js` set `siteUrl: "https://whoslying.com"` and `movedTo: "https://whoslying.com"` (`movedTo` does nothing on the new address itself). Replace `https://r4flutter.github.io/WhoLies` with `https://whoslying.com` in `index.html`, `archive.html`, `privacy.html`, `robots.txt` and `sitemap.xml`. Commit, then push to both:
-   ```
-   git push old main
-   git push origin main
-   ```
-5. Make a file named `CNAME` (no extension) with one line: `whoslying.com`. Commit it and push **only to the new repository** (`git push origin main`). It has to be in `main` there, because the publish workflow copies `main` over `gh-pages` on every push. Never push it to `old`: then GitHub would send the old address straight to the new one without running the game, and players would lose their progress.
-6. In the new repository: **Settings → Pages → Build and deployment → Deploy from a branch → `gh-pages`**. Check the custom domain shows `whoslying.com`, and tick **Enforce HTTPS** once it's allowed (can take up to an hour).
-7. From now on push only to `origin`. Leave the old repository as it is: it keeps forwarding players, with their progress, for as long as it exists.
+The old address `https://r4flutter.github.io/WhoLies` is the separate `old` repository, still on GitHub Pages. It forwards players to liarhunt.com with their progress. Leave it as it is.
+
+### One-time setup (moving from GitHub Pages)
+
+Players keep their progress: the address stays `liarhunt.com`, so their browser saves and Firebase sign-in carry on. Nothing changes for AdSense, Search Console or Firebase.
+
+**A. Put the site on Cloudflare** (liarhunt.com keeps running on GitHub meanwhile)
+
+1. Push `wrangler.jsonc`, `_redirects` and `.assetsignore` to `main`.
+2. Sign up free at https://dash.cloudflare.com.
+3. **Workers & Pages → Create → Import a repository**, connect GitHub and pick `R4Flutter/LiarHunt`. Project name `liarhunt` (it must match `name` in `wrangler.jsonc`), production branch `main`, build command empty, deploy command `npx wrangler deploy`. Deploy.
+4. Open the `liarhunt.<your-name>.workers.dev` link it gives you and play a case. Google sign-in won't work on that test address (Firebase only allows liarhunt.com); that's expected.
+
+**B. Move the domain to Cloudflare**
+
+5. Cloudflare home → **Add a domain** → `liarhunt.com` → **Free** plan. It copies your current DNS records.
+6. At GoDaddy: **My Products → liarhunt.com → DNS → Nameservers → Change → I'll use my own nameservers**, and enter the two Cloudflare gives you. Wait for Cloudflare's "your domain is active" email (minutes to a few hours). The site keeps working the whole time, because the copied records still point to GitHub.
+7. In Cloudflare **DNS → Records**, delete the four `A` records for `liarhunt.com` (`185.199.x.153`) and the `www` CNAME (`r4flutter.github.io`). Straight away, in **Workers & Pages → liarhunt → Settings → Domains & Routes → Add → Custom domain**, add `liarhunt.com`, then add `www.liarhunt.com`. (The site is down for the minute in between.)
+8. **Rules → Redirect Rules → Create from template → Redirect from WWW to root**, so `www.liarhunt.com` forwards to `liarhunt.com` as it did before.
+9. Check: `curl -sI https://liarhunt.com/` shows `server: cloudflare`.
+
+**C. Switch off GitHub Pages for this repository**
+
+10. Delete `.github/workflows/publish.yml`, `CNAME` and `.nojekyll`, then push. On GitHub, **LiarHunt → Settings → Pages**, unpublish the site. You can delete the `gh-pages` branch. Don't touch the `old` WhoLies repository.
 
 ---
 

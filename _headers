@@ -1,4 +1,4 @@
-# Cloudflare Pages reads this file. It adds safe headers and caches the font files for a year.
+# Cloudflare reads this file. It adds safe headers and caches the font files for a year.
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin

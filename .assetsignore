@@ -1,0 +1,15 @@
+# Not uploaded to Cloudflare (same format as .gitignore)
+.git
+.github
+.claude
+.worktrees
+.audit-tmp
+.wrangler
+node_modules
+dist
+docs
+wrangler.jsonc
+.assetsignore
+.gitignore
+.nojekyll
+CNAME
