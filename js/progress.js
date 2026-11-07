@@ -33,9 +33,7 @@
     magnifier5: { kind: "item", item: "magnifier", qty: 5, price: 250, name: "5 Magnifiers", desc: "Save 50 coins." },
     freeze1: { kind: "item", item: "freeze", qty: 1, price: 50, name: "Time Freeze", desc: "Adds 10 seconds in Rush." },
     freeze3: { kind: "item", item: "freeze", qty: 3, price: 120, name: "3 Time Freezes", desc: "Save 30 coins." },
-    shield1: { kind: "item", item: "shield", qty: 1, price: 200, name: "Streak Shield", desc: "Saves your Daily streak if you miss a day. Hold up to 2." },
-    key1: { kind: "item", item: "key", qty: 1, price: 120, name: "Case Key", desc: "Catch up on a Daily Case you missed, with full rewards." },
-    key3: { kind: "item", item: "key", qty: 3, price: 300, name: "3 Case Keys", desc: "Save 60 coins." }
+    shield1: { kind: "item", item: "shield", qty: 1, price: 200, name: "Streak Shield", desc: "Saves your Daily streak if you miss a day. Hold up to 2." }
   };
   var MAX_SHIELDS = 2;
   var THEMES = [
@@ -51,7 +49,7 @@
   /* ---------- 7-day login calendar ---------- */
   var LOGIN = [
     { coins: 30 }, { coins: 40 }, { coins: 20, magnifier: 1 }, { coins: 60 },
-    { coins: 40, freeze: 1 }, { coins: 80 }, { coins: 150, magnifier: 2, key: 1 }
+    { coins: 40, freeze: 1 }, { coins: 80 }, { coins: 250, magnifier: 2 }
   ];
 
   /* ---------- daily missions ---------- */
@@ -113,7 +111,10 @@
     S = state;
     S.xp = S.xp || 0;
     S.coins = S.coins || 0;
-    S.inv = Object.assign({ magnifier: 3, freeze: 1, shield: 1, key: 2 }, S.inv || {});
+    S.inv = Object.assign({ magnifier: 3, freeze: 1, shield: 1 }, S.inv || {});
+    // Case Keys are retired: each one still held becomes 120 coins, once. The game shows keysRetired in a toast, then clears it.
+    if (S.inv.key > 0) { S.coins += 120 * S.inv.key; S.keysRetired = (S.keysRetired || 0) + 120 * S.inv.key; }
+    delete S.inv.key;
     S.tot = Object.assign({ solved: 0, stars3: 0, nohint: 0, twists: 0, bestCombo: 0, rushBest: 0, dailyDone: 0, perfectDays: 0, chapters: 0, bookCh: 0, bookStars: 0, themesBought: 0, liars: 0,
       bestStreak: 0, shieldSaves: 0, nights: 0, masterminds: 0, challengesWon: 0, promotions: 0 }, S.tot || {});
     S.themes = Object.assign({ owned: ["auto", "precinct", "night"], current: "precinct" }, S.themes || {});
@@ -134,7 +135,7 @@
   function grant(reward) {
     if (!reward) return;
     if (reward.coins) addCoins(reward.coins);
-    ["magnifier", "freeze", "key"].forEach(function (k) { if (reward[k]) addItem(k, reward[k]); });
+    ["magnifier", "freeze"].forEach(function (k) { if (reward[k]) addItem(k, reward[k]); });
     if (reward.shield) {
       var room = Math.max(0, MAX_SHIELDS - (S.inv.shield || 0)), add = Math.min(room, reward.shield);
       addItem("shield", add);
@@ -167,7 +168,7 @@
     if (o.replay) { var rx = rookie(15); addXp(rx); checkAch(); return { coins: 0, xp: rx }; }
     var coins = [0, 15, 25, 40][o.stars], items = null;
     if (o.chapterDone) { coins += 100 + 25 * o.ch; items = { magnifier: 1 }; S.tot.bookCh = Math.max(S.tot.bookCh, o.ch); }
-    if (o.bookDone) { coins += 300; items = { magnifier: 3, key: 2 }; }
+    if (o.bookDone) { coins += 540; items = { magnifier: 3 }; }
     S.tot.bookStars += o.stars;
     if (o.stars === 3) { S.tot.stars3++; missionProgress("stars3", 1); }
     if (!o.hint) { S.tot.nohint++; missionProgress("nohint", 1); }
@@ -215,7 +216,7 @@
 
   // Daily: one result per case, and the end of the day's set
   function dailyCase(o) {
-    if (o.replay && !o.catchup) return { coins: 0, xp: o.correct ? 10 : 0 };
+    if (o.replay) return { coins: 0, xp: o.correct ? 10 : 0 };
     var coins = o.correct ? 12 : 0, xp = rookie(o.correct ? 35 : 5);
     if (o.correct) {
       S.tot.solved++; S.tot.liars++;
@@ -227,22 +228,22 @@
     return { coins: coins, xp: xp };
   }
   // failed: a Daily 5 story ended early (a wrong answer). The day still counts, but there is no completion bonus.
-  function dailyDone(score, replay, catchup, failed) {
-    if (replay && !catchup) return { bonus: 0, perfect: 0 };
+  function dailyDone(score, replay, failed) {
+    if (replay) return { bonus: 0, perfect: 0 };
     S.tot.dailyDone++;
     var done = failed ? 0 : 25, perfect = score === 5 ? 50 : 0;
     if (score === 5) S.tot.perfectDays++;
     addCoins(done + perfect);
-    if (!catchup) missionProgress("daily", 1);
+    missionProgress("daily", 1);
     checkAch();
     return { bonus: done, perfect: perfect };
   }
 
   /* ---------- streaks, shields, keys, comeback ---------- */
-  // After a Daily: every 7th day in a row pays a Case Key and a Streak Shield.
+  // After a Daily: every 7th day in a row pays a Streak Shield and 100 coins.
   function streakDay(streak) {
     S.tot.bestStreak = Math.max(S.tot.bestStreak, streak);
-    var reward = streak > 0 && streak % 7 === 0 ? { key: 1, shield: 1 } : null;
+    var reward = streak > 0 && streak % 7 === 0 ? { shield: 1, coins: 100 } : null;
     grant(reward);
     checkAch();
     return reward;
@@ -259,7 +260,7 @@
     checkAch();
     return { used: missed, streak: st.streak };
   }
-  var COMEBACK = { coins: 150, magnifier: 2, key: 1 };
+  var COMEBACK = { coins: 250, magnifier: 2 };
   function comeback() { grant(COMEBACK); return COMEBACK; }
 
   function count(stat) { S.tot[stat] = (S.tot[stat] || 0) + 1; checkAch(); }

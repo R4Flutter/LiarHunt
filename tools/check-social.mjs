@@ -47,5 +47,18 @@ eq("named, unused", WL.nameRule({ playerName: "Raj" }), { canChange: true, chang
 eq("named, used", WL.nameRule({ playerName: "Raj", nameChanges: 1 }), { canChange: false, changesLeft: 0 });
 eq("old save renamed often", WL.nameRule({ playerName: "Raj", nameChanges: undefined }), { canChange: true, changesLeft: 1 });
 
+/* ---------- Case Keys are retired ---------- */
+const P = ctx.WLP;
+const old = P.init({ coins: 10, inv: { key: 3, magnifier: 1 } }, {});
+eq("keys become coins", [old.coins, old.inv.key, old.keysRetired], [370, undefined, 360]);
+eq("only once", P.init(old, {}).coins, 370); // ensure() sets keysRetired only when it converts; the game zeroes it after the toast
+eq("new player has no keys", P.init({}, {}).inv.key, undefined);
+eq("shop sells no keys", Object.keys(P.ITEMS).filter((k) => /^key/.test(k)), []);
+eq("login day 7", [P.LOGIN[6].key, P.LOGIN[6].coins], [undefined, 250]);
+eq("comeback", [P.COMEBACK.key, P.COMEBACK.coins], [undefined, 250]);
+P.init({}, {});
+eq("7-day streak", P.streakDay(7), { shield: 1, coins: 100 });
+eq("old-shape save loads", typeof P.init({ inv: { key: 1 }, league: { week: 2, tier: 1 }, lb: { season: { s: 1 } } }, {}).coins, "number");
+
 console.log(problems ? `\n${problems} problem(s) found.` : "\nAll social checks passed.");
 process.exit(problems ? 1 : 0);

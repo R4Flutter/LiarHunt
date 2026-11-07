@@ -5,7 +5,7 @@
     Train   the training case every new player starts with, with the coach
     Daily   5 cases a day, the same for everyone, one try each, share grid
     Rush    unlimited cases against the clock, 3 lives, one continue per run
-  Also: headquarters (HQ), case files (catch up with Case Keys), the Book map, shop,
+  Also: headquarters (HQ), the Book map, shop,
   achievements, missions, login rewards, streak shields, comeback gifts, friend
   challenges, level-ups, tutorial, and (web only) the Firebase leaderboard,
   weekly leagues, friend groups, reminders and app install.
@@ -249,7 +249,7 @@
   }
 
   /* ---------- screens + HUD ---------- */
-  var SCREENS = ["hq", "case", "book", "results", "map", "shop", "ach", "files", "write", "room"];
+  var SCREENS = ["hq", "case", "book", "results", "map", "shop", "ach", "write", "room"];
   function show(name) {
     screen = name;
     SCREENS.forEach(function (n) { $("scr-" + n).hidden = n !== name; });
@@ -276,7 +276,6 @@
     map: '<svg viewBox="0 0 24 24"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>',
     shop: '<svg viewBox="0 0 24 24"><path d="M5 8h14l-1.2 12H6.2z"/><path d="M9 10V6a3 3 0 0 1 6 0v4"/></svg>',
     ach: '<svg viewBox="0 0 24 24"><circle cx="12" cy="15" r="5"/><path d="M8.6 10.7L6 3h4l2 4 2-4h4l-2.6 7.7"/></svg>',
-    files: '<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>'
   };
   function setHud(main, sub) {
     $("hud-main").textContent = main || ""; $("hud-sub").textContent = sub || "";
@@ -559,7 +558,6 @@
     var li = [];
     if (r.coins) li.push("<li>" + COIN_SVG + " " + r.coins + " coins</li>");
     if (r.magnifier) li.push("<li>🔍 " + r.magnifier + " Magnifier" + (r.magnifier > 1 ? "s" : "") + "</li>");
-    if (r.key) li.push("<li>🔑 " + r.key + " Case Key" + (r.key > 1 ? "s" : "") + "</li>");
     if (r.shield) li.push("<li>🛡️ " + r.shield + " Streak Shield" + (r.shield > 1 ? "s" : "") + "</li>");
     if (r.freeze) li.push("<li>❄ " + r.freeze + " Time Freeze</li>");
     return '<ul class="reward-list">' + li.join("") + "</ul>";
@@ -569,7 +567,7 @@
     notice({
       icon: "🔥", title: st ? st + "-day streak" : "Start a streak",
       text: (st ? "You've played the Daily Case " + st + " day" + (st > 1 ? "s" : "") + " in a row. " : "Play the Daily Case every day to build a streak. ") +
-        "Every 7 days in a row you get a Case Key and a Streak Shield.",
+        "Every 7 days in a row you get a Streak Shield and 100 coins.",
       html: '<p class="shield-line"><b>🛡️ Streak Shields: ' + sh + " of " + P.MAX_SHIELDS + "</b><br>If you miss a day, a shield saves your streak automatically.</p>",
       yes: "Got it", no: sh < P.MAX_SHIELDS ? "Get a shield in the Shop" : "", onNo: function () { openShop(false); }
     });
@@ -588,7 +586,6 @@
       var parts = [COIN_SVG + rew.coins];
       if (rew.magnifier) parts.push(rew.magnifier + " 🔍");
       if (rew.freeze) parts.push(rew.freeze + " ❄");
-      if (rew.key) parts.push(rew.key + " 🔑");
       return '<li class="' + (i + 1 < day ? "past" : i + 1 === day ? "today" : "") + '"><b>' + (i + 1) + "</b>" + parts.join("<br>") + "</li>";
     }).join("");
     var dbl = $("btn-login-double");
@@ -602,7 +599,7 @@
     if (!r) return;
     persist();
     Snd.play("coin");
-    toast("Daily reward: " + r.coins + " coins" + (r.magnifier ? " + " + r.magnifier + " Magnifier" + (r.magnifier > 1 ? "s" : "") : "") + (r.freeze ? " + a Time Freeze" : "") + (r.key ? " + a Case Key" : ""), "gold");
+    toast("Daily reward: " + r.coins + " coins" + (r.magnifier ? " + " + r.magnifier + " Magnifier" + (r.magnifier > 1 ? "s" : "") : "") + (r.freeze ? " + a Time Freeze" : ""), "gold");
     renderCoins(true); renderHQ();
   }
   $("btn-login-claim").addEventListener("click", function () { claimLogin(false); });
@@ -691,24 +688,22 @@
   }
   function careerLabel() { return Book.finished() ? "Career: Book 1 map" : "Continue Career: mission " + Book.current(); }
   function newProg(day) { return { day: day, results: [], hints: [], elapsed: 0, done: false }; }
-  function progressFor(day, catchup) {
-    if (catchup) { if (!S.catchups[day]) { S.catchups[day] = newProg(day); persist(); } return S.catchups[day]; }
+  function progressFor(day) {
     var key = day === TODAY ? "daily" : "replay";
     var p = S[key];
     if (!p || p.day !== day) { p = S[key] = newProg(day); persist(); }
     return p;
   }
-  // mode: "practice" plays a past day for fun (no rewards), even if it was unlocked with a key.
+  // mode: "practice" plays a past day for fun (no rewards).
   function startDaily(day, mode) {
     day = day || TODAY;
     if (mode !== "classic" && d5Wants(day, mode)) { startD5(day, mode); return; }
     if (mode === "classic") mode = undefined;
     var replay = day !== TODAY;
-    var catchup = replay && mode !== "practice" && !!S.unlocked[day];
-    var prog = progressFor(day, catchup);
-    if (prog.done) { showDailyResults(day, prog, replay, null, catchup); return; }
+    var prog = progressFor(day);
+    if (prog.done) { showDailyResults(day, prog, replay, null); return; }
     var away = prog.at ? Math.min(AWAY_MAX, Math.max(0, Date.now() - prog.at)) : 0; // a case left open counts the time away
-    run = { kind: replay ? "replay" : "daily", catchup: catchup, day: day, cases: WL.buildDay(day), prog: prog, idx: prog.results.length, elapsed: (prog.elapsed || 0) + away };
+    run = { kind: replay ? "replay" : "daily", day: day, cases: WL.buildDay(day), prog: prog, idx: prog.results.length, elapsed: (prog.elapsed || 0) + away };
     run.c = run.cases[run.idx];
     WL.track(replay ? "replay_start" : "daily_start", { day: day, case: run.idx + 1 });
     show("case");
@@ -742,8 +737,7 @@
   }
   function d5Wants(day, mode) {
     if (!D5 || (D5.mode === "local" && day !== TODAY)) return false;
-    var catchup = day !== TODAY && mode !== "practice" && !!S.unlocked[day];
-    var p = day === TODAY ? (S.daily && S.daily.day === day ? S.daily : null) : catchup ? S.catchups[day] : (S.replay && S.replay.day === day ? S.replay : null);
+    var p = day === TODAY ? (S.daily && S.daily.day === day ? S.daily : null) : (S.replay && S.replay.day === day ? S.replay : null);
     if (p && p.results.length && !p.d5) return false; // started as a classic Daily: finish it that way
     return day === TODAY ? d5Edition[day] !== null : !!d5Edition[day];
   }
@@ -795,16 +789,16 @@
       d5Load(day).then(function () { d5Busy(false); if (d5Wants(day, mode)) startD5(day, mode); else startDaily(day, "classic"); });
       return;
     }
-    var replay = day !== TODAY, catchup = replay && mode !== "practice" && !!S.unlocked[day];
-    var prog = progressFor(day, catchup), st = d5St(day), api = d5Api(day, prog);
+    var replay = day !== TODAY;
+    var prog = progressFor(day), st = d5St(day), api = d5Api(day, prog);
     prog.d5 = ed.id; prog.title = ed.title; prog.strikes = ed.strikes;
-    if (prog.done) { showDailyResults(day, prog, replay, null, catchup); return; }
+    if (prog.done) { showDailyResults(day, prog, replay, null); return; }
     d5Busy(true);
     api.run(day).then(function (r) { return r || api.start(day, ed.strikes); }).then(function (r) {
       st.run = r;
       prog.results = d5Results(r); persist();
       var away = prog.at ? Math.min(AWAY_MAX, Math.max(0, Date.now() - prog.at)) : 0;
-      run = { kind: replay ? "replay" : "daily", catchup: catchup, day: day, cases: [null, null, null, null, null], prog: prog, idx: r.grid.length,
+      run = { kind: replay ? "replay" : "daily", day: day, cases: [null, null, null, null, null], prog: prog, idx: r.grid.length,
         elapsed: (prog.elapsed || 0) + away, d5: { ed: ed, st: st, api: api, r: r } };
       if (d5Over(r)) { d5Busy(false); finishDaily(); return; }
       if (!r.grid.length) WL.track(replay ? "replay_start" : "d5_start", { day: day, story: ed.id });
@@ -969,7 +963,7 @@
       if (!x.f) { toast(WL.istHour() < 6 ? "That story's ending opens at 6 AM." : "That ending isn't open yet."); return; }
       showNotice({ icon: "📜", eyebrow: "Daily #" + day + " · the ending", title: x.ed ? x.ed.title : "The ending", html: finaleHtml(x.f), yes: "Close" });
       WL.track("d5_finale_view", { day: day, from: screen });
-    }).catch(function () { toast("Couldn't reach the case files. Try again in a moment."); });
+    }).catch(function () { toast("Couldn't open that story. Try again in a moment."); });
   }
   function d5EndCard(day, p) {
     var box = $("d5-end");
@@ -979,7 +973,7 @@
       if (f) { box.innerHTML = '<h3 class="sec">How it happened</h3>' + finaleHtml(f); WL.track("d5_finale_view", { day: day, from: "results" }); }
       else box.innerHTML = '<div class="d5-locked"><b>The full story opens at midnight</b><span>Come back in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) +
         "</strong> to see how “" + esc(p.title) + "” ended, and to start a new mystery.</span></div>";
-    }).catch(function () { box.innerHTML = '<p class="muted small">The ending will be in Case files once the day is over.</p>'; });
+    }).catch(function () { box.innerHTML = '<p class="muted small">The ending opens on the Daily card once the day is over.</p>'; });
   }
 
   /* ---------- the Investigation Notebook ----------
@@ -1175,7 +1169,7 @@
       setHud(run.preview ? "Your case" : "A friend's case", run.preview ? "Try it like your friends will" : "Written by " + c.by);
       $("case-kicker").textContent = "Written by " + c.by + " · One try";
     } else {
-      setHud("Daily #" + run.day + (run.catchup ? " catch-up" : run.kind === "replay" ? " practice" : ""), "Case " + (run.idx + 1) + " of 5" + (c.d5 ? " · " + run.d5.ed.title : ""));
+      setHud("Daily #" + run.day + (run.kind === "replay" ? " practice" : ""), "Case " + (run.idx + 1) + " of 5" + (c.d5 ? " · " + run.d5.ed.title : ""));
       $("case-kicker").textContent = c.d5 ? "Case " + c.n + " of 5 · " + (c.n === 5 ? "The verdict" : "One wrong answer ends the day") : (LEVEL[c.level] || "Case") + " · One try";
     }
     $("case-title").textContent = c.title;
@@ -1339,7 +1333,7 @@
     $("stars-live").hidden = true;
     $("lives").hidden = k !== "rush";
     $("replay-tag").hidden = !(k === "replay" || k === "friend" || k === "room");
-    $("replay-tag").textContent = k === "room" ? "Live" : k === "friend" ? (run.preview ? "Preview" : run.again ? "Again" : "Friend's case") : run.catchup ? "Catch-up" : k === "replay" ? "Practice" : "Replay";
+    $("replay-tag").textContent = k === "room" ? "Live" : k === "friend" ? (run.preview ? "Preview" : run.again ? "Again" : "Friend's case") : k === "replay" ? "Practice" : "Replay";
     var combo = k === "rush" ? run.combo : 0;
     $("combo").hidden = combo < 2;
     $("combo").innerHTML = FLAME_SVG + "×" + combo;
@@ -1730,7 +1724,7 @@
     if (run.d5) run.prog.results = d5Results(run.d5.r); // the file's record, with the cases locked after a wrong answer
     else run.prog.results.push(code);
     run.prog.hints.push(run.hint); run.prog.elapsed = run.elapsed; run.prog.cur = null; run.prog.at = 0;
-    var r = P.dailyCase({ correct: correct, hint: run.hint, twist: c.mode !== "liar" && !c.d5, replay: run.kind === "replay", catchup: run.catchup });
+    var r = P.dailyCase({ correct: correct, hint: run.hint, twist: c.mode !== "liar" && !c.d5, replay: run.kind === "replay" });
     persist();
     var last = run.prog.results.length >= run.cases.length, locked = c.d5 && !correct && last && c.n < 5;
     setVerdict({
@@ -1845,7 +1839,7 @@
 
   /* ---------- daily end ---------- */
   function finishDaily() {
-    var p = run.prog, day = run.day, replay = run.kind === "replay", catchup = !!run.catchup;
+    var p = run.prog, day = run.day, replay = run.kind === "replay";
     p.done = true; p.elapsed = run.elapsed;
     var score = scoreOf(p.results), st = S.stats, extra = {};
     if (!replay) {
@@ -1859,22 +1853,16 @@
         extra.streak = P.streakDay(st.streak);
       }
       S.history[day] = { score: score, grid: p.results.join(""), time: p.elapsed };
-    } else if (catchup) {
-      // A catch-up counts for that day's clue and rewards, but not as a day played, the streak or the leaderboard.
-      st.catchups = (st.catchups || 0) + 1;
-      if (score === 5) st.perfect++;
-      st.dist[score] = (st.dist[score] || 0) + 1;
-      S.history[day] = { score: score, grid: p.results.join(""), time: p.elapsed, catchup: true };
     } else if (!S.history[day]) {
       S.history[day] = { score: score, grid: p.results.join(""), time: p.elapsed, replay: true };
     }
     if (run.d5 && S.history[day]) S.history[day].story = run.d5.ed.title;
     var failed = !!run.d5 && d5Failed(p.results, run.d5.ed.strikes);
-    var r = P.dailyDone(score, replay, catchup, failed);
+    var r = P.dailyDone(score, replay, failed);
     persist();
-    WL.track(run.d5 ? (failed ? "d5_over" : "d5_complete") : "daily_complete", { day: day, score: score, replay: replay, catchup: catchup, seconds: Math.round(p.elapsed / 1000), days_played: st.played });
+    WL.track(run.d5 ? (failed ? "d5_over" : "d5_complete") : "daily_complete", { day: day, score: score, replay: replay, seconds: Math.round(p.elapsed / 1000), days_played: st.played });
     midgame("daily_done").then(function () {
-      showDailyResults(day, p, replay, r, catchup, extra);
+      showDailyResults(day, p, replay, r, extra);
       Snd.play(score >= 3 ? "fanfare" : "fail");
       if (score === 5 && !replay) { FX.confetti({ count: 140 }); Plat.happytime(); }
     });
@@ -1952,11 +1940,11 @@
     if (c) c.addEventListener("click", function () { Snd.play("click"); goHQ(); });
   }
   function focusTitle() { try { $("res-title").focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
-  function showDailyResults(day, p, replay, bonus, catchup, extra) {
+  function showDailyResults(day, p, replay, bonus, extra) {
     stopClock();
     show("results");
-    var label = catchup ? " catch-up" : replay ? " practice" : "";
-    setHud("Daily #" + day, catchup ? "Catch-up" : replay ? "Practice" : "Results");
+    var label = replay ? " practice" : "";
+    setHud("Daily #" + day, replay ? "Practice" : "Results");
     var score = scoreOf(p.results), hints = p.results.filter(function (r) { return r === "y"; }).length;
     $("res-kicker").textContent = "Daily #" + day + label + (p.d5 ? " · " + p.title : " complete");
     $("res-title").textContent = DAILY_TITLES[score];
@@ -1977,7 +1965,7 @@
     setShare(function () { return dailyShareText(day, p, replay, known); });
     rankCard("");
     renderVersus(day, p);
-    renderExtras(day, replay, catchup, extra || {});
+    renderExtras(day, replay, extra || {});
     if (!replay && day === TODAY && lbOn()) {
       var onRank = function (rank) { known = rank; setShare(shareFn); };
       if (S.settings.playerName) postDaily(day, p, onRank);
@@ -2000,7 +1988,6 @@
     acts.appendChild(actionBtn(careerLabel(), "primary", function () { Book.start(); }));
     if (replay) {
       acts.appendChild(actionBtn("Practice this day again", "ghost", function () { S.replay = null; persist(); startDaily(day, "practice"); }));
-      acts.appendChild(actionBtn("Back to case files", "ghost", openFiles));
     }
     $("review").hidden = false; $("review").open = false;
     var d5st = p.d5 && S.d5 && S.d5[day];
@@ -2651,9 +2638,9 @@
     return '<div class="next-card"><span class="nc-ico" aria-hidden="true">' + icon + '</span><span class="nc-txt"><b>' + title + "</b><span>" + text + "</span></span>" +
       (btn ? '<button class="btn small primary" type="button" data-next="' + btn[0] + '">' + btn[1] + "</button>" : "") + "</div>";
   }
-  function renderExtras(day, replay, catchup, extra) {
+  function renderExtras(day, replay, extra) {
     var h = [];
-    if (extra.streak) h.push(nextCard("🔥", dailyStreak() + " days in a row!", "You earned a Case Key and a Streak Shield.", null));
+    if (extra.streak) h.push(nextCard("🔥", dailyStreak() + " days in a row!", "You earned a Streak Shield and 100 coins.", null));
     if (!replay && day === TODAY) {
       if (unlocked("rush")) h.push(nextCard("⏱️", "Fancy a quick Rush?", "Catch as many liars as you can before the clock runs out.", ["rush", "Play"]));
       if (web()) h.push(nextCard("🖋️", "Fool your friends", "Write your own case, hide one lie and send it to them.", ["write", "Write"]));
@@ -2893,77 +2880,6 @@
         onYes: function () { var p = joinGroupFlow(code); if (p) p.catch(function (e) { toast(esc(LB.friendlyError(e))); }); } });
     }).catch(function () { toast("That group link doesn't work any more."); });
   }
-
-  /* ---------- case files: past Dailies, catch up with Case Keys ---------- */
-  var filesUntil = 1;
-  function openFiles() {
-    show("files");
-    setHud("Case files", "Every Daily so far");
-    filesUntil = Math.max(1, TODAY - 13);
-    renderFiles();
-    filesStories();
-  }
-  // Which past days had a Daily 5 story (one read each), so they replay as that story.
-  function filesStories() {
-    if (!D5 || D5.mode !== "firebase") return;
-    var days = []; for (var d = TODAY - 1; d >= filesUntil; d--) if (d5Edition[d] === undefined) days.push(d);
-    if (days.length) Promise.all(days.map(d5Load)).then(function () { if (screen === "files") renderFiles(); });
-  }
-  // A past story replays once its day is over everywhere: 6 AM IST the next morning.
-  function archiveOpen(d) { return d < TODAY - 1 || (d === TODAY - 1 && WL.istHour() >= 6); }
-  function renderFiles() {
-    var keys = S.inv.key || 0;
-    $("files-keys").innerHTML = '<span class="key-ico" aria-hidden="true">🔑</span><span>You have <b>' + keys + " Case Key" + (keys === 1 ? "" : "s") +
-      "</b>. A key opens a missed day with full rewards. Earn one every 7 days in a row, or buy them in the Shop.</span>";
-    var h = "";
-    for (var d = TODAY; d >= filesUntil; d--) {
-      var hist = S.history[d], played = hist && !hist.replay, today = d === TODAY, prog = today && S.daily && S.daily.day === TODAY ? S.daily : null;
-      var date = dayName(d) + ", " + WL.formatDate(WL.dateForDay(d), "short"), status, acts;
-      var story = d5Edition[d];
-      if (played) {
-        status = '<span class="res-grid small">' + cells(hist.grid.split(""), 5) + "</span><span>" + hist.score + "/5" + (hist.catchup ? " · catch-up" : "") + "</span>";
-        acts = today ? '<button class="btn small ghost" type="button" data-play="' + d + '">Result</button>'
-          : (story ? '<button class="btn small ghost" type="button" data-end="' + d + '">Ending</button>' : "") + '<button class="btn small ghost" type="button" data-practice="' + d + '">' + (story ? "Replay" : "Practice") + "</button>";
-      } else if (today) {
-        status = prog && prog.results.length ? "Case " + (prog.results.length + 1) + " of 5" : "New today";
-        acts = '<button class="btn small danger" type="button" data-play="' + d + '">' + (prog && prog.results.length ? "Continue" : "Play") + "</button>";
-      } else if (S.unlocked[d]) {
-        status = "Unlocked";
-        acts = '<button class="btn small primary" type="button" data-play="' + d + '">Continue</button>';
-      } else {
-        status = '<span class="muted">Missed</span>';
-        acts = '<button class="btn small primary" type="button" data-unlock="' + d + '">Catch up · 🔑</button>' +
-          '<button class="link-btn" type="button" data-practice="' + d + '">Practice</button>';
-      }
-      if (story && !today && !played && !archiveOpen(d)) acts = '<span class="muted small">Replays from 6 AM</span>';
-      h += '<li class="file' + (played ? " played" : today ? " today" : S.unlocked[d] ? " open" : " missed") + '"><div class="file-head"><b>Daily #' + d + (story ? " · " + esc(story.title) : "") + "</b>" +
-        '<span class="muted small">' + date + '</span></div><div class="file-status">' + status + '</div><div class="file-acts">' + acts + "</div></li>";
-    }
-    $("files-list").innerHTML = h;
-    $("files-more").hidden = filesUntil <= 1;
-  }
-  function unlockDay(d) {
-    if ((S.inv.key || 0) < 1) {
-      showNotice({ icon: "🔑", title: "No Case Keys left", text: "You get a key every 7 days in a row, on day 7 of the login calendar, or in the Shop.", yes: "Go to the Shop", no: "Close", onYes: function () { openShop(false); } });
-      return;
-    }
-    if (d5Edition[d] && !archiveOpen(d)) { toast("That story replays from 6 AM."); return; }
-    P.useItem("key");
-    S.unlocked[d] = true; persist();
-    Snd.play("buy");
-    WL.track("catchup_unlock", { day: d, ago: TODAY - d });
-    startDaily(d);
-  }
-  $("files-list").addEventListener("click", function (e) {
-    var b = e.target.closest("[data-play],[data-practice],[data-unlock],[data-end]");
-    if (!b) return;
-    Snd.play("click");
-    if (b.dataset.end) openFinale(+b.dataset.end);
-    else if (b.dataset.unlock) unlockDay(+b.dataset.unlock);
-    else if (b.dataset.practice) { S.replay = null; persist(); startDaily(+b.dataset.practice, "practice"); }
-    else startDaily(+b.dataset.play);
-  });
-  $("files-more").addEventListener("click", function () { filesUntil = Math.max(1, filesUntil - 14); renderFiles(); filesStories(); });
 
   /* ---------- write a case for friends ----------
      The whole case goes into the link (see WL.packWritten), so nothing is stored online.
@@ -3898,6 +3814,7 @@
   }
   function startupChecks() {
     seasonCheck();
+    if (S.keysRetired) { toast("Case Keys are retired: you got " + S.keysRetired + " coins.", "gold", 4200); S.keysRetired = 0; persist(); renderCoins(true); }
     var gift = Book.migrate(); // players of the old endless Career: the news, and a thank-you
     if (gift) {
       notice({ icon: "📒", eyebrow: "Career has changed", title: "Career is now one big story", sound: "fanfare",
@@ -3959,7 +3876,6 @@
   $("btn-daily").addEventListener("click", function () { Snd.play("click"); startDaily(TODAY); });
   $("btn-season").addEventListener("click", function () { Snd.play("click"); openBoard("season"); });
   $("streak-chip").addEventListener("click", function () { Snd.play("click"); streakInfo(); });
-  $("btn-files").addEventListener("click", function () { Snd.play("click"); openFiles(); });
   $("btn-friends").addEventListener("click", function () { Snd.play("click"); openBoard("friends"); });
   if ($("league-card")) $("league-card").addEventListener("click", function () { Snd.play("click"); openBoard("league"); });
   $("tile-rush").addEventListener("click", function () { Snd.play("click"); if (!unlocked("rush")) return toast("Rush opens tomorrow, or after 10 solved cases."); startRush(); });
@@ -4053,8 +3969,6 @@
     // music starts off on phones (people play in public, and it saves data); they can switch it on in Settings
     S.settings = Object.assign({ sound: true, music: !coarse, tutorialDone: false, playerName: "" }, S.settings || {});
     S.lb = Object.assign({ posted: {}, claimed: {}, badges: [], ranks: {} }, S.lb || {});
-    S.unlocked = S.unlocked || {};   // past days opened with a Case Key
-    S.catchups = S.catchups || {};   // progress on those days
     delete S.arc; delete S.night; // the Case of the Week and the Night Shift are gone
     S.league = Object.assign({ week: 0, tier: 0, entered: false }, S.league || {});
     S.groups = S.groups || [];
@@ -4188,7 +4102,7 @@
   // Test hook for automated checks (only with ?test=1 in the address).
   if (/[?&]test=1/.test(location.search)) window.__WLtest = {
     run: function () { return run; }, room: function () { return room; }, state: function () { return S; }, persist: persist,
-    hq: goHQ, train: startTraining, book: Book, rush: startRush, daily: startDaily, files: openFiles,
+    hq: goHQ, train: startTraining, book: Book, rush: startRush, daily: startDaily,
     cloud: function () { return cloud; }, push: function () { S.sync.dirty = true; return cloudPush(); },
     d5: function () { return { editions: d5Edition, store: S.d5, run: run && run.d5 ? run.d5.r : null }; }, notebook: openNotebook
   };
