@@ -1040,8 +1040,14 @@
     return "";
   }
 
+  // A player picks a name once and may change it once after that.
+  function nameRule(st) {
+    var left = st && st.playerName ? Math.max(0, 1 - (st.nameChanges || 0)) : 1;
+    return { canChange: left > 0, changesLeft: left };
+  }
+
   window.WL = {
-    inAppBrowser: inAppBrowser,
+    inAppBrowser: inAppBrowser, nameRule: nameRule,
     cfg: CFG, rngFrom: rngFrom, shuffle: shuffle, pick: pick,
     dayNumber: dayNumber, dateForDay: dateForDay, formatDate: formatDate, msToNextDay: msToNextDay, istHour: istHour,
     buildDay: buildDay, generateCase: generateCase, endlessSpec: endlessSpec, endlessSeconds: endlessSeconds,

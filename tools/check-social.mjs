@@ -41,5 +41,11 @@ eq("chrome", WL.inAppBrowser(UA.chrome), "");
 eq("safari", WL.inAppBrowser(UA.safari), "");
 eq("desktop", WL.inAppBrowser(UA.desk), "");
 
+/* ---------- names: choose once, change once ---------- */
+eq("no name yet", WL.nameRule({}), { canChange: true, changesLeft: 1 });
+eq("named, unused", WL.nameRule({ playerName: "Raj" }), { canChange: true, changesLeft: 1 });
+eq("named, used", WL.nameRule({ playerName: "Raj", nameChanges: 1 }), { canChange: false, changesLeft: 0 });
+eq("old save renamed often", WL.nameRule({ playerName: "Raj", nameChanges: undefined }), { canChange: true, changesLeft: 1 });
+
 console.log(problems ? `\n${problems} problem(s) found.` : "\nAll social checks passed.");
 process.exit(problems ? 1 : 0);

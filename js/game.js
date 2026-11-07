@@ -2247,12 +2247,14 @@
     $("pf-xpbar").setAttribute("aria-label", "Experience: " + li.into + " of " + li.need);
     $("pf-since").textContent = "On the case since " + WL.formatDate(WL.dateForDay(S.firstDay || TODAY), "short");
     var inp = $("pf-input");
-    inp.value = cg ? user.username : S.settings.playerName || ""; inp.disabled = cg;
-    $("pf-save").hidden = cg; $("pf-error").hidden = true;
+    var nr = WL.nameRule(S.settings), locked = !cg && !nr.canChange;
+    inp.value = cg ? user.username : S.settings.playerName || ""; inp.disabled = cg || locked;
+    $("pf-save").hidden = cg || locked; $("pf-error").hidden = true;
     renderAccount();
     $("pf-note").textContent = cg ? "This is your CrazyGames name. Change it in your CrazyGames account."
-      : lbOn() ? "Other players see it on leaderboards and on challenges you share. Your sketch changes with it."
-      : "It signs the challenges you share. Your sketch changes with it.";
+      : locked ? "Name locked. You've used your one name change."
+      : (S.settings.playerName ? "You can change your name once. " : "") +
+        (lbOn() ? "Other players see it on leaderboards and on challenges you share." : "It signs the challenges you share.");
     renderStats();
   }
   function openProfile() { renderProfile(); openDialog("dlg-stats"); }
@@ -2263,6 +2265,8 @@
     errEl.hidden = true;
     if (r.name === S.settings.playerName) return true;
     var first = !S.settings.playerName;
+    if (!first && !WL.nameRule(S.settings).canChange) { errEl.textContent = "You've used your one name change."; errEl.hidden = false; return false; }
+    if (!first) S.settings.nameChanges = (S.settings.nameChanges || 0) + 1;
     S.settings.playerName = r.name; persist();
     toast(first ? "Welcome, " + esc(r.name) + "!" : "Name saved. It shows on your next score.");
     renderHQ();
@@ -2402,7 +2406,7 @@
     var sign = why === "share", live = why === "room";
     $("name-input").value = S.settings.playerName || "";
     $("name-error").hidden = true;
-    $("name-h").textContent = sign ? "Sign your challenge" : live ? "Your name in the room" : S.settings.playerName ? "Change your name" : "Join the leaderboard";
+    $("name-h").textContent = sign ? "Sign your challenge" : live ? "Your name in the room" : "Join the leaderboard";
     $("name-why").textContent = sign ? "Friends will see this name on your result and know who to beat. It's also your name on the leaderboard."
       : live ? "Everyone in the room will see it on the scoreboard. It's also your name on the leaderboard."
       : "Pick a detective name. Other players will see it next to your score.";
