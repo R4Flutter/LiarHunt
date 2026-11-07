@@ -882,13 +882,39 @@
   /* ---------- suspect portraits ----------
      Small police-sketch style faces, drawn from the name so a person always
      looks the same. Colors come from CSS tokens. */
-  function avatar(name) {
+  // 16 faces a player can pick (codes f00 to f15). Without a pick, the face is drawn from the name.
+  var FACES = [
+    { hair: 0, eyes: 0, mouth: 1, tL: 0, tR: 0, glasses: false, mustache: false, beard: false, earrings: false },
+    { hair: 1, eyes: 2, mouth: 3, tL: 0.5, tR: 0.5, glasses: false, mustache: false, beard: false, earrings: true },
+    { hair: 2, eyes: 0, mouth: 0, tL: -0.8, tR: -0.8, glasses: true, mustache: false, beard: false, earrings: false },
+    { hair: 3, eyes: 1, mouth: 1, tL: 1.5, tR: 0, glasses: false, mustache: false, beard: false, earrings: false },
+    { hair: 4, eyes: 0, mouth: 3, tL: 0.4, tR: 0.4, glasses: false, mustache: false, beard: false, earrings: true },
+    { hair: 5, eyes: 2, mouth: 2, tL: -0.5, tR: 1.2, glasses: false, mustache: true, beard: false, earrings: false },
+    { hair: 6, eyes: 0, mouth: 0, tL: -1, tR: -1, glasses: false, mustache: true, beard: false, earrings: false },
+    { hair: 0, eyes: 1, mouth: 0, tL: 0, tR: 0, glasses: false, mustache: false, beard: true, earrings: false },
+    { hair: 1, eyes: 0, mouth: 1, tL: 2, tR: 2, glasses: true, mustache: false, beard: false, earrings: false },
+    { hair: 2, eyes: 2, mouth: 3, tL: 0.3, tR: 0.3, glasses: false, mustache: false, beard: true, earrings: false },
+    { hair: 3, eyes: 0, mouth: 2, tL: -0.6, tR: -0.6, glasses: true, mustache: false, beard: false, earrings: true },
+    { hair: 4, eyes: 1, mouth: 1, tL: 1, tR: -0.4, glasses: false, mustache: false, beard: false, earrings: false },
+    { hair: 5, eyes: 0, mouth: 0, tL: 0, tR: 2.5, glasses: true, mustache: false, beard: false, earrings: false },
+    { hair: 6, eyes: 2, mouth: 1, tL: 0.8, tR: 0.8, glasses: false, mustache: false, beard: false, earrings: true },
+    { hair: 1, eyes: 1, mouth: 2, tL: -1, tR: 1, glasses: false, mustache: false, beard: false, earrings: false },
+    { hair: 0, eyes: 0, mouth: 3, tL: 1.2, tR: 1.2, glasses: false, mustache: true, beard: false, earrings: false }
+  ];
+  function okFace(code) { return typeof code === "string" && /^f(0[0-9]|1[0-5])$/.test(code); }
+  function faceFromName(name) {
     var r = rngFrom("face:" + name);
     var hair = Math.floor(r() * 7);
     var eyes = Math.floor(r() * 3);
     var mouth = Math.floor(r() * 4);
     var tL = (r() * 4 - 1).toFixed(1), tR = (r() * 4 - 1).toFixed(1);
     var glasses = r() < 0.26, mustache = r() < 0.2, beard = !mustache && r() < 0.14, earrings = r() < 0.16;
+    return { hair: hair, eyes: eyes, mouth: mouth, tL: tL, tR: tR, glasses: glasses, mustache: mustache, beard: beard, earrings: earrings };
+  }
+  // code: a picked face ("f00"…"f15"); anything else draws the face from the name, as it always has.
+  function avatar(name, code) { return drawFace(okFace(code) ? FACES[+code.slice(1)] : faceFromName(name)); }
+  function drawFace(f) {
+    var hair = f.hair, eyes = f.eyes, mouth = f.mouth, tL = f.tL, tR = f.tR, glasses = f.glasses, mustache = f.mustache, beard = f.beard, earrings = f.earrings;
     var p = [];
     p.push('<path class="cloth" d="M7 64 C8 52 19 47.5 32 47.5 C45 47.5 56 52 57 64 Z"/>');
     p.push('<path class="ln" d="M7 64 C8 52 19 47.5 32 47.5 C45 47.5 56 52 57 64"/>');
@@ -1072,7 +1098,7 @@
     SEASON_ONE: SEASON_ONE, SEASON_DAYS: SEASON_DAYS, daySpecs: daySpecs,
     cleanName: cleanName, NAME_BLOCK: NAME_BLOCK, checkWritten: checkWritten, packWritten: packWritten, unpackWritten: unpackWritten, writtenCase: writtenCase,
     hash: function (s) { return hashString(String(s)).toString(36); }, clock: clock,
-    avatar: avatar, load: load, save: save, esc: esc, fmtTime: fmtTime, fmtCountdown: fmtCountdown,
+    avatar: avatar, FACES: FACES, okFace: okFace, load: load, save: save, esc: esc, fmtTime: fmtTime, fmtCountdown: fmtCountdown,
     track: track, siteUrl: siteUrl, FACTS: FACTS, PREMISES: PREMISES, CASES: CASES,
     weekOf: weekOf, weekday: weekday
   };

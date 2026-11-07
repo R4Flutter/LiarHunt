@@ -72,5 +72,13 @@ eq("season of day 42/43", [WL.seasonOf(42), WL.seasonOf(43)], [1, 2]);
 eq("long", WL.fmtLong(28 * D + 4 * H + 12 * 60000 + 9000), "28d 04:12:09");
 eq("short", WL.fmtLong(5 * H + 1000), "05:00:01");
 
+/* ---------- faces ---------- */
+eq("16 faces", WL.FACES.length, 16);
+eq("every hair style", [...new Set(WL.FACES.map((f) => f.hair))].sort(), [0, 1, 2, 3, 4, 5, 6]);
+eq("codes", ["f00", "f15", "f16", "x1", undefined].map((c) => WL.okFace(c)), [true, true, false, false, false]);
+eq("code wins", WL.avatar("Raj", "f03"), WL.avatar("Zoe", "f03"));
+eq("bad code falls back", WL.avatar("Raj", "nope"), WL.avatar("Raj"));
+eq("name faces unchanged", ["Raj", "Detective", "Priya"].map((n) => sha(WL.avatar(n))), ["7e642afcddd41fe3", "e1a0efa769e99969", "c4dd278d05bf28d1"]);
+
 console.log(problems ? `\n${problems} problem(s) found.` : "\nAll social checks passed.");
 process.exit(problems ? 1 : 0);

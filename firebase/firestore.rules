@@ -10,6 +10,9 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function okName(n) { return n is string && n.size() >= 2 && n.size() <= 16; }
     function okBadge(b) { return b in ['', '🥇', '🥈', '🥉', '🎖️', '🏅']; }
+    // A picked face, f00 to f15 (js/engine.js FACES). Optional wherever it appears.
+    function okAv(a) { return a is string && a.matches('^f(0[0-9]|1[0-5])$'); }
+    function avOk(d) { return !('av' in d) || okAv(d.av); }
 
     // Daily #1 starts on this date (UTC). Keep it the same as launchDate in js/config.js.
     function dayStart(d) { return timestamp.date(2026, 10, 26) + duration.value(d - 1, 'd'); }
@@ -26,7 +29,8 @@ service cloud.firestore {
     match /scores/{id} {
       allow read: if true;
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['uid', 'name', 'badge', 'day', 'score', 'timeMs', 'grid', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['uid', 'name', 'badge', 'av', 'day', 'score', 'timeMs', 'grid', 'createdAt'])
+        && avOk(request.resource.data)
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.day is int
         && request.resource.data.day >= 1 && request.resource.data.day <= 100000
@@ -46,7 +50,8 @@ service cloud.firestore {
       allow update: if signedIn()
         && resource.data.uid == request.auth.uid
         && resource.data.name == ''
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'badge'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'badge', 'av'])
+        && avOk(request.resource.data)
         && okName(request.resource.data.name)
         && okBadge(request.resource.data.badge);
       allow delete: if false;

@@ -553,6 +553,7 @@
     submitDaily: function (e) {
       return ready().then(function () {
         var doc = { uid: uid, name: e.name, badge: e.badge || "", day: e.day, score: e.score, timeMs: Math.max(20000, Math.round(e.timeMs)), grid: e.grid };
+        if (window.WL.okFace(e.av)) doc.av = e.av;
         if (provider === "demo") {
           var s = demoStore(); s.scores[e.day + "_" + uid] = s.scores[e.day + "_" + uid] || doc; demoSave(s); return true;
         }
@@ -607,10 +608,12 @@
     },
     // Everyone's Daily result is posted (without a name until they join), so counts and percentiles are real.
     // This puts the name on today's result once they join.
-    nameDaily: function (day, name, badge) {
+    nameDaily: function (day, name, badge, av) {
+      var u = { name: name, badge: badge || "" };
+      if (window.WL.okFace(av)) u.av = av;
       return ready().then(function () {
-        if (provider === "demo") { var s = demoStore(), d = s.scores[day + "_" + uid]; if (d) { d.name = name; d.badge = badge || ""; demoSave(s); } return true; }
-        return db.collection("scores").doc(day + "_" + uid).update({ name: name, badge: badge || "" }).then(function () { return true; }, function () { return false; });
+        if (provider === "demo") { var s = demoStore(), d = s.scores[day + "_" + uid]; if (d) { Object.assign(d, u); demoSave(s); } return true; }
+        return db.collection("scores").doc(day + "_" + uid).update(u).then(function () { return true; }, function () { return false; });
       });
     },
 

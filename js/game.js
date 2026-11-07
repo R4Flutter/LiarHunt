@@ -78,6 +78,7 @@
     return true;
   }
   function myName() { return (user && user.username) || S.settings.playerName || ""; }
+  function myFace() { return WL.okFace(S.settings.avatar) ? S.settings.avatar : ""; }
 
   /* ---------- polygraph trace (canvas) ---------- */
   function Trace(canvas, opts) {
@@ -1743,7 +1744,7 @@
     $("verdict").hidden = true;
     if (run.kind === "friend") { openWrite(); return; }
     if (run.kind === "room") { if (room) { show("room"); setHud("Live room", "Room " + room.code); renderRoom(); } else goHQ(); return; }
-    if (run.kind === "train") { run = null; Book.start(); return; }
+    if (run.kind === "train") { run = null; if (needsSetup()) openSetup(function () { Book.start(); }); else Book.start(); return; }
     if (run.kind === "rush") {
       if (run.lives <= 0 || run.time <= 0) { outOfLives(); return; }
       nextRush();
@@ -2193,7 +2194,7 @@
   function renderProfile() {
     var li = P.levelInfo(S.xp), name = playerName(), cg = !!(user && user.username);
     $("stats-h").textContent = name;
-    $("pf-mug").innerHTML = WL.avatar(name);
+    $("pf-mug").innerHTML = WL.avatar(name, myFace());
     $("pf-badge").innerHTML = FX.badge(li.level, li.tier, 64);
     $("pf-title").textContent = "Level " + li.level + " · " + li.title;
     $("pf-xp").style.width = Math.round((li.into / li.need) * 100) + "%";
@@ -2211,6 +2212,53 @@
         (lbOn() ? "Other players see it on leaderboards and on challenges you share." : "It signs the challenges you share.");
     renderStats();
   }
+  /* ---------- create your detective: a face (and on the web a name), once, after the training case ---------- */
+  var setupCb = null, setupFace = "";
+  function needsSetup() { return !S.settings.setupDone && (!myFace() || (web() && !S.settings.playerName)); }
+  // facesOnly: just change the face (from the profile).
+  function openSetup(cb, facesOnly) {
+    setupCb = cb || null;
+    setupFace = myFace() || "f" + String(Math.floor(Math.random() * 16)).padStart(2, "0");
+    var askName = !facesOnly && web() && !S.settings.playerName;
+    $("setup-h").textContent = facesOnly ? "Pick your face" : "Create your detective";
+    $("setup-why").textContent = facesOnly ? "Other detectives see it next to your name." : askName ? "Pick a face and a name. Other detectives see them on the leaderboards." : "Pick the face other detectives will see.";
+    $("setup-name-box").hidden = !askName;
+    $("setup-name").value = "";
+    $("setup-error").hidden = true;
+    $("setup-go").textContent = facesOnly ? "Save" : "Start";
+    renderFacePicks();
+    openDialog("dlg-setup");
+  }
+  function renderFacePicks() {
+    var nm = $("setup-name").value.trim() || myName() || "Detective";
+    $("setup-faces").innerHTML = WL.FACES.map(function (f, i) {
+      var code = "f" + String(i).padStart(2, "0");
+      return '<button class="face-pick" type="button" role="radio" data-face="' + code + '" aria-checked="' + (code === setupFace) + '" aria-label="Face ' + (i + 1) + '">' + WL.avatar(nm, code) + "</button>";
+    }).join("");
+  }
+  $("setup-faces").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-face]");
+    if (!b) return;
+    Snd.play("tap"); setupFace = b.dataset.face;
+    [].forEach.call($("setup-faces").children, function (x) { x.setAttribute("aria-checked", x === b ? "true" : "false"); });
+  });
+  $("setup-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (!$("setup-name-box").hidden && !saveName($("setup-name").value, $("setup-error"))) { FX.shake($("setup-name")); return; }
+    S.settings.avatar = setupFace; S.settings.setupDone = true; persist();
+    Snd.play("stamp");
+    WL.track("setup_done", { face: setupFace });
+    closeDialog("dlg-setup");
+    if (screen === "hq") renderHQ();
+    if ($("dlg-stats").open) renderProfile();
+    if (lbOn() && S.settings.playerName) afterJoin(); // a name is a leaderboard entry: post today's score under it
+    var cb = setupCb; setupCb = null;
+    if (cb) cb();
+  });
+  // On the web a name is needed to carry on; Esc can't skip it.
+  $("dlg-setup").addEventListener("cancel", function (e) { if (!$("setup-name-box").hidden) e.preventDefault(); else setupCb = null; });
+  $("pf-mug").addEventListener("click", function () { Snd.play("click"); openSetup(null, true); });
+
   function openProfile() { renderProfile(); openDialog("dlg-stats"); }
   // Saves a detective name typed into a form. Shows why (and returns false) when it isn't allowed.
   function saveName(raw, errEl) {
@@ -2237,7 +2285,7 @@
   });
   $("pf-input").addEventListener("input", function () {
     var v = WL.cleanName(this.value), n = v.ok ? v.name : playerName();
-    $("pf-mug").innerHTML = WL.avatar(n); $("stats-h").textContent = n;
+    $("pf-mug").innerHTML = WL.avatar(n, myFace()); $("stats-h").textContent = n;
   });
   function renderStats() {
     var li = P.levelInfo(S.xp), t = S.tot, st = S.stats;
@@ -2365,9 +2413,9 @@
   function postDaily(day, p, onRank) {
     if (!LB.enabled() || !S.settings.playerName) return;
     rankCard('<p class="rank-sub">Checking the leaderboard...</p>');
-    var entry = { name: S.settings.playerName, badge: bestBadge(), day: day, score: scoreOf(p.results), timeMs: p.elapsed, grid: p.results.join("") };
+    var entry = { name: S.settings.playerName, av: myFace(), badge: bestBadge(), day: day, score: scoreOf(p.results), timeMs: p.elapsed, grid: p.results.join("") };
     var anon = S.lb.anon && S.lb.anon[day];
-    var step = !S.lb.posted[day] ? LB.submitDaily(entry) : anon ? LB.nameDaily(day, entry.name, entry.badge) : Promise.resolve(true);
+    var step = !S.lb.posted[day] ? LB.submitDaily(entry) : anon ? LB.nameDaily(day, entry.name, entry.badge, entry.av) : Promise.resolve(true);
     step.then(function () {
       S.lb.posted[day] = 1;
       if (anon) delete S.lb.anon[day];
@@ -2441,7 +2489,7 @@
     var me = LB.myId();
     function who(r) { return (r.name ? esc(r.name) : '<span class="muted">Unnamed detective</span>') + (r.uid === me ? " <em>(you)</em>" : ""); }
     var pod = rows.slice(0, 3).map(function (r, i) {
-      return '<div class="pod p' + (i + 1) + (r.uid === me ? " me" : "") + '"><span class="pod-face face">' + WL.avatar(r.name || "Detective") +
+      return '<div class="pod p' + (i + 1) + (r.uid === me ? " me" : "") + '"><span class="pod-face face">' + WL.avatar(r.name || "Detective", r.av) +
         '<b class="pod-medal" aria-hidden="true">' + LB.TIERS[i].icon + '</b></span><span class="pod-name">' + who(r) + '</span><span class="pod-score">' + score(r) +
         '</span><span class="pod-block"><span class="sr">Number </span>' + (i + 1) + "</span></div>";
     }).join("");
@@ -2450,6 +2498,59 @@
         (r.badge ? '<span class="b-badge" aria-hidden="true">' + esc(r.badge) + "</span>" : "") + who(r) + "</span>" + score(r) + "</li>";
     }).join("");
   }
+  function renderBoardMe(rows) {
+    var box = $("board-me");
+    if (!S.settings.playerName) {
+      var doneToday = S.daily && S.daily.day === TODAY && S.daily.done;
+      box.innerHTML = "<p>" + (doneToday ? "Join to put your name on today's board." : "Want your name up here? Finish today's Daily Case, then join.") +
+        '</p><button class="btn primary wide" type="button" id="board-join">Join the leaderboard</button>';
+      $("board-join").addEventListener("click", function () { askName(afterJoin); });
+      return;
+    }
+    var rank = rows ? rankOf(rows) : 0;
+    if (rank && rank <= 3) setTimeout(function () { FX.confetti({ count: 70 }); }, 800); // you're on the podium
+    box.innerHTML = "<p>Playing as <strong>" + esc(S.settings.playerName) + "</strong>" + (rank ? ", ranked <strong>#" + rank + "</strong>" : "") + ".</p>";
+  }
+  function checkRewards() {
+    if (!LB.enabled() || !S.settings.playerName) return;
+    var days = Object.keys(S.lb.posted).map(Number).filter(function (d) { return !(d in S.lb.claimed) && d < TODAY && d >= TODAY - 10; });
+    if (!days.length) return;
+    LB.rewardsFor(days).then(function (res) {
+      var won = [];
+      res.forEach(function (r) {
+        S.lb.claimed[r.day] = r.rank;
+        var t = LB.tierFor(r.rank);
+        if (t) { S.lb.badges.push({ day: r.day, rank: r.rank, icon: t.icon, name: t.name }); S.inv.magnifier = (S.inv.magnifier || 0) + 1; won.push({ day: r.day, rank: r.rank, tier: t }); }
+      });
+      persist();
+      if (won.length) showReward(won);
+    }).catch(function () { /* try again next visit */ });
+  }
+  function showReward(won) {
+    won.sort(function (a, b) { return a.rank - b.rank; });
+    var top = won[0];
+    $("reward-badge").textContent = top.tier.icon;
+    $("reward-h").textContent = top.rank === 1 ? "Number one detective!" : "You made the top 10!";
+    $("reward-text").textContent = "You finished #" + top.rank + " on Daily #" + top.day + (won.length > 1 ? ", and made the top 10 on " + (won.length - 1) + " more day" + (won.length > 2 ? "s" : "") : "") + ".";
+    $("reward-list").innerHTML = won.map(function (w) { return "<li>" + w.tier.icon + " " + esc(w.tier.name) + " badge for Daily #" + w.day + "</li>"; }).join("") +
+      "<li>" + won.length + " free Magnifier" + (won.length > 1 ? "s" : "") + "</li><li>Your best badge now shows next to your name</li>";
+    WL.track("reward_won", { rank: top.rank });
+    Snd.play("fanfare");
+    openDialog("dlg-reward");
+  }
+  if ($("dlg-board")) {
+    [].forEach.call(document.querySelectorAll("#dlg-board .tab"), function (t) { t.addEventListener("click", function () { Snd.play("click"); boardTab = t.dataset.tab; loadBoard(); }); });
+    $("name-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var first = !S.settings.playerName;
+      if (!saveName($("name-input").value, $("name-error"))) return;
+      closeDialog("dlg-name");
+      WL.track(first ? "leaderboard_join" : "leaderboard_rename", {});
+      var cb = nameCb; nameCb = null;
+      if (cb) cb();
+    });
+  }
+
   /* ---------- friend challenges (head to head) ---------- */
   // Link format: day.grid.seconds.name  e.g. 6.ggyrg.92.Raj
   function parseChallenge(raw) {
@@ -3695,6 +3796,7 @@
   }
   function startupChecks() {
     seasonCheck();
+    if (S.settings.tutorialDone && needsSetup()) openSetup(function () { renderHQ(); });
     if (S.keysRetired) { toast("Case Keys are retired: you got " + S.keysRetired + " coins.", "gold", 4200); S.keysRetired = 0; persist(); renderCoins(true); }
     var gift = Book.migrate(); // players of the old endless Career: the news, and a thank-you
     if (gift) {

@@ -133,8 +133,6 @@
               <span class="mode-txt"><b>Write a case</b><span>Hide one lie and send it to your friends</span></span>
             </button>
           </div>
-          <!-- WEB-ONLY:START -->
-          <!-- WEB-ONLY:END -->
           <div class="missions" id="missions">
             <div class="missions-head"><h2>Today's missions</h2><span class="muted" id="missions-reset"></span></div>
             <ol class="mission-list" id="mission-list"></ol>
@@ -477,7 +475,7 @@
     <button class="icon-btn dlg-close" type="button" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <!-- profile: an ID card. The mugshot is sketched from the name, so it changes as you type. -->
     <div class="id-card">
-      <span class="mug id-mug" id="pf-mug" aria-hidden="true"></span>
+      <button class="mug id-mug" id="pf-mug" type="button" aria-label="Change your face"></button>
       <div class="id-main">
         <h2 id="stats-h">Detective</h2>
         <p class="id-title" id="pf-title"></p>
@@ -547,6 +545,21 @@
     <button class="btn primary wide" id="btn-chance-yes" type="button">Keep going</button>
     <button class="btn ghost wide" id="btn-chance-no" type="button">End the run</button>
   </div>
+</dialog>
+
+<dialog id="dlg-setup" aria-labelledby="setup-h">
+  <form class="dlg" id="setup-form" method="dialog" novalidate>
+    <h2 id="setup-h">Create your detective</h2>
+    <p id="setup-why">Pick a face and a name. Other detectives see them on the leaderboards.</p>
+    <div class="face-grid" id="setup-faces" role="radiogroup" aria-label="Your face"></div>
+    <div id="setup-name-box">
+      <label class="field-label" for="setup-name">Detective name</label>
+      <input class="field" id="setup-name" type="text" maxlength="16" autocomplete="nickname" autocapitalize="words" spellcheck="false">
+      <p class="muted small">You can change it once later, in your profile.</p>
+    </div>
+    <p class="field-error" id="setup-error" role="alert" hidden></p>
+    <button class="btn primary wide" type="submit" id="setup-go">Start</button>
+  </form>
 </dialog>
 
 <!-- WEB-ONLY:START -->
