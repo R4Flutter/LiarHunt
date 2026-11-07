@@ -60,5 +60,17 @@ P.init({}, {});
 eq("7-day streak", P.streakDay(7), { shield: 1, coins: 100 });
 eq("old-shape save loads", typeof P.init({ inv: { key: 1 }, league: { week: 2, tier: 1 }, lb: { season: { s: 1 } } }, {}).coins, "number");
 
+/* ---------- the season clock ---------- */
+const H = 3600000, D = 24 * H;
+eq("S1 ends", WL.seasonEndsAt(1), Date.UTC(2026, 11, 6, 18, 30));
+eq("before S1", WL.seasonClock(Date.UTC(2026, 10, 7, 12)), { season: 1, phase: "before", target: Date.UTC(2026, 10, 8, 18, 30), left: Date.UTC(2026, 10, 8, 18, 30) - Date.UTC(2026, 10, 7, 12), urgency: 0 });
+eq("mid S1", [WL.seasonClock(Date.UTC(2026, 10, 20)).phase, WL.seasonClock(Date.UTC(2026, 10, 20)).urgency], ["during", 0]);
+eq("last week", WL.seasonClock(Date.UTC(2026, 10, 30)).urgency, 1);
+eq("last day", WL.seasonClock(Date.UTC(2026, 11, 6, 6)).urgency, 2);
+eq("S2 begins", [WL.seasonClock(Date.UTC(2026, 11, 6, 19)).season, WL.seasonClock(Date.UTC(2026, 11, 6, 19)).phase], [2, "during"]);
+eq("season of day 42/43", [WL.seasonOf(42), WL.seasonOf(43)], [1, 2]);
+eq("long", WL.fmtLong(28 * D + 4 * H + 12 * 60000 + 9000), "28d 04:12:09");
+eq("short", WL.fmtLong(5 * H + 1000), "05:00:01");
+
 console.log(problems ? `\n${problems} problem(s) found.` : "\nAll social checks passed.");
 process.exit(problems ? 1 : 0);

@@ -76,6 +76,22 @@
   }
   // Hours since the day began in India (0-24), e.g. to know when yesterday's Daily 5 archive opens (6 AM).
   function istHour() { return ((Date.now() + IST_MS) % DAY_MS) / 3600000; }
+  // The time now. With ?test=1&today=N it moves by whole days, so clocks agree with dayNumber().
+  function now() { return TEST_DAY ? Date.now() + (TEST_DAY - dayNumber(new Date())) * DAY_MS : Date.now(); }
+  function dayStartMs(n) { return launchUTC() + (n - 1) * DAY_MS - IST_MS; } // midnight IST that starts Daily #n
+  function seasonEndsAt(s) { return dayStartMs(seasonStart(s) + SEASON_DAYS); }
+  // Counts down to Season 1's start, then to the end of the season that's on. urgency: 1 in the last week, 2 on the last day.
+  function seasonClock(t) {
+    var s = seasonOf(dayNumber(new Date(t)));
+    if (!s) return { season: 1, phase: "before", target: dayStartMs(SEASON_ONE), left: dayStartMs(SEASON_ONE) - t, urgency: 0 };
+    var end = seasonEndsAt(s), left = end - t;
+    return { season: s, phase: "during", target: end, left: left, urgency: left <= DAY_MS ? 2 : left <= 7 * DAY_MS ? 1 : 0 };
+  }
+  // "28d 04:12:09", or "04:12:09" under a day.
+  function fmtLong(ms) {
+    var s = Math.max(0, Math.floor(ms / 1000)), d = Math.floor(s / 86400);
+    return (d ? d + "d " : "") + fmtCountdown((s - d * 86400) * 1000);
+  }
 
   /* ---------- generator data ----------
      Each fact belongs to a group. A case never uses two facts from the same
@@ -1047,7 +1063,7 @@
   }
 
   window.WL = {
-    inAppBrowser: inAppBrowser, nameRule: nameRule,
+    inAppBrowser: inAppBrowser, nameRule: nameRule, now: now, seasonEndsAt: seasonEndsAt, seasonClock: seasonClock, fmtLong: fmtLong,
     cfg: CFG, rngFrom: rngFrom, shuffle: shuffle, pick: pick,
     dayNumber: dayNumber, dateForDay: dateForDay, formatDate: formatDate, msToNextDay: msToNextDay, istHour: istHour,
     buildDay: buildDay, generateCase: generateCase, endlessSpec: endlessSpec, endlessSeconds: endlessSeconds,

@@ -836,14 +836,13 @@ dialog[open] { animation: dlgin 0.24s cubic-bezier(0.2, 1.25, 0.4, 1) both; }
 .season-sub { font-size: var(--s-1); line-height: 1.4; }
 .season-sub strong { font-variant-numeric: tabular-nums; }
 /* badge track: a bar with a stop for each badge */
-.season-track { position: relative; height: 0.7rem; border: 2px solid var(--ink); border-radius: 99px; background: var(--paper); margin: 0.55rem 0 1.1rem; }
-.season-track:empty { display: none; }
-.season-track > i { position: absolute; inset: 0 auto 0 0; border-radius: 99px; background: var(--ok); }
-.season-track > b { position: absolute; top: 50%; transform: translate(-50%, -50%); font-size: 1.05rem; line-height: 1; filter: grayscale(1); opacity: 0.55; }
-.season-track > b.got { filter: none; opacity: 1; }
-.season-track > b span { position: absolute; top: 1.15rem; left: 50%; transform: translateX(-50%); font-size: 0.68rem; font-weight: 700; color: var(--pencil); font-family: var(--body); }
-.season-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; }
-.season-list li { background: var(--paper); border-radius: 8px; padding: 0.35rem 0.6rem; font-size: var(--s-1); }
+.season-clock { font-family: var(--display); font-weight: 900; font-size: 1.05rem; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.season-clock.u1, .season-clock.u2 { color: var(--needle); }
+@media (prefers-reduced-motion: no-preference) { .season-clock.u2 { animation: clock-pulse 1.6s ease-in-out infinite; } }
+@keyframes clock-pulse { 50% { opacity: 0.5; } }
+.season-league { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.35rem 0.6rem; align-items: center; margin-top: 0.6rem; cursor: pointer; }
+.season-league .m-bar { grid-column: 1 / -1; }
+.season-league .league-emblem { width: 2.4rem; height: 2.4rem; font-size: 1.2rem; }
 
 /* ---------- HQ: mode tiles ---------- */
 .mode-tile.rush .mode-ico { background: var(--gold); color: #1b1a17; }

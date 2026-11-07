@@ -113,12 +113,11 @@
         </div>
         <div class="hq-col">
           <article class="season-card" id="season-card" aria-labelledby="season-title" hidden>
-            <div class="week-head"><p class="eyebrow" id="season-eyebrow">Season 1</p><span class="muted small" id="season-left"></span></div>
+            <div class="week-head"><p class="eyebrow" id="season-eyebrow">Season 1</p><strong class="season-clock" id="season-clock" data-season-clock="1"></strong></div>
             <h2 class="season-title" id="season-title"></h2>
             <p class="season-sub" id="season-sub"></p>
-            <div class="season-track" id="season-track"></div>
             <p class="muted small" id="season-next"></p>
-            <button class="btn ghost wide" id="btn-season" type="button" hidden>Season scoreboard</button>
+            <div class="season-league" id="season-league" hidden><span class="league-emblem" id="season-emblem" aria-hidden="true"></span><span class="league-txt"><b id="season-lname"></b><span class="muted small" id="season-lp"></span></span><span class="m-bar" id="season-bar"><span></span></span></div>
           </article>
           <div class="modes">
             <button class="mode-tile rush" id="tile-rush" type="button">
@@ -135,11 +134,6 @@
             </button>
           </div>
           <!-- WEB-ONLY:START -->
-          <button class="league-card" id="league-card" type="button" hidden>
-            <span class="league-emblem" id="league-emblem" aria-hidden="true"></span>
-            <span class="league-txt"><span class="eyebrow">Weekly league</span><b id="league-name">Bronze League</b><span class="muted small" id="league-sub"></span></span>
-            <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
-          </button>
           <!-- WEB-ONLY:END -->
           <div class="missions" id="missions">
             <div class="missions-head"><h2>Today's missions</h2><span class="muted" id="missions-reset"></span></div>
@@ -520,8 +514,6 @@
     <h3>Daily Case: liars caught per day</h3>
     <div class="dist" id="stats-dist"></div>
     <dl class="stat-row" id="stats-row2"></dl>
-    <h3 id="stats-seasons-h" hidden>Seasons</h3>
-    <ul class="season-list" id="stats-seasons" hidden></ul>
     <h3 id="stats-badges-h" hidden>Leaderboard badges</h3>
     <p class="badges" id="stats-badges" hidden></p>
   </div>
@@ -567,7 +559,6 @@
       <button class="tab" type="button" role="tab" data-tab="today" aria-selected="true">Daily</button>
       <button class="tab" type="button" role="tab" data-tab="league" aria-selected="false">League</button>
       <button class="tab" type="button" role="tab" data-tab="friends" aria-selected="false">Friends</button>
-      <button class="tab" type="button" role="tab" data-tab="season" aria-selected="false">Season</button>
       <button class="tab" type="button" role="tab" data-tab="endless" aria-selected="false">Rush</button>
     </div>
     <div class="board-head" id="board-head" hidden></div>

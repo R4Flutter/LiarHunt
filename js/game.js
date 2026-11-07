@@ -368,6 +368,8 @@
     $("btn-daily").className = "btn big wide " + (done ? "ghost" : "danger");
     var meta = [], st = S.lb.stand && S.lb.stand.day === TODAY ? S.lb.stand : null;
     if (done && st && st.total >= RANK_MIN) meta.push("🏆 #" + st.rank + " of " + st.total + " today");
+    var sc = WL.seasonClock(WL.now());
+    if (sc.phase === "during" && sc.urgency === 2) meta.push("⏳ Last day of Season " + sc.season + ": finish today to lock in your league.");
     var c = S.challenge;
     if (c && c.day === TODAY && !done) meta.push("⚔️ " + esc(c.name) + " challenged you: " + scoreOf(c.grid.split("")) + "/5 in " + WL.fmtTime(c.time * 1000));
     // a story you didn't finish yesterday: its ending is open now
@@ -381,64 +383,30 @@
      The season score is the liars caught in that season's Dailies, played on the day (catch-ups and practice don't count),
      so it's the same number the season scoreboard checks. */
   var SEASON = WL.seasonOf(TODAY);
-  var BADGES = [{ at: 25, name: "Bronze", icon: "🥉", coins: 100 }, { at: 60, name: "Silver", icon: "🥈", coins: 250 },
-    { at: 100, name: "Gold", icon: "🥇", coins: 500 }, { at: 125, name: "Platinum", icon: "💠", coins: 1000 }];
   function seasonRange(s) { var a = WL.seasonStart(s); return [a, a + WL.SEASON_DAYS - 1]; }
-  function seasonScore(s) {
-    var r = seasonRange(s), out = { score: 0, days: 0, timeMs: 0 };
-    for (var d = r[0]; d <= r[1]; d++) {
-      var h = S.history[d];
-      if (h && !h.replay && !h.catchup) { out.score += h.score; out.days++; out.timeMs += h.time || 0; }
-    }
-    return out;
-  }
-  function badgeFor(score) { return BADGES.filter(function (b) { return score >= b.at; }).pop() || null; }
-  function seasonLine(me) {
-    var nb = BADGES.filter(function (x) { return x.at > me.score; })[0];
-    return nb ? (nb.at - me.score) + " more for " + nb.icon + " " + nb.name : "Top badge reached";
-  }
+  // The season card: the season's name, a countdown that ticks every second, and (web) the player's league.
   function renderSeason() {
-    var pk = WL.packFor(Math.max(1, SEASON));
+    var c = WL.seasonClock(WL.now()), pk = WL.packFor(c.season);
     $("season-card").hidden = !pk;
     if (!pk) return;
     $("season-title").textContent = pk.name;
-    if (!SEASON) {
-      var left = WL.SEASON_ONE - TODAY;
-      $("season-eyebrow").textContent = "Season 1 starts " + WL.formatDate(WL.dateForDay(WL.SEASON_ONE));
-      $("season-left").textContent = "in " + left + " day" + (left > 1 ? "s" : "");
-      $("season-sub").textContent = pk.tagline;
-      $("season-track").innerHTML = "";
-      $("season-next").textContent = "New cases, a cast of locals and a season scoreboard. Every liar you catch in the Daily counts toward a season badge.";
-      $("btn-season").hidden = true;
-      return;
-    }
-    var r = seasonRange(SEASON), me = seasonScore(SEASON), b = badgeFor(me.score), top = WL.SEASON_DAYS * 5;
-    $("season-eyebrow").textContent = "Season " + SEASON + " · day " + (TODAY - r[0] + 1) + " of " + WL.SEASON_DAYS;
-    $("season-left").textContent = r[1] === TODAY ? "Last day" : (r[1] - TODAY) + " days left";
-    var st = S.lb.season && S.lb.season.s === SEASON && S.lb.season.total >= RANK_MIN ? S.lb.season : null;
-    $("season-sub").innerHTML = "<strong>" + me.score + "</strong> liar" + (me.score === 1 ? "" : "s") + " caught in " + me.days + " Dail" + (me.days === 1 ? "y" : "ies") +
-      " this season" + (b ? " · " + b.icon + " " + b.name : "") + (st ? " · <strong>#" + st.rank + "</strong> of " + st.total : "");
-    $("season-track").innerHTML = '<i style="width:' + Math.min(100, (100 * me.score) / top) + '%"></i>' + BADGES.map(function (x) {
-      return '<b class="' + (me.score >= x.at ? "got" : "") + '" style="left:' + (100 * x.at) / top + '%" title="' + x.name + '">' + x.icon + "<span>" + x.at + "</span></b>";
-    }).join("");
-    $("season-next").textContent = seasonLine(me) + ". Only Dailies played on the day count.";
-    $("btn-season").hidden = !lbOn();
+    $("season-eyebrow").textContent = c.phase === "before" ? "Season 1 starts " + WL.formatDate(WL.dateForDay(WL.SEASON_ONE))
+      : "Season " + c.season + " · day " + (TODAY - WL.seasonStart(c.season) + 1) + " of " + WL.SEASON_DAYS;
+    $("season-sub").textContent = pk.tagline;
+    $("season-next").textContent = c.phase === "before" ? "New cases, a cast of locals and a season league: climb from Bronze to Diamond before the season ends." : "";
+    paintSeasonClock(c);
   }
-  // At start-up: close finished seasons (badge + coins, a recap for the one that just ended) and say hello to a new one.
-  function seasonCheck() {
-    S.seasons = S.seasons || {};
-    for (var s = 1; s < SEASON; s++) {
-      if (S.seasons[s]) continue;
-      var me = seasonScore(s), b = badgeFor(me.score);
-      S.seasons[s] = { score: me.score, days: me.days, badge: b ? b.name : "" };
-      if (b) P.grant({ coins: b.coins });
-      if (me.days && s === SEASON - 1) {
-        notice({ icon: b ? b.icon : "🕵️", eyebrow: "Season " + s + " is over", sound: "fanfare", title: b ? b.name + " detective!" : "See you next season",
-          text: "You caught <b>" + me.score + " liars</b> in " + me.days + " Dailies during " + esc(WL.packFor(s).name) + "." +
-            (b ? " Your season badge is in your stats." : " Catch " + BADGES[0].at + " in a season for your first badge."),
-          html: b ? rewardList({ coins: b.coins }) : "", yes: "On to season " + SEASON });
-      }
+  function paintSeasonClock(c) {
+    c = c || WL.seasonClock(WL.now());
+    var el = $("season-clock");
+    if (el) {
+      el.textContent = (c.phase === "before" ? "Starts in " : "Ends in ") + WL.fmtLong(c.left);
+      el.className = "season-clock" + (c.phase === "during" && c.urgency ? " u" + c.urgency : "");
     }
+    return c;
+  }
+  // At start-up: say hello to a new season.
+  function seasonCheck() {
     if (SEASON && S.seasonHello !== SEASON) {
       S.seasonHello = SEASON;
       var pk = WL.packFor(SEASON), r = seasonRange(SEASON);
@@ -446,7 +414,7 @@
         notice({ icon: pk.icon || "🕵️", eyebrow: "Season " + SEASON + " is here", title: pk.name, sound: "levelup",
           text: esc(pk.tagline) + " It runs until " + WL.formatDate(WL.dateForDay(r[1])) + ".",
           html: '<ul class="reward-list"><li>🧾 Every accusation needs proof: tap the fact the lie breaks</li><li>🧩 Some lies only break with two facts together</li>' +
-            "<li>🎭 A cast of locals who keep turning up</li><li>🏅 Season badges: catch " + BADGES[0].at + " liars in the Daily for Bronze</li></ul>",
+            "<li>🎭 A cast of locals who keep turning up</li><li>🏆 A season league: climb from Bronze to Diamond before the countdown runs out</li></ul>",
           yes: "Let's go" });
       }
     }
@@ -1932,7 +1900,6 @@
       '<span class="muted">' + (li.need - li.into) + " XP to go</span></div>" +
       '<span class="m-bar"><span style="width:' + Math.round((li.into / li.need) * 100) + '%"></span></span>' +
       (nt ? '<span class="muted small">' + esc(nt[1]) + " at level " + nt[0] + "</span>" : "") + "</div></div>";
-    if (SEASON) { var me = seasonScore(SEASON), b = badgeFor(me.score); h += '<div class="rp-mission"><span>Season ' + SEASON + ": <b>" + me.score + "</b> liars caught" + (b ? " · " + b.icon + " " + b.name : "") + '</span><span class="muted">' + seasonLine(me) + "</span></div>"; }
     if (ready) h += '<button class="rp-mission ready" type="button" id="rp-claim">' + COIN_SVG + ready + " mission reward" + (ready > 1 ? "s" : "") + " ready. Claim at HQ</button>";
     else if (open) h += '<div class="rp-mission"><span>Next mission: ' + esc(P.missionText(open)) + '</span><span class="muted">' + open.progress + "/" + open.target + "</span></div>";
     el.innerHTML = h;
@@ -2285,12 +2252,6 @@
     $("stats-row2").innerHTML = statsRow([["Daily played", st.played], ["Daily streak", dailyStreak()], ["Perfect days", st.perfect], ["Rush best", S.endless.best]]);
     var counts = {}, order = [];
     S.lb.badges.forEach(function (b) { if (!counts[b.icon]) { counts[b.icon] = 0; order.push(b); } counts[b.icon]++; });
-    var past = Object.keys(S.seasons || {}).filter(function (s) { return S.seasons[s].days; });
-    $("stats-seasons-h").hidden = $("stats-seasons").hidden = !past.length;
-    $("stats-seasons").innerHTML = past.map(function (s) {
-      var x = S.seasons[s], b = BADGES.filter(function (y) { return y.name === x.badge; })[0];
-      return "<li>Season " + s + " · " + esc(WL.packFor(+s).name) + ": " + x.score + " liars" + (b ? " · " + b.icon + " " + b.name : "") + "</li>";
-    }).join("");
     var showBadges = (LB.enabled() && Plat.allowExternal()) || S.lb.badges.length > 0;
     $("stats-badges-h").hidden = !showBadges; $("stats-badges").hidden = !showBadges;
     if (showBadges) {
@@ -2462,7 +2423,6 @@
     var tok = ++boardTok;
     if (boardTab === "league") { loadLeague(tok); return; }
     if (boardTab === "friends") { loadFriends(tok); return; }
-    if (boardTab === "season") { loadSeason(tok); return; }
     var list = $("board-list"), tab = boardTab;
     $("board-note").textContent = tab === "endless" ? "The longest Rush runs of all time."
       : "Daily #" + TODAY + ". Ranks lock in once the day ends everywhere. The top 10 win a badge.";
@@ -2490,85 +2450,6 @@
         (r.badge ? '<span class="b-badge" aria-hidden="true">' + esc(r.badge) + "</span>" : "") + who(r) + "</span>" + score(r) + "</li>";
     }).join("");
   }
-  /* ---------- season scoreboard (web) ---------- */
-  function syncSeason() {
-    if (!lbOn() || !S.settings.playerName || !SEASON) return Promise.resolve(null);
-    return LB.syncSeason({ name: S.settings.playerName, badge: bestBadge(), season: SEASON }).then(function (doc) {
-      return LB.seasonStanding(SEASON, doc.pts, doc.timeMs).then(function (st) {
-        S.lb.season = { s: SEASON, rank: st.rank, total: st.total, pts: doc.pts }; persist();
-        if (screen === "hq") renderSeason();
-        return doc;
-      });
-    });
-  }
-  function loadSeason(tok) {
-    var list = $("board-list"), pk = WL.packFor(Math.max(1, SEASON)), me = SEASON ? seasonScore(SEASON) : { score: 0 };
-    $("board-head").hidden = false;
-    $("board-head").innerHTML = '<span class="league-emblem" aria-hidden="true">' + (pk.icon || "🏅") + "</span><span><b>Season " + Math.max(1, SEASON) + "</b>" +
-      '<span class="muted small">' + esc(pk.name) + "</span></span>";
-    $("board-note").textContent = "Liars caught in this season's Dailies, played on the day. Ties go to the faster detective.";
-    if (!SEASON) { list.innerHTML = '<li class="board-empty">Season 1 starts ' + WL.formatDate(WL.dateForDay(WL.SEASON_ONE)) + ". Every liar you catch in its Dailies counts.</li>"; renderBoardMe(null); return; }
-    if (!S.settings.playerName) { list.innerHTML = '<li class="board-empty">Join the leaderboard to get on the season scoreboard. You have ' + me.score + " liars this season so far.</li>"; renderBoardMe(null); return; }
-    list.innerHTML = '<li class="board-empty">Loading...</li>';
-    syncSeason().catch(function () { return null; }).then(function () { return LB.seasonTop(SEASON); }).then(function (rows) {
-      if (tok !== boardTok) return;
-      list.innerHTML = boardRows(rows, function (r) { return '<span class="b-score">' + r.pts + '</span><span class="b-time">' + r.days + (r.days === 1 ? " day" : " days") + "</span>"; });
-      renderBoardMe(rows);
-    }).catch(function (e) { if (tok === boardTok) list.innerHTML = '<li class="board-empty">' + esc(LB.friendlyError(e)) + "</li>"; });
-  }
-  function renderBoardMe(rows) {
-    var box = $("board-me");
-    if (!S.settings.playerName) {
-      var doneToday = S.daily && S.daily.day === TODAY && S.daily.done;
-      box.innerHTML = "<p>" + (doneToday ? "Join to put your name on today's board." : "Want your name up here? Finish today's Daily Case, then join.") +
-        '</p><button class="btn primary wide" type="button" id="board-join">Join the leaderboard</button>';
-      $("board-join").addEventListener("click", function () { askName(afterJoin); });
-      return;
-    }
-    var rank = rows ? rankOf(rows) : 0;
-    if (rank && rank <= 3) setTimeout(function () { FX.confetti({ count: 70 }); }, 800); // you're on the podium
-    box.innerHTML = "<p>Playing as <strong>" + esc(S.settings.playerName) + "</strong>" + (rank ? ", ranked <strong>#" + rank + "</strong>" : "") + ".</p>";
-  }
-  function checkRewards() {
-    if (!LB.enabled() || !S.settings.playerName) return;
-    var days = Object.keys(S.lb.posted).map(Number).filter(function (d) { return !(d in S.lb.claimed) && d < TODAY && d >= TODAY - 10; });
-    if (!days.length) return;
-    LB.rewardsFor(days).then(function (res) {
-      var won = [];
-      res.forEach(function (r) {
-        S.lb.claimed[r.day] = r.rank;
-        var t = LB.tierFor(r.rank);
-        if (t) { S.lb.badges.push({ day: r.day, rank: r.rank, icon: t.icon, name: t.name }); S.inv.magnifier = (S.inv.magnifier || 0) + 1; won.push({ day: r.day, rank: r.rank, tier: t }); }
-      });
-      persist();
-      if (won.length) showReward(won);
-    }).catch(function () { /* try again next visit */ });
-  }
-  function showReward(won) {
-    won.sort(function (a, b) { return a.rank - b.rank; });
-    var top = won[0];
-    $("reward-badge").textContent = top.tier.icon;
-    $("reward-h").textContent = top.rank === 1 ? "Number one detective!" : "You made the top 10!";
-    $("reward-text").textContent = "You finished #" + top.rank + " on Daily #" + top.day + (won.length > 1 ? ", and made the top 10 on " + (won.length - 1) + " more day" + (won.length > 2 ? "s" : "") : "") + ".";
-    $("reward-list").innerHTML = won.map(function (w) { return "<li>" + w.tier.icon + " " + esc(w.tier.name) + " badge for Daily #" + w.day + "</li>"; }).join("") +
-      "<li>" + won.length + " free Magnifier" + (won.length > 1 ? "s" : "") + "</li><li>Your best badge now shows next to your name</li>";
-    WL.track("reward_won", { rank: top.rank });
-    Snd.play("fanfare");
-    openDialog("dlg-reward");
-  }
-  if ($("dlg-board")) {
-    [].forEach.call(document.querySelectorAll("#dlg-board .tab"), function (t) { t.addEventListener("click", function () { Snd.play("click"); boardTab = t.dataset.tab; loadBoard(); }); });
-    $("name-form").addEventListener("submit", function (e) {
-      e.preventDefault();
-      var first = !S.settings.playerName;
-      if (!saveName($("name-input").value, $("name-error"))) return;
-      closeDialog("dlg-name");
-      WL.track(first ? "leaderboard_join" : "leaderboard_rename", {});
-      var cb = nameCb; nameCb = null;
-      if (cb) cb();
-    });
-  }
-
   /* ---------- friend challenges (head to head) ---------- */
   // Link format: day.grid.seconds.name  e.g. 6.ggyrg.92.Raj
   function parseChallenge(raw) {
@@ -2702,7 +2583,7 @@
       if (!doc) return;
       Object.assign(S.league, { entered: true, pts: doc.pts, timeMs: doc.timeMs, days: doc.days });
       persist();
-      return refreshLeague(true).then(syncSeason); // the season entry adds up the league weeks
+      return refreshLeague(true);
     }).catch(function (e) { console.warn("[league]", e && e.message); });
   }
   function refreshLeague(force) {
@@ -3874,7 +3755,6 @@
   $("btn-map").addEventListener("click", function () { Snd.play("click"); openMap(); });
   $("btn-dossier").addEventListener("click", function () { Snd.play("click"); Book.openDossier(); });
   $("btn-daily").addEventListener("click", function () { Snd.play("click"); startDaily(TODAY); });
-  $("btn-season").addEventListener("click", function () { Snd.play("click"); openBoard("season"); });
   $("streak-chip").addEventListener("click", function () { Snd.play("click"); streakInfo(); });
   $("btn-friends").addEventListener("click", function () { Snd.play("click"); openBoard("friends"); });
   if ($("league-card")) $("league-card").addEventListener("click", function () { Snd.play("click"); openBoard("league"); });
@@ -3929,6 +3809,7 @@
   setInterval(function () {
     var left = WL.msToNextDay();
     [].forEach.call(document.querySelectorAll("[data-countdown]"), function (el) { el.textContent = WL.fmtCountdown(left); });
+    if (screen === "hq" && paintSeasonClock().left <= 0) renderSeason();
     if (screen === "hq" && !run) {
       if (WL.dayNumber() !== TODAY) location.reload();
       else if (new Date().getSeconds() === 0) { renderHQ(); refreshLeague(false); }
