@@ -259,6 +259,7 @@
     $("brand").hidden = !onHQ;
     $("hud-title").hidden = onHQ;
     if (name !== "case") { Plat.gameplayStop(); hideCoach(); $("stage-card").hidden = true; }
+    Snd.mood(name === "case" ? (run && run.kind === "rush" ? "rush" : run && run.d5 && run.c && run.c.n === 5 ? "verdict" : "case") : name === "book" ? "case" : "hq");
     if (onHQ) { gameTrace.stop(); hqTrace.start(); } else if (name === "case") { hqTrace.stop(); gameTrace.start(); } else { hqTrace.stop(); gameTrace.stop(); }
     if (name === "hq" || name === "results") setTimeout(cloudFlush, 0);
     var el = $("scr-" + name);

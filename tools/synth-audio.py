@@ -293,7 +293,7 @@ def music():
     st = reverb(st, wet=0.32, dur=2.4, tau=0.7, bright=4500)
     st = np.stack([lp(st[0], 10000), lp(st[1], 10000)])  # warmer top end
     seg = st[:, int(P * SR): int((2 * P + XF) * SR)]  # second pass: carries the tails, loops cleanly
-    save("music", seg, peak_db=-3, bitrate="112k")
+    save("music-hq", seg, peak_db=-3, bitrate="112k")
 
 
 if __name__ == "__main__":

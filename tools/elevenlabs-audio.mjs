@@ -91,14 +91,14 @@ if (!args.includes("--no-music") && (!only.length || only.includes("music"))) {
     const buf = await post("/music?output_format=mp3_44100_128", {
       prompt: MUSIC_PROMPT, music_length_ms: 60000, force_instrumental: true, model_id: "music_v1"
     });
-    await save("music", buf);
+    await save("music-hq", buf);
   } catch (e) {
     console.error(`Music API didn't work (${e.message}). Trying a 30-second looping track instead...`);
     try {
       const buf = await post("/sound-generation?output_format=mp3_44100_128", {
         text: MUSIC_PROMPT, duration_seconds: 30, loop: true, prompt_influence: 0.5, model_id: "eleven_text_to_sound_v2"
       });
-      await save("music", buf);
+      await save("music-hq", buf);
     } catch (e2) { failed++; console.error(`✗ music: ${e2.message}`); }
   }
 }

@@ -244,7 +244,7 @@ Daily top-10 players get a badge (🥇 🥈 🥉 🎖️) and a prize hint once 
 
 ## 5. Sound and music
 
-Built-in sounds live in `assets/audio/`. Music and sound switches are in Settings (gear icon).
+Built-in sounds live in `assets/audio/`. Music and sound switches are in Settings (gear icon). To swap a track, drop a new MP3 with the same name into `assets/audio/`.
 
 | File | When it plays |
 |---|---|
@@ -256,7 +256,7 @@ Built-in sounds live in `assets/audio/`. Music and sound switches are in Setting
 | `tick`, `timeout` | the last seconds in Rush, time running out |
 | `fanfare`, `fail` | results screens |
 | `coin`, `star`, `combo`, `levelup`, `buy`, `achieve` | rewards |
-| `music` | background loop (crossfaded, so it loops smoothly) |
+| `music-hq`, `music-case`, `music-rush`, `rain` | background music by mood: HQ and results, cases (with rain under them), Rush. A mood change crossfades. Royalty-free (CC0); sources and how each was processed are in `tools/audio-sources.md` |
 
 **Remake them with ElevenLabs** on your own computer (Node.js 18+):
 

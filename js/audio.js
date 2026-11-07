@@ -19,7 +19,7 @@
   var A = {
     ctx: null, master: null, sfxGain: null, musicGain: null, buffers: {}, loaded: false,
     soundOn: true, musicOn: true, forced: false, adMuted: false, hidden: false, touched: false,
-    music: { el: null, playing: false, wanted: false }
+    music: { playing: false, wanted: false, mood: "hq" }, tracks: {}
   };
 
   function audible() { return !A.forced && !A.adMuted; }
@@ -121,28 +121,72 @@
     g.linearRampToValueAtTime(MUSIC_VOL, t + sec + 0.4);
   }
 
-  /* ---------- music: one looping <audio> element ----------
-     Streamed and decoded a little at a time, so it costs a few hundred KB of memory instead of the ~16 MB
-     a fully decoded buffer takes. It still runs through musicGain, so mute, ads and ducking work the same.
-     ponytail: a plain loop can leave a tiny gap at the seam; crossfade two elements if that ever bothers anyone. */
+  /* ---------- music: one track per mood, plus rain under the cases ----------
+     Each track is a looping <audio> element, streamed and decoded a little at a time (a few hundred KB of memory, not
+     the ~16 MB a decoded buffer takes). They run through musicGain, so mute, ads and ducking work as before, and a mood
+     change crossfades. Royalty-free (CC0) tracks; where they came from is in tools/audio-sources.md.
+     ponytail: a plain loop can leave a tiny gap at the seam; crossfade two copies if that ever bothers anyone. */
+  var MOODS = {
+    hq: { track: "music-hq", rain: 0 },
+    "case": { track: "music-case", rain: 0.35 },
+    rush: { track: "music-rush", rain: 0 },
+    verdict: { track: "music-case", rain: 0.6 }
+  };
+  var FADE = 1.5; // seconds
+  function track(name) {
+    var t = A.tracks[name];
+    if (t) return t;
+    var el = new Audio("assets/audio/" + name + ".mp3");
+    el.loop = true; el.preload = "auto";
+    t = A.tracks[name] = { el: el, g: null, on: false, stop: 0 };
+    try { var src = A.ctx.createMediaElementSource(el); t.g = A.ctx.createGain(); t.g.gain.value = 0; src.connect(t.g); t.g.connect(A.musicGain); }
+    catch (e) { el.volume = 0; } // no Web Audio: plain element volume
+    return t;
+  }
+  function level(t, v, secs) {
+    if (t.g) {
+      var g = t.g.gain, now = A.ctx.currentTime;
+      g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); g.linearRampToValueAtTime(v, now + secs);
+    } else t.el.volume = Math.min(1, v * MUSIC_VOL);
+  }
+  // Plays the mood's track (and rain), fades every other track out and pauses it once it's silent.
+  function applyMood() {
+    var m = A.music, md = MOODS[m.mood] || MOODS.hq, want = {};
+    want[md.track] = 1;
+    if (md.rain) want.rain = md.rain;
+    Object.keys(want).forEach(function (n) {
+      var t = track(n);
+      t.on = true; clearTimeout(t.stop);
+      if (t.el.paused) { var p = t.el.play(); if (p && p.catch) p.catch(function () { m.playing = false; }); }
+      level(t, want[n], FADE);
+    });
+    Object.keys(A.tracks).forEach(function (n) {
+      var t = A.tracks[n];
+      if (want[n] || !t.on) return;
+      t.on = false; level(t, 0, FADE);
+      clearTimeout(t.stop);
+      t.stop = setTimeout(function () { if (!t.on) t.el.pause(); }, FADE * 1000 + 150);
+    });
+  }
   function startMusic() {
     var m = A.music;
     m.wanted = true;
     if (!A.musicOn || m.playing || !A.touched || !ensure()) return;
-    if (!m.el) {
-      m.el = new Audio("assets/audio/music.mp3");
-      m.el.loop = true; m.el.preload = "auto";
-      try { A.ctx.createMediaElementSource(m.el).connect(A.musicGain); } catch (e) { m.el.volume = MUSIC_VOL; }
-    }
     m.playing = true;
-    var p = m.el.play();
-    if (p && p.catch) p.catch(function () { m.playing = false; });
+    applyMood();
   }
   function stopMusic(keepWanted) {
     var m = A.music;
     m.playing = false;
     if (!keepWanted) m.wanted = false;
-    if (m.el) m.el.pause();
+    Object.keys(A.tracks).forEach(function (n) { var t = A.tracks[n]; t.on = false; clearTimeout(t.stop); t.el.pause(); level(t, 0, 0); });
+  }
+  // hq | case | rush | verdict: which music fits the screen.
+  function mood(name) {
+    var m = A.music;
+    if (!MOODS[name] || m.mood === name) return;
+    m.mood = name;
+    if (m.playing) applyMood();
   }
 
   /* ---------- switches ---------- */
@@ -167,17 +211,20 @@
   document.addEventListener("visibilitychange", function () {
     A.hidden = document.hidden;
     if (!A.ctx) return;
-    if (document.hidden) { if (A.music.el) A.music.el.pause(); try { A.ctx.suspend(); } catch (e) { /* ignore */ } }
+    if (document.hidden) { Object.keys(A.tracks).forEach(function (n) { A.tracks[n].el.pause(); }); try { A.ctx.suspend(); } catch (e) { /* ignore */ } }
     else {
       var p; try { p = A.ctx.resume(); } catch (e) { p = null; }
-      var go = function () { if (A.music.playing && A.music.el) A.music.el.play().catch(function () { /* needs a tap */ }); };
+      var go = function () {
+        if (!A.music.playing) return;
+        Object.keys(A.tracks).forEach(function (n) { var t = A.tracks[n]; if (t.on) t.el.play().catch(function () { /* needs a tap */ }); });
+      };
       if (p && p.then) p.then(go, go); else go();
     }
   });
 
   window.WLAudio = {
     init: function (o) { A.soundOn = o.sound !== false; A.musicOn = o.music !== false; A.music.wanted = A.musicOn; },
-    play: play, startMusic: startMusic, stopMusic: stopMusic,
+    play: play, startMusic: startMusic, stopMusic: stopMusic, mood: mood,
     setSound: setSound, setMusic: setMusic, setForced: setForced, adPause: adPause, adResume: adResume,
     unlocked: function () { return !!A.ctx && A.ctx.state === "running"; }
   };
