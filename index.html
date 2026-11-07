@@ -602,16 +602,23 @@
   </div>
 </dialog>
 
-<dialog id="dlg-group" aria-labelledby="group-h">
-  <form class="dlg" id="group-form" novalidate>
+<dialog id="dlg-friends" aria-labelledby="fr-h">
+  <form class="dlg" id="fr-form" novalidate>
     <button class="icon-btn dlg-close" type="button" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-    <h2 id="group-h">Friend groups</h2>
-    <p>Compare today's results with friends, family or your office. Up to 50 detectives per group.</p>
-    <label class="field-label" for="group-name">Start a new group</label>
-    <div class="field-row"><input class="field" id="group-name" type="text" maxlength="24" placeholder="Office Sleuths" autocomplete="off"><button class="btn primary" id="group-create" type="button">Create</button></div>
-    <label class="field-label" for="group-code">Or join with a code</label>
-    <div class="field-row"><input class="field code" id="group-code" type="text" maxlength="7" placeholder="ABC234" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="btn ghost" id="group-join" type="button">Join</button></div>
-    <p class="field-error" id="group-error" role="alert" hidden></p>
+    <h2 id="fr-h">Friends</h2>
+    <p class="muted" id="fr-count"></p>
+    <div class="fr-code-box">
+      <span class="muted small">Your friend code</span>
+      <b class="fr-code" id="fr-code">······</b>
+      <div class="dlg-row"><button class="btn primary" type="button" id="fr-share">Share</button><button class="btn ghost" type="button" id="fr-copy">Copy</button></div>
+    </div>
+    <label class="field-label" for="fr-add-input">Add a friend</label>
+    <div class="field-row"><input class="field code" id="fr-add-input" type="text" maxlength="6" placeholder="ABC234" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="btn primary" id="fr-add" type="submit">Send request</button></div>
+    <p class="field-error" id="fr-error" role="alert" hidden></p>
+    <h3 class="sec" id="fr-inbox-h" hidden>Requests</h3>
+    <ul class="fr-list" id="fr-inbox"></ul>
+    <h3 class="sec">Your friends</h3>
+    <ul class="fr-list" id="fr-list"></ul>
   </form>
 </dialog>
 

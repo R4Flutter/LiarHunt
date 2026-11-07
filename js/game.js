@@ -318,6 +318,7 @@
     renderMissions();
     $("btn-board").hidden = !lbOn();
     $("btn-friends").hidden = !lbOn();
+    renderFriendsBadge();
     $("tile-room").hidden = !lbOn();
     renderBanner();
     renderCoins(false);
@@ -2721,133 +2722,129 @@
     }).catch(function (e) { if (tok === boardTok) list.innerHTML = '<li class="board-empty">' + esc(LB.friendlyError(e)) + "</li>"; });
   }
 
-  /* ---------- friend groups (web) ---------- */
+  /* ---------- friends (web): up to 8, added with a friend code (LB.friends) ---------- */
+  function friendMe() { return { name: S.settings.playerName || "", av: myFace() }; }
+  function friendLink(code) { return (WL.siteUrl() || location.origin) + "/?f=" + code; }
+  function renderFriendsBadge() { var b = $("btn-friends"); if (b) b.dataset.badge = S.friends.asks ? String(S.friends.asks) : ""; }
+  // At start-up: apply answers to your requests and count the requests waiting for you.
+  function friendsBoot() {
+    if (!lbOn() || !S.settings.playerName) return;
+    LB.friends.inbox().then(function (list) {
+      return LB.friends.settle(list, S.friends.asked, friendMe()).then(function (r) {
+        r.added.forEach(function (id) {
+          var who = list.filter(function (x) { return x.from === id; })[0];
+          delete S.friends.asked[id];
+          toast(esc((who && who.name) || "A detective") + " accepted your friend request.", "gold", 3600);
+        });
+        S.friends.asks = list.filter(function (x) { return x.kind === "ask"; }).length;
+        persist(); renderFriendsBadge();
+      });
+    }).catch(function () { /* next visit */ });
+  }
+  function byLp(a, b) { return b.lp - a.lp || b.rate - a.rate; }
+  function friendCard(f, acts) {
+    var X = WL.LADDER, today = f.today ? f.today.score + "/5 today" : "Not played yet";
+    return '<li class="fr-card"><span class="mug">' + WL.avatar(f.name, f.av) + '</span><span class="fr-who"><b>' + esc(f.name) + "</b>" +
+      '<span class="b-sub">' + X.icons[f.tier] + " " + X.names[f.tier] + " · " + (f.lp || 0).toLocaleString("en") + " LP · " + Math.round((f.rate || 0) / 10) + "% solved</span>" +
+      '<span class="b-sub">' + today + "</span></span>" +
+      (acts ? '<span class="fr-acts"><button class="btn small ghost" type="button" data-challenge="' + esc(f.uid) + '">Challenge</button>' +
+        '<button class="link-btn small" type="button" data-remove="' + esc(f.uid) + '" data-name="' + esc(f.name) + '">Remove</button></span>' : "") + "</li>";
+  }
+  function openFriends(prefill) {
+    if (!lbOn()) return;
+    if (!S.settings.playerName) { openSetup(function () { openFriends(prefill); }); return; }
+    $("fr-add-input").value = prefill || "";
+    $("fr-error").hidden = true;
+    openDialog("dlg-friends");
+    renderFriends();
+    if (prefill) setTimeout(function () { try { $("fr-add").focus(); } catch (e) { /* ignore */ } }, 60);
+  }
+  var frTok = 0;
+  function renderFriends() {
+    var tok = ++frTok;
+    $("fr-list").innerHTML = '<li class="board-empty">Loading...</li>';
+    LB.friends.me(friendMe()).then(function (m) {
+      if (tok !== frTok) return;
+      S.friends.code = m.code; persist();
+      $("fr-code").textContent = m.code;
+      $("fr-count").textContent = m.list.length + " of " + LB.friends.MAX + " friends";
+      return Promise.all([LB.friends.inbox(), m.list.length ? LB.friends.cards(m.list, SEASON || 1, TODAY) : []]).then(function (x) {
+        if (tok !== frTok) return;
+        var asks = x[0].filter(function (e) { return e.kind === "ask"; });
+        S.friends.asks = asks.length; persist(); renderFriendsBadge();
+        $("fr-inbox-h").hidden = !asks.length;
+        $("fr-inbox").innerHTML = asks.map(function (e) {
+          return '<li class="fr-card"><span class="mug">' + WL.avatar(e.name || "Detective", e.av) + '</span><span class="fr-who"><b>' + esc(e.name || "A detective") +
+            '</b><span class="b-sub">wants to be friends</span></span><span class="fr-acts"><button class="btn small primary" type="button" data-accept="' + esc(e.from) + '">Accept</button>' +
+            '<button class="link-btn small" type="button" data-decline="' + esc(e.from) + '">Decline</button></span></li>';
+        }).join("");
+        $("fr-list").innerHTML = x[1].length ? x[1].sort(byLp).map(function (f) { return friendCard(f, true); }).join("")
+          : '<li class="board-empty">No friends yet. Send your code to someone you play with.</li>';
+      });
+    }).catch(function (e) { if (tok === frTok) $("fr-list").innerHTML = '<li class="board-empty">' + esc(LB.friendlyError(e)) + "</li>"; });
+  }
+  // The leaderboard's Friends tab: the same cards, most LP first.
   function loadFriends(tok) {
-    var list = $("board-list"), head = $("board-head"), me = $("board-me");
+    var list = $("board-list"), head = $("board-head");
     head.hidden = false;
-    $("board-note").textContent = "";
-    if (!S.settings.playerName) {
-      head.innerHTML = "<span><b>Friend groups</b><span class=\"muted small\">Compare today's results with friends</span></span>";
-      list.innerHTML = '<li class="board-empty">Pick a detective name first, then make a group or join one with a code.</li>';
-      me.innerHTML = '<button class="btn primary wide" type="button" id="grp-name">Pick a name</button>';
-      $("grp-name").addEventListener("click", function () { askName(function () { loadBoard(); }); });
-      return;
-    }
-    if (!S.groups.length) {
-      head.innerHTML = "<span><b>Friend groups</b><span class=\"muted small\">Compare today's results with friends</span></span>";
-      list.innerHTML = '<li class="board-empty">Make a group for your friends, family or office and share the code. Everyone sees each other\'s Daily results.</li>';
-      me.innerHTML = '<button class="btn primary wide" type="button" id="grp-new">Create or join a group</button>';
-      $("grp-new").addEventListener("click", openGroupDlg);
-      return;
-    }
-    S.groupSel = Math.min(S.groupSel || 0, S.groups.length - 1);
-    var g = S.groups[S.groupSel];
-    head.innerHTML = '<div class="grp-chips">' + S.groups.map(function (x, i) {
-      return '<button type="button" class="chip-btn' + (i === S.groupSel ? " on" : "") + '" data-grp="' + i + '">' + esc(x.name) + "</button>";
-    }).join("") + '<button type="button" class="chip-btn" data-grp="new" aria-label="Create or join another group">+</button></div>';
-    $("board-note").textContent = "Daily #" + TODAY + " · group code " + g.code;
+    head.innerHTML = '<span class="league-emblem" aria-hidden="true">🤝</span><span><b>Friends</b><span class="muted small">Up to ' + LB.friends.MAX + " detectives</span></span>";
+    $("board-note").innerHTML = '<button class="btn ghost small" type="button" id="board-fr">Add friends</button>';
+    $("board-fr").addEventListener("click", function () { Snd.play("click"); closeDialog("dlg-board"); openFriends(); });
+    if (!S.settings.playerName) { list.innerHTML = '<li class="board-empty">Join the leaderboard to add friends.</li>'; renderBoardMe(null); return; }
     list.innerHTML = '<li class="board-empty">Loading...</li>';
-    me.innerHTML = '<div class="row2"><button class="btn primary" type="button" id="grp-invite">Invite friends</button><button class="btn ghost" type="button" id="grp-leave">Leave group</button></div>';
-    $("grp-invite").addEventListener("click", function () { Snd.play("click"); inviteGroup(g); });
-    $("grp-leave").addEventListener("click", function () { leaveGroup(g); });
-    LB.getGroup(g.code).then(function (grp) {
-      g.name = grp.name;
-      return LB.groupScores(grp.members, TODAY).then(function (sc) { return { grp: grp, sc: sc }; });
-    }).then(function (o) {
+    LB.friends.me(friendMe()).then(function (m) { return m.list.length ? LB.friends.cards(m.list, SEASON || 1, TODAY) : []; }).then(function (cards) {
       if (tok !== boardTok) return;
-      var my = LB.myId(), ids = Object.keys(o.grp.members);
-      var done = ids.filter(function (u) { return o.sc[u]; }).map(function (u) { return o.sc[u]; })
-        .sort(function (a, b) { return b.score - a.score || a.timeMs - b.timeMs; });
-      var waiting = ids.filter(function (u) { return !o.sc[u]; });
-      list.innerHTML = done.map(function (r, i) {
-        return '<li class="board-row' + (r.uid === my ? " me" : "") + '"><span class="b-rank">' + (i + 1) + '</span><span class="b-name">' + esc(r.name) +
-          (r.uid === my ? " <em>(you)</em>" : "") + '</span><span class="b-score">' + r.score + '/5</span><span class="b-time">' + WL.fmtTime(r.timeMs) + "</span></li>";
-      }).join("") + waiting.map(function (u) {
-        return '<li class="board-row waiting"><span class="b-rank">·</span><span class="b-name">' + esc(o.grp.members[u]) + (u === my ? " <em>(you)</em>" : "") +
-          '</span><span class="b-score">–</span><span class="b-time">not yet</span></li>';
-      }).join("");
-      if (ids.length < 2) list.innerHTML += '<li class="board-empty">It\'s just you so far. Tap "Invite friends" and send them the link.</li>';
-    }).catch(function (e) {
-      if (tok !== boardTok) return;
-      if (e && e.code === "not-found") { S.groups.splice(S.groupSel, 1); persist(); loadBoard(); return; }
-      list.innerHTML = '<li class="board-empty">' + esc(LB.friendlyError(e)) + "</li>";
+      list.innerHTML = cards.length ? cards.sort(byLp).map(function (f) { return friendCard(f, false); }).join("")
+        : '<li class="board-empty">No friends yet. Tap Add friends and send them your code.</li>';
+      renderBoardMe(null);
+    }).catch(function (e) { if (tok === boardTok) list.innerHTML = '<li class="board-empty">' + esc(LB.friendlyError(e)) + "</li>"; });
+  }
+  if ($("dlg-friends")) {
+    $("fr-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var err = function (m) { $("fr-error").textContent = m; $("fr-error").hidden = false; };
+      $("fr-error").hidden = true;
+      var code = LB.friends.clean($("fr-add-input").value);
+      if (!code) { err("A friend code has 6 letters and numbers, like ABC234."); return; }
+      if (code === S.friends.code) { err("That's your own code."); return; }
+      $("fr-add").disabled = true;
+      LB.friends.lookup(code).then(function (who) {
+        if (!who) { err("No detective has that code. Check it and try again."); return; }
+        return LB.friends.ask(who.uid, friendMe()).then(function () {
+          S.friends.asked[who.uid] = Date.now(); persist();
+          $("fr-add-input").value = "";
+          Snd.play("stamp");
+          toast("Request sent to " + esc(who.name || "your friend") + ". You'll be friends once they accept.", "gold", 3800);
+          WL.track("friend_ask", {});
+        });
+      }).catch(function (e) { err(LB.friendlyError(e)); }).then(function () { $("fr-add").disabled = false; });
     });
-  }
-  function openGroupDlg() {
-    if (!S.settings.playerName) { askName(openGroupDlg); return; }
-    $("group-name").value = ""; $("group-code").value = ""; $("group-error").hidden = true;
-    openDialog("dlg-group");
-  }
-  function groupError(msg) { $("group-error").textContent = msg; $("group-error").hidden = false; }
-  function addGroup(g) {
-    var i = -1;
-    S.groups.forEach(function (x, k) { if (x.code === g.code) i = k; });
-    if (i < 0) { S.groups.push({ code: g.code, name: g.name }); i = S.groups.length - 1; }
-    S.groupSel = i; persist();
-  }
-  function groupBusy(on) { $("group-create").disabled = on; $("group-join").disabled = on; }
-  function inviteGroup(g) {
-    WL.track("group_invite", {});
-    shareOut("Join my LiarHunt group “" + g.name + "” and let's compare our daily detective results! 🕵️\n" + Plat.shareLink({ g: g.code }) + "\nGroup code: " + g.code);
-  }
-  function leaveGroup(g) {
-    showNotice({ icon: "👋", title: "Leave " + g.name + "?", text: "You can join again later with the code " + g.code + ".", yes: "Leave", no: "Stay",
-      onYes: function () {
-        LB.leaveGroup(g.code).then(function () {
-          S.groups = S.groups.filter(function (x) { return x.code !== g.code; }); S.groupSel = 0; persist();
-          toast("You left " + esc(g.name) + "."); openBoard("friends");
-        }).catch(function (e) { toast(esc(LB.friendlyError(e))); openBoard("friends"); });
-      },
-      onNo: function () { openBoard("friends"); } });
-  }
-  function joinGroupFlow(code) {
-    if (!S.settings.playerName) { askName(function () { joinGroupFlow(code); }); return; }
-    if (S.groups.length >= 5 && !S.groups.some(function (x) { return x.code === code; })) { toast("You can be in 5 groups. Leave one first."); return; }
-    return LB.joinGroup(code, S.settings.playerName).then(function (g) {
-      addGroup({ code: code, name: g.name });
-      WL.track("group_join", {});
-      toast("You joined " + esc(g.name) + "!", "gold");
-      closeDialog("dlg-group");
-      openBoard("friends");
+    $("fr-add-input").addEventListener("input", function () { this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6); });
+    $("fr-copy").addEventListener("click", function () { Snd.play("click"); copyText(S.friends.code, "Friend code copied."); });
+    $("fr-share").addEventListener("click", function () {
+      Snd.play("click");
+      shareOut("Add me on LiarHunt, the daily detective game. My friend code is " + S.friends.code + ": " + friendLink(S.friends.code), "Invite copied. Paste it to a friend.");
+      WL.track("friend_share", {});
     });
-  }
-  if ($("dlg-group")) {
-    $("group-create").addEventListener("click", function () {
-      var r = LB.cleanGroupName($("group-name").value);
-      if (!r.ok) return groupError(r.msg);
-      if (S.groups.length >= 5) return groupError("You can be in 5 groups. Leave one first.");
-      groupBusy(true);
-      LB.createGroup(r.name, S.settings.playerName).then(function (g) {
-        addGroup(g);
-        WL.track("group_create", {});
-        closeDialog("dlg-group");
-        toast("Group created! Code: " + g.code, "gold");
-        openBoard("friends");
-        inviteGroup(g);
-      }).catch(function (e) { groupError(LB.friendlyError(e)); }).then(function () { groupBusy(false); });
-    });
-    $("group-join").addEventListener("click", function () {
-      var code = LB.cleanCode($("group-code").value);
-      if (!code) return groupError("Group codes have 6 letters and numbers, like ABC234.");
-      groupBusy(true);
-      (joinGroupFlow(code) || Promise.resolve()).catch(function (e) { groupError(LB.friendlyError(e)); }).then(function () { groupBusy(false); });
-    });
-    $("board-head").addEventListener("click", function (e) {
-      var b = e.target.closest("[data-grp]");
+    $("dlg-friends").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-accept], [data-decline], [data-remove], [data-challenge]");
       if (!b) return;
       Snd.play("click");
-      if (b.dataset.grp === "new") { closeDialog("dlg-board"); openGroupDlg(); return; }
-      S.groupSel = +b.dataset.grp; persist(); loadBoard();
+      var oops = function (er) { toast(esc(LB.friendlyError(er))); renderFriends(); };
+      if (b.dataset.accept) { LB.friends.accept(b.dataset.accept, friendMe()).then(function () { WL.track("friend_accept", {}); renderFriends(); }, oops); return; }
+      if (b.dataset.decline) { LB.friends.decline(b.dataset.decline).then(renderFriends, oops); return; }
+      if (b.dataset.remove) {
+        var id = b.dataset.remove, nm = b.dataset.name || "them";
+        showNotice({ icon: "👋", title: "Remove " + nm + "?", text: "You'll both drop off each other's friends list.", yes: "Remove", no: "Keep",
+          onYes: function () { LB.friends.remove(id, friendMe()).then(renderFriends, oops); } });
+        return;
+      }
+      if (b.dataset.challenge) {
+        var d = S.daily && S.daily.day === TODAY && S.daily.done ? S.daily : null;
+        if (!d) { toast("Play today's Daily first, then send them your result to beat."); return; }
+        shareOut(dailyShareText(TODAY, d, false, S.lb.ranks[TODAY] || 0));
+      }
     });
-  }
-  function handleGroupInvite(code) {
-    LB.getGroup(code).then(function (g) {
-      if (S.groups.some(function (x) { return x.code === code; })) { openBoard("friends"); return; }
-      var n = Object.keys(g.members).length;
-      notice({ icon: "👥", eyebrow: "Friend group", title: "Join “" + g.name + "”?", yes: "Join the group", no: "Not now",
-        text: n + " detective" + (n > 1 ? "s" : "") + " already compare their Daily results here. Join to see how you stack up every day.",
-        onYes: function () { var p = joinGroupFlow(code); if (p) p.catch(function (e) { toast(esc(LB.friendlyError(e))); }); } });
-    }).catch(function () { toast("That group link doesn't work any more."); });
   }
 
   /* ---------- write a case for friends ----------
@@ -3845,7 +3842,7 @@
   $("btn-dossier").addEventListener("click", function () { Snd.play("click"); Book.openDossier(); });
   $("btn-daily").addEventListener("click", function () { Snd.play("click"); startDaily(TODAY); });
   $("streak-chip").addEventListener("click", function () { Snd.play("click"); streakInfo(); });
-  $("btn-friends").addEventListener("click", function () { Snd.play("click"); openBoard("friends"); });
+  $("btn-friends").addEventListener("click", function () { Snd.play("click"); openFriends(); });
   $("season-card").addEventListener("click", function () { if (lbOn() && SEASON) { Snd.play("click"); openBoard("league"); } });
   $("tile-rush").addEventListener("click", function () { Snd.play("click"); if (!unlocked("rush")) return toast("Rush opens tomorrow, or after 10 solved cases."); startRush(); });
   $("btn-shop").addEventListener("click", function () { Snd.play("click"); openShop(false); });
@@ -3942,7 +3939,8 @@
     delete S.arc; delete S.night; // the Case of the Week and the Night Shift are gone
     S.ladder = Object.assign({ season: 0, lp: 0, tier: 0, days: 0, rate: 0, failRate: 0, rank: 0, total: 0, at: 0, paid: {} }, S.ladder || {});
     delete S.league; // the old weekly league
-    S.groups = S.groups || [];
+    S.friends = Object.assign({ code: "", asked: {}, asks: 0 }, S.friends || {});
+    delete S.groups; delete S.groupSel; // Friend groups are retired
     S.pwa = S.pwa || {};
     S.sync = Object.assign({ code: "", dirty: false, stamp: 0 }, S.sync || {});
     if (S.challenge && S.challenge.day < TODAY - 7) S.challenge = null;
@@ -3969,8 +3967,13 @@
     }
     var ch = parseChallenge(Plat.inviteParam("c"));
     if (ch) { handleChallenge(ch); goHQ(); return; }
-    var grp = lbOn() ? LB.cleanCode(Plat.inviteParam("g")) : "";
-    if (grp) { goHQ(); handleGroupInvite(grp); return; }
+    var fc = lbOn() ? LB.friends.clean(Plat.inviteParam("f")) : "";
+    if (fc) { goHQ(); openFriends(fc); return; }
+    if (lbOn() && Plat.inviteParam("g")) { // an old Friend group link
+      goHQ();
+      notice({ icon: "🤝", title: "Friend groups are now Friends", text: "Ask your friend for their friend code and add them in Friends. You can have up to 8.", yes: "Open Friends", no: "Later", onYes: function () { openFriends(); } });
+      return;
+    }
     var invDay = parseInt(Plat.inviteParam("day"), 10), invMode = Plat.inviteParam("mode");
     if (invDay >= 1 && invDay <= TODAY) { startDaily(invDay); return; }
     if (invMode === "rush") { startRush(); return; }
@@ -4041,7 +4044,7 @@
       if (cloud.migrate && started()) { S.sync.dirty = true; cloudFlush(); } // this device's old save moves into the account now
       if (lbOn()) {
         setTimeout(checkRewards, 1500);
-        if (S.settings.playerName) { refreshLadder(true); ladderSeasonEnd(); }
+        if (S.settings.playerName) { refreshLadder(true); ladderSeasonEnd(); friendsBoot(); }
       }
       persist();
       if (later) later.then(function (d) { if (d) cloudReady(d); else cloud.busy = false; }); // offline: keeps saving on this device

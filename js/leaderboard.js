@@ -79,8 +79,7 @@
   function friendlyError(e) {
     var code = e && e.code ? e.code : "";
     if (code === "demo") return "Not available in demo mode.";
-    if (code === "not-found") return "That group code doesn't exist. Check it and try again.";
-    if (code === "full") return "That group is full (50 detectives).";
+    if (code === "not-found") return "That code doesn't exist. Check it and try again.";
     if (code === "no-room") return "That room doesn't exist any more. Ask for a new link.";
     if (code === "room-full") return "That room is full (10 detectives).";
     if (code === "self") return "That's your own code.";
@@ -396,16 +395,11 @@
 
   var LEAGUES = window.WL.LADDER.names.map(function (n, i) { return { name: n, icon: window.WL.LADDER.icons[i] }; });
 
-  /* ---------- friend groups ---------- */
+  /* ---------- 6-letter codes (rooms, friends) ---------- */
   var CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
   function newCode() { var c = ""; for (var i = 0; i < 6; i++) c += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]; return c; }
   function cleanCode(raw) { var c = String(raw || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); return /^[A-Z2-9]{6}$/.test(c) ? c : ""; }
-  function cleanGroupName(raw) {
-    var n = String(raw || "").replace(/\s+/g, " ").trim();
-    if (n.length < 2 || n.length > 24) return { ok: false, msg: "Use 2 to 24 characters." };
-    if (BLOCK.test(n.replace(/[\s._-]/g, ""))) return { ok: false, msg: "Please pick a different name." };
-    return { ok: true, name: n };
-  }
+
   function err(code, msg) { var e = new Error(msg); e.code = code; return e; }
 
   /* ---------- accounts: each player's save lives at players/{uid} ----------
@@ -806,58 +800,6 @@
     friends: friends,
     LEAGUES: LEAGUES,
     cleanCode: cleanCode,
-    cleanGroupName: cleanGroupName,
-    getGroup: function (code) {
-      if (provider !== "firebase") return demoOff();
-      return ready().then(function () { return db.collection("groups").doc(code).get(); })
-        .then(function (s) { if (!s.exists) throw err("not-found", "No such group"); var g = s.data(); g.code = code; return g; });
-    },
-    createGroup: function (name, myName) {
-      if (provider !== "firebase") return demoOff();
-      return ready().then(function () {
-        var tries = 0;
-        var attempt = function () {
-          var code = newCode(), m = {}; m[uid] = myName;
-          return db.collection("groups").doc(code).set({ name: name, owner: uid, members: m, createdAt: window.firebase.firestore.FieldValue.serverTimestamp() })
-            .then(function () { return { code: code, name: name }; }, function (e) {
-              if (e && e.code === "permission-denied" && ++tries < 4) return attempt(); // code taken: try another
-              throw e;
-            });
-        };
-        return attempt();
-      });
-    },
-    joinGroup: function (code, myName) {
-      var self = this;
-      return self.getGroup(code).then(function (g) {
-        if (!(uid in g.members) && Object.keys(g.members).length >= 50) throw err("full", "Group is full");
-        var u = {}; u["members." + uid] = myName;
-        return db.collection("groups").doc(code).update(u).then(function () { g.members[uid] = myName; return g; });
-      });
-    },
-    leaveGroup: function (code) {
-      if (provider !== "firebase") return demoOff();
-      return ready().then(function () {
-        var u = {}; u["members." + uid] = window.firebase.firestore.FieldValue.delete();
-        return db.collection("groups").doc(code).update(u);
-      });
-    },
-    // Today's posted results for every member: { uid: scoreDoc }
-    groupScores: function (members, day) {
-      if (provider !== "firebase") return demoOff();
-      var ids = Object.keys(members).map(function (u) { return day + "_" + u; }), chunks = [];
-      for (var i = 0; i < ids.length; i += 30) chunks.push(ids.slice(i, i + 30));
-      return ready().then(function () {
-        return Promise.all(chunks.map(function (c) {
-          return db.collection("scores").where(window.firebase.firestore.FieldPath.documentId(), "in", c).get();
-        }));
-      }).then(function (snaps) {
-        var out = {};
-        snaps.forEach(function (s) { s.docs.forEach(function (d) { out[d.data().uid] = d.data(); }); });
-        return out;
-      });
-    },
-
     account: account, accountError: accountError,
     newSaveCode: newSaveCode,
     cleanSaveCode: cleanSaveCode,

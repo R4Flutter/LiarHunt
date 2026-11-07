@@ -1001,7 +1001,16 @@ textarea.field { resize: vertical; min-height: 3.4rem; line-height: 1.4; font-si
 .board-head > span:last-child { display: grid; line-height: 1.15; }
 .board-head b { font-family: var(--display); font-weight: 900; font-size: 1.35rem; }
 .board-head .league-emblem { width: 2.6rem; height: 2.6rem; font-size: 1.3rem; }
-.grp-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.fr-code-box { display: grid; justify-items: center; gap: 0.35rem; background: var(--paper); border: 2px dashed var(--grid-strong); border-radius: var(--r); padding: 0.7rem; margin: 0.3rem 0 0.8rem; }
+.fr-code { font-family: var(--display); font-weight: 900; font-size: 2rem; letter-spacing: 0.22em; line-height: 1; }
+.fr-list { list-style: none; margin: 0 0 0.6rem; padding: 0; display: grid; gap: 0.45rem; }
+.fr-card { display: grid; grid-template-columns: 2.6rem minmax(0, 1fr) auto; gap: 0.6rem; align-items: center; border: 2px solid var(--grid-strong); border-radius: var(--r); background: var(--surface); padding: 0.45rem 0.6rem; }
+.fr-card .mug { width: 2.6rem; }
+.fr-who { display: grid; min-width: 0; line-height: 1.25; }
+.fr-who b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fr-acts { display: grid; gap: 0.2rem; justify-items: center; }
+.hq-link[data-badge]:not([data-badge=""]) { position: relative; }
+.hq-link[data-badge]:not([data-badge=""])::after { content: attr(data-badge); position: absolute; top: -0.45rem; right: -0.35rem; min-width: 1.35rem; height: 1.35rem; padding: 0 0.3rem; border-radius: 99px; background: var(--needle); color: #fff; font-family: var(--body); font-size: 0.8rem; font-weight: 700; display: grid; place-items: center; }
 .board-row.up { box-shadow: inset 4px 0 0 var(--ok); }
 .board-row.down { box-shadow: inset 4px 0 0 var(--needle); }
 .board-row.waiting { color: var(--pencil); }
