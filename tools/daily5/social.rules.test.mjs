@@ -94,6 +94,55 @@ await t("entries are public to read", async () => {
   await assertSucceeds(getDoc(lad(env.unauthenticatedContext().firestore(), "ana", 1)));
 });
 
+/* ---------- friends ---------- */
+const fr = (uid, list, extra = {}) => Object.assign({ code: uid.toUpperCase().slice(0, 3) + "234", name: uid.toUpperCase(), list }, extra, { updatedAt: serverTimestamp() });
+await t("a player claims a free friend code for themselves", async () => {
+  await assertSucceeds(setDoc(doc(ana, "fcodes", "ANA234"), { uid: "ana" }));
+});
+await t("a taken code can't be claimed again", async () => {
+  await assertFails(setDoc(doc(ben, "fcodes", "ANA234"), { uid: "ben" }));
+});
+await t("a code can't point at someone else", async () => {
+  await assertFails(setDoc(doc(ben, "fcodes", "BEN234"), { uid: "ana" }));
+});
+await t("a badly formed code is refused", async () => {
+  await assertFails(setDoc(doc(ben, "fcodes", "ben-1"), { uid: "ben" }));
+});
+await t("anyone signed in can look a code up", async () => {
+  await assertSucceeds(getDoc(doc(ben, "fcodes", "ANA234")));
+});
+await t("a friends list holds up to 8", async () => {
+  await assertSucceeds(setDoc(doc(ana, "friends", "ana"), fr("ana", ["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8"])));
+});
+await t("a ninth friend is refused", async () => {
+  await assertFails(setDoc(doc(ana, "friends", "ana"), fr("ana", ["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "b9"])));
+});
+await t("nobody writes someone else's list", async () => {
+  await assertFails(setDoc(doc(ana, "friends", "ben"), fr("ben", ["ana"])));
+});
+const ask = (from) => ({ from, name: from.toUpperCase(), kind: "ask", at: serverTimestamp() });
+await t("a player sends a friend request in their own name", async () => {
+  await assertSucceeds(setDoc(doc(ana, "friends/ben/inbox/ana"), ask("ana")));
+});
+await t("a request can't be sent as someone else", async () => {
+  await assertFails(setDoc(doc(ana, "friends/ben/inbox/cy"), ask("cy")));
+  await assertFails(setDoc(doc(ana, "friends/ben/inbox/ana2"), ask("ana")));
+});
+await t("a request of an unknown kind is refused", async () => {
+  await assertFails(setDoc(doc(as("cy"), "friends/ben/inbox/cy"), Object.assign(ask("cy"), { kind: "spam" })));
+});
+await t("only the receiver reads their requests", async () => {
+  await assertSucceeds(getDoc(doc(ben, "friends/ben/inbox/ana")));
+  await assertFails(getDoc(doc(ana, "friends/ben/inbox/ana")));
+});
+await t("a sent request can't be edited or taken back by the sender", async () => {
+  await assertFails(updateDoc(doc(ana, "friends/ben/inbox/ana"), { name: "Changed" }));
+  await assertFails(deleteDoc(doc(ana, "friends/ben/inbox/ana")));
+});
+await t("the receiver clears a request", async () => {
+  await assertSucceeds(deleteDoc(doc(ben, "friends/ben/inbox/ana")));
+});
+
 await env.cleanup();
 console.log(failed ? `\n${failed} rules test(s) failed.` : "\nAll ladder and friends rules tests passed.");
 process.exit(failed ? 1 : 0);

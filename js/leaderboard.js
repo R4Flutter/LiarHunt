@@ -83,6 +83,11 @@
     if (code === "full") return "That group is full (50 detectives).";
     if (code === "no-room") return "That room doesn't exist any more. Ask for a new link.";
     if (code === "room-full") return "That room is full (10 detectives).";
+    if (code === "self") return "That's your own code.";
+    if (code === "no-code") return "No detective has that code. Check it and try again.";
+    if (code === "already") return "You're already friends.";
+    if (code === "full") return "Your friends list is full (8). Remove someone first.";
+    if (code === "their-full") return "Their friends list is full.";
     if (code === "room-full-2") return "This Partners room is full. Ask your friend for a new link.";
     if (code === "failed-precondition") {
       console.warn("[leaderboard] Firestore needs an index. Open the link in this message to create it:", e.message);
@@ -230,6 +235,163 @@
         .then(function (n) { return { rank: n[1] + 1, total: Math.max(n[0], n[1] + 1) }; });
     },
     TOP: LADDER_TOP
+  };
+
+  /* ---------- friends: up to 8, added with a friend code ----------
+     fcodes/{code} -> { uid }; friends/{uid} -> { code, name, av, list }; friends/{to}/inbox/{from} -> { from, name, av, kind }.
+     kind: "ask" (a request), "accept" (they said yes) or "remove". The game only honours an "accept" from someone it asked.
+     Demo mode (?lb=demo) keeps everything in localStorage, with made-up friends. */
+  var FRIENDS_MAX = 8;
+  function ferr(code) { var e = new Error(code); e.code = code; return e; }
+  function cleanFriendCode(raw) { var c = String(raw || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); return /^[A-Z2-9]{6}$/.test(c) ? c : ""; }
+  var DEMO_FR = "whoslying:demo-friends";
+  var DEMO_PALS = [
+    { uid: "bot-f1", code: "NEHA23", name: "NoirNeha", av: "f04" }, { uid: "bot-f2", code: "OMAR23", name: "AgentOmar", av: "f09" },
+    { uid: "bot-f3", code: "MARP23", name: "Miss Marple", av: "f12" }, { uid: "bot-f4", code: "KENJ23", name: "Kenji.D", av: "f02" },
+    { uid: "bot-f5", code: "ZARA23", name: "Zara Q", av: "f13" }, { uid: "bot-f6", code: "HIRO23", name: "Hiro", av: "f06" },
+    { uid: "bot-f7", code: "FEMI23", name: "Femi", av: "f10" }, { uid: "bot-f8", code: "NADI23", name: "Nadia", av: "f01" },
+    { uid: "bot-f9", code: "ARJU23", name: "Arjun", av: "f15" }
+  ];
+  function demoPal(id) { return DEMO_PALS.filter(function (b) { return b.uid === id || b.code === id; })[0] || null; }
+  function demoFr() {
+    var f = null;
+    try { f = JSON.parse(localStorage.getItem(DEMO_FR)); } catch (e) { /* none */ }
+    if (!f) { f = { code: newCode(), list: ["bot-f1", "bot-f2"], inbox: [{ from: "bot-f3", name: "Miss Marple", av: "f12", kind: "ask" }] }; demoFrSave(f); }
+    return f;
+  }
+  function demoFrSave(f) { try { localStorage.setItem(DEMO_FR, JSON.stringify(f)); } catch (e) { /* ignore */ } }
+  function friendsRef(id) { return db.collection("friends").doc(id || uid); }
+  function inboxRef(to, from) { return db.collection("friends").doc(to).collection("inbox").doc(from); }
+  function stamp() { return window.firebase.firestore.FieldValue.serverTimestamp(); }
+  function msg(kind, p) { var m = { from: uid, name: (p && p.name) || "", kind: kind, at: stamp() }; if (p && window.WL.okFace(p.av)) m.av = p.av; return m; }
+  function claimCode(tries) {
+    var code = newCode();
+    return db.collection("fcodes").doc(code).set({ uid: uid }).then(function () { return code; }, function (e) {
+      if (e && e.code === "permission-denied" && tries > 1) return claimCode(tries - 1); // taken: try another
+      throw e;
+    });
+  }
+  function setList(list, p) {
+    return friends.me(p).then(function (m) {
+      var doc = { code: m.code, name: (p && p.name) || m.name || "", list: list, updatedAt: stamp() };
+      if (p && window.WL.okFace(p.av)) doc.av = p.av;
+      return friendsRef().set(doc);
+    });
+  }
+  var friends = {
+    MAX: FRIENDS_MAX,
+    clean: cleanFriendCode,
+    // -> { code, list, name }. Makes the code on the first call. p: { name, av } to keep your card up to date.
+    me: function (p) {
+      return ready().then(function () {
+        if (provider === "demo") { var f = demoFr(); return { code: f.code, list: f.list.slice(), name: (p && p.name) || "" }; }
+        return friendsRef().get().then(function (s) {
+          if (s.exists) {
+            var d = s.data();
+            var stale = p && ((p.name && p.name !== d.name) || (window.WL.okFace(p.av) && p.av !== d.av));
+            if (stale) { var u = { name: p.name || d.name || "", updatedAt: stamp() }; if (window.WL.okFace(p.av)) u.av = p.av; friendsRef().update(u).catch(function () { /* next time */ }); }
+            return { code: d.code, list: d.list || [], name: d.name || "" };
+          }
+          return claimCode(5).then(function (code) {
+            var doc = { code: code, name: (p && p.name) || "", list: [], updatedAt: stamp() };
+            if (p && window.WL.okFace(p.av)) doc.av = p.av;
+            return friendsRef().set(doc).then(function () { return { code: code, list: [], name: doc.name }; });
+          });
+        });
+      });
+    },
+    // -> { uid, name, av } or null
+    lookup: function (raw) {
+      var code = cleanFriendCode(raw);
+      if (!code) return Promise.resolve(null);
+      return ready().then(function () {
+        if (provider === "demo") { var b = demoPal(code); return b ? { uid: b.uid, name: b.name, av: b.av } : null; }
+        return db.collection("fcodes").doc(code).get().then(function (s) {
+          if (!s.exists) return null;
+          var id = s.data().uid;
+          return friendsRef(id).get().then(function (f) { var d = f.exists ? f.data() : {}; return { uid: id, name: d.name || "", av: d.av || "" }; });
+        });
+      });
+    },
+    // Sends a friend request. p: { name, av } of the sender.
+    ask: function (to, p) {
+      return friends.me(p).then(function (m) {
+        if (to === uid) throw ferr("self");
+        if (m.list.indexOf(to) >= 0) throw ferr("already");
+        if (m.list.length >= FRIENDS_MAX) throw ferr("full");
+        if (provider === "demo") { if (to === "bot-f9") throw ferr("their-full"); return; }
+        return friendsRef(to).get().then(function (s) {
+          if (s.exists && (s.data().list || []).length >= FRIENDS_MAX) throw ferr("their-full");
+          return inboxRef(to, uid).set(msg("ask", p)).catch(function (e) { if (!e || e.code !== "permission-denied") throw e; }); // already waiting there
+        });
+      });
+    },
+    accept: function (from, p) {
+      return friends.me(p).then(function (m) {
+        if (m.list.indexOf(from) < 0 && m.list.length >= FRIENDS_MAX) throw ferr("full");
+        var list = m.list.indexOf(from) < 0 ? m.list.concat([from]) : m.list;
+        if (provider === "demo") { var f = demoFr(); f.list = list; f.inbox = f.inbox.filter(function (x) { return x.from !== from; }); demoFrSave(f); return; }
+        return setList(list, p).then(function () {
+          return Promise.all([inboxRef(from, uid).set(msg("accept", p)).catch(function () { /* they'll see you on their next request */ }), inboxRef(uid, from).delete()]);
+        });
+      });
+    },
+    decline: function (from) {
+      return ready().then(function () {
+        if (provider === "demo") { var f = demoFr(); f.inbox = f.inbox.filter(function (x) { return x.from !== from; }); demoFrSave(f); return; }
+        return inboxRef(uid, from).delete();
+      });
+    },
+    remove: function (who, p) {
+      return friends.me(p).then(function (m) {
+        var list = m.list.filter(function (x) { return x !== who; });
+        if (provider === "demo") { var f = demoFr(); f.list = list; demoFrSave(f); return; }
+        return setList(list, p).then(function () { return inboxRef(who, uid).set(msg("remove", p)).catch(function () { /* they'll drop you when they see you're gone */ }); });
+      });
+    },
+    // -> [{ from, name, av, kind }]
+    inbox: function () {
+      return ready().then(function () {
+        if (provider === "demo") return demoFr().inbox.slice();
+        return friendsRef().collection("inbox").get().then(function (q) { return q.docs.map(function (d) { return d.data(); }); });
+      });
+    },
+    // Applies "accept" (only from someone in asked) and "remove" messages, then clears them. -> { added: [uid], removed: [uid] }
+    settle: function (entries, asked, p) {
+      var todo = entries.filter(function (x) { return x.kind === "accept" || x.kind === "remove"; }), out = { added: [], removed: [] };
+      if (!todo.length) return Promise.resolve(out);
+      return friends.me(p).then(function (m) {
+        var list = m.list.slice();
+        todo.forEach(function (x) {
+          var i = list.indexOf(x.from);
+          if (x.kind === "remove" && i >= 0) { list.splice(i, 1); out.removed.push(x.from); }
+          if (x.kind === "accept" && asked && asked[x.from] && i < 0 && list.length < FRIENDS_MAX) { list.push(x.from); out.added.push(x.from); }
+        });
+        if (provider === "demo") { var f = demoFr(); f.list = list; f.inbox = f.inbox.filter(function (x) { return todo.indexOf(x) < 0 && x.kind === "ask"; }); demoFrSave(f); return out; }
+        var changed = out.added.length || out.removed.length;
+        return (changed ? setList(list, p) : Promise.resolve()).then(function () {
+          return Promise.all(todo.map(function (x) { return inboxRef(uid, x.from).delete(); }));
+        }).then(function () { return out; });
+      });
+    },
+    // Each friend's card: name, face, league and today's result. -> [{ uid, name, av, lp, tier, rate, days, today: { score, grid } | null }]
+    cards: function (ids, season, day) {
+      return ready().then(function () {
+        return Promise.all(ids.map(function (id) {
+          if (provider === "demo") {
+            var b = demoPal(id) || { uid: id, name: "Detective", av: "" }, r = window.WL.rngFrom("pal-" + id + "-" + day), lp = Math.round(r() * 2600);
+            var played = r() < 0.7, sc = played ? 5 - Math.floor(r() * 3) : 0;
+            return { uid: id, name: b.name, av: b.av, lp: lp, tier: window.WL.tierOf(lp), rate: Math.round(550 + r() * 400), days: 3 + Math.floor(r() * 9),
+              today: played ? { score: sc, grid: "ggggg".slice(0, sc) + "rrrrr".slice(0, 5 - sc) } : null };
+          }
+          return Promise.all([friendsRef(id).get(), db.collection("ladder").doc(season + "_" + id).get(), db.collection("scores").doc(day + "_" + id).get()]).then(function (x) {
+            var f = x[0].exists ? x[0].data() : {}, l = x[1].exists ? x[1].data() : null, t = x[2].exists ? x[2].data() : null;
+            return { uid: id, name: f.name || (t && t.name) || "Detective", av: f.av || "", lp: l ? l.lp : 0, tier: l ? l.tier : 0, rate: l ? l.rate : 0, days: l ? l.days : 0,
+              today: t ? { score: t.score, grid: t.grid } : null };
+          });
+        }));
+      });
+    }
   };
 
   var LEAGUES = window.WL.LADDER.names.map(function (n, i) { return { name: n, icon: window.WL.LADDER.icons[i] }; });
@@ -641,6 +803,7 @@
     },
 
     ladder: ladder,
+    friends: friends,
     LEAGUES: LEAGUES,
     cleanCode: cleanCode,
     cleanGroupName: cleanGroupName,

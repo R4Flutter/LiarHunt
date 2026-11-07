@@ -282,6 +282,39 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ---------- Friends: up to 8, added with a 6-letter friend code ----------
+    // fcodes/{code} points a code at its owner (claimed once). friends/{uid} is the owner's list. A request, an accept or a
+    // remove goes into the other player's inbox as one doc per sender; only the receiver reads and clears it. The game
+    // only acts on an "accept" from someone the player asked, so nobody can add themselves to a list.
+    function okCode(c) { return c is string && c.matches('^[A-Z2-9]{6}$'); }
+    function okWho(n) { return okName(n) || n == ''; }
+    match /fcodes/{code} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn() && okCode(code)
+        && request.resource.data.keys().hasOnly(['uid']) && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+    match /friends/{uid} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['code', 'name', 'av', 'list', 'updatedAt'])
+        && okCode(request.resource.data.code) && okWho(request.resource.data.name) && avOk(request.resource.data)
+        && request.resource.data.list is list && request.resource.data.list.size() <= 8
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+      match /inbox/{from} {
+        allow read, delete: if signedIn() && uid == request.auth.uid;
+        allow create: if signedIn() && from == request.auth.uid && from != uid
+          && request.resource.data.keys().hasOnly(['from', 'name', 'av', 'kind', 'at'])
+          && request.resource.data.from == request.auth.uid
+          && request.resource.data.kind in ['ask', 'accept', 'remove']
+          && okWho(request.resource.data.name) && avOk(request.resource.data)
+          && request.resource.data.at == request.time;
+        allow update: if false;
+      }
+    }
+
     // ---------- Daily 5: one story a day in five connected cases ----------
     // Stories are uploaded ahead of time by the admin tool (Admin SDK, which skips these rules) and open on their day.
     // The day turns over at midnight India time (UTC+5:30) for everyone. A day's story stays playable until 6 AM IST
