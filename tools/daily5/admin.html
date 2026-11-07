@@ -50,7 +50,9 @@
   <span id="today" class="muted"></span>
   <span id="stock" class="stock"></span>
   <span class="row" style="margin:0">
-    <button class="primary" id="gen">Generate 5 stories</button>
+    <label class="small">Stories <input type="number" id="gen-n" min="1" max="30" value="5" style="width:4em"></label>
+    <label class="small">Season <input type="number" id="gen-season" min="0" max="99" value="1" style="width:3.5em" title="0 = Indian cities, no season town"></label>
+    <button class="primary" id="gen">Generate</button>
     <label class="small"><input type="checkbox" id="dry"> dry run (free, uses the Crown Job)</label>
   </span>
 </header>
@@ -187,7 +189,11 @@ function wire(d, res) {
     }).catch(function (e) { $("st-out").textContent = e.message; });
   });
 }
-$("gen").onclick = function () { if (!$("dry").checked && !confirm("Generate 5 stories with Claude? About $15-25 at list price.")) return; api("/api/generate", { count: 5, dry: $("dry").checked }).then(load).catch(function (e) { toast(e.message); }); };
+$("gen").onclick = function () {
+  var n = Math.max(1, Math.min(30, +$("gen-n").value || 5)), season = Math.max(0, +$("gen-season").value || 0);
+  if (!$("dry").checked && !confirm("Generate " + n + " stor" + (n > 1 ? "ies" : "y") + (season ? " in Season " + season + "'s town" : "") + " with Claude? About $" + Math.round(n * 3) + "-" + Math.round(n * 5) + " at list price.")) return;
+  api("/api/generate", { count: n, season: season, dry: $("dry").checked }).then(load).catch(function (e) { toast(e.message); });
+};
 load();
 </script>
 </body>

@@ -1,5 +1,6 @@
 // Writes new Daily 5 stories with Claude, checks them, and saves drafts for review in the admin tool.
-//   node tools/daily5/generate.mjs --count 5             a new batch of 5 (the default)
+//   node tools/daily5/generate.mjs --count 5             a new batch of 5 (the default, up to 30)
+//   node tools/daily5/generate.mjs --count 30 --season 1 30 stories set in Season 1's town (Port Ellery)
 //   node tools/daily5/generate.mjs --resume <job>        finish a batch that stopped part way; finished steps are never redone
 //   node tools/daily5/generate.mjs --redo <draft-id>     write that draft again from a fresh blueprint
 //   node tools/daily5/generate.mjs --redo <draft-id> --case 3   rewrite only case 3's wording, keeping the logic
@@ -16,6 +17,7 @@ import * as P from "./prompts.mjs";
 const MODELS = { writer: "claude-opus-5-5", solver: "claude-sonnet-5-5", critic: "claude-opus-5-5" };
 const PRICE = { "claude-opus-5-5": [4, 20, 0.2], "claude-sonnet-5-5": [2, 10, 0.2] }; // $ per million tokens: input, output, cache read
 const SOLVER_RUNS = 2;
+let JOB_SEASON = 0; // --season N: every story of the batch happens in that season's town (js/seasons.js)
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes("--" + name);
@@ -159,12 +161,16 @@ function remember(entry) {
   list.push(entry);
   writeJson(join(dataDir(), "history.json"), list.slice(-200));
 }
-function pickBrief(jobId, k, taken) {
+function pickBrief(jobId, k, taken, season) {
   const r = rng(jobId + ":" + k), h = history();
   const recent = new Set(h.slice(-21).map((x) => x.setting).concat(taken));
   const recentCrime = new Set(h.slice(-4).map((x) => x.crime));
   const from = (list, avoid) => { const ok = list.filter((x) => !avoid.has(x)); const l = ok.length ? ok : list; return l[Math.floor(r() * l.length)]; };
-  return { setting: from(P.SETTINGS, recent), crime: from(P.CRIMES, recentCrime), herring: from(P.HERRINGS, new Set()), mastermind: from(P.MASTERMINDS, new Set()), cast: r() < 0.5 ? 5 : 6 };
+  const town = season ? P.seasonBrief(season) : null;
+  const setting = town ? from(town.places, recent) + " in " + town.town : from(P.SETTINGS, recent);
+  const brief = { setting, crime: from(P.CRIMES, recentCrime), herring: from(P.HERRINGS, new Set()), mastermind: from(P.MASTERMINDS, new Set()), cast: r() < 0.5 ? 5 : 6 };
+  if (town) Object.assign(brief, { season: town.season, town: town.town, tagline: town.tagline, places: town.places, locals: town.locals });
+  return brief;
 }
 function avoidList() { return history().slice(-20).flatMap((x) => [x.title].concat(x.names || [])); }
 // A Story Night remix keeps the original's setting, crime and cast size, and swaps the twist: a different mastermind
@@ -184,7 +190,7 @@ async function runSlot(jobId, k, taken, redo) {
   const cost = readJson(f("cost"), newCost());
   const saveCost = () => writeJson(f("cost"), cost);
   try {
-    const brief = readJson(f("brief"), null) || (writeJson(f("brief"), pickBrief(jobId, k, taken)), readJson(f("brief")));
+    const brief = readJson(f("brief"), null) || (writeJson(f("brief"), pickBrief(jobId, k, taken, JOB_SEASON)), readJson(f("brief")));
     taken.push(brief.setting);
     log(`${id}: ${brief.setting} · ${brief.crime}`);
     let bp = readJson(f("blueprint"), null);
@@ -266,9 +272,11 @@ async function main() {
     return;
   }
   const jobId = resume || "b" + new Date().toISOString().slice(0, 16).replace(/\D/g, "");
-  const job = readJson(join(dataDir("jobs", jobId), "job.json"), null) || { id: jobId, count: Math.max(1, Math.min(10, parseInt(opt("count", "5"), 10) || 5)), createdAt: new Date().toISOString() };
+  const job = readJson(join(dataDir("jobs", jobId), "job.json"), null) || { id: jobId, count: Math.max(1, Math.min(30, parseInt(opt("count", "5"), 10) || 5)),
+    season: parseInt(opt("season", "0"), 10) || 0, createdAt: new Date().toISOString() };
+  JOB_SEASON = job.season || 0;
   writeJson(join(dataDir("jobs", jobId), "job.json"), job);
-  log(`Batch ${jobId}: ${job.count} stor${job.count > 1 ? "ies" : "y"}${DRY ? " (dry run, no API calls)" : ""}`);
+  log(`Batch ${jobId}: ${job.count} stor${job.count > 1 ? "ies" : "y"}${JOB_SEASON ? " in " + P.seasonBrief(JOB_SEASON).town + " (Season " + JOB_SEASON + ")" : ""}${DRY ? " (dry run, no API calls)" : ""}`);
   const taken = [], drafts = [];
   for (let k = 1; k <= job.count; k++) drafts.push(await runSlot(jobId, k, taken));
   const ready = drafts.filter((d) => d && d.meta.status === "ready").length;

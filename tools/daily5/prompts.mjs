@@ -1,4 +1,8 @@
 // Daily 5: what we ask the AI, and the JSON shapes it must answer in.
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import vm from "node:vm";
 // Stage A writes the logic (who, where, when, the lies, the answers). Stage B writes the words players read.
 // The blind solver sees only what a player sees. The critic sees everything.
 
@@ -101,6 +105,18 @@ export function merge(id, bp, nar, strikes) {
 }
 
 /* ---------- the brief: code picks the ingredients, so stories don't repeat ---------- */
+/* ---------- seasons: the town every story of a season happens in (js/seasons.js) ---------- */
+// -> { season, town, tagline, places, locals: [[name, role]] }. A season past the end of the list reuses the last one, like the game.
+export function seasonBrief(n) {
+  const ctx = { window: {} };
+  vm.runInNewContext(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "..", "js", "seasons.js"), "utf8"), ctx);
+  const list = ctx.window.WL_SEASONS || [];
+  if (!list.length) throw new Error("js/seasons.js has no seasons");
+  const pack = list[Math.min(Math.max(1, n), list.length) - 1];
+  const town = pack.town || String(pack.name).replace(/^The\s+/, "").replace(/\s+Files$/, "");
+  return { season: n, town, tagline: pack.tagline || "", places: (pack.places || []).slice(), locals: (pack.cast || []).slice() };
+}
+
 export const SETTINGS = [
   "a heritage museum in Mumbai", "a film studio in Hyderabad during a night shoot", "a tea estate bungalow in Darjeeling",
   "a palace hotel in Jaipur during a wedding", "a cricket academy in Chennai before a trial match", "a startup office in Bengaluru on launch night",
@@ -162,7 +178,7 @@ export function blueprintPrompt(brief, avoid, example) {
 
 Brief for this mystery:
 - Setting: ${brief.setting}
-- Crime: ${brief.crime}
+${brief.town ? "- Every scene happens in " + brief.town + ", a fictional town: " + brief.tagline + " Use places from this list (you may add small ones, like a room inside them): " + brief.places.join(", ") + ".\n- These locals live in " + brief.town + ". One or two of them may appear as side characters or witnesses, never as the culprit or an accomplice: " + brief.locals.map((x) => x[0] + " (" + x[1] + ")").join(", ") + ".\n" : ""}- Crime: ${brief.crime}
 - Red herring: ${brief.herring}
 - The mastermind is ${brief.mastermind}
 - Cast size: ${brief.cast} people
@@ -171,6 +187,7 @@ ${brief.remixOf ? "- This is a fresh retelling for a group game night, in the sa
 }
 
 const STYLE = `Write for a phone screen in simple, vivid English (players are mostly in India, many read English as a second language).
+Voice: a cool, professional case file. Short declarative sentences, exact clock times and named places. Evidence reads like records (logs, receipts, camera stills, statements taken down), never like jokes or chatter. Suspects sound like real people under questioning.
 - Sentences of 20 words or fewer. Plain words. No idioms that need explaining.
 - Statements sound like real people talking, in first person, 1-2 sentences, and say exactly what their claims say: no extra facts, nothing vaguer.
 - Evidence text states exactly what its facts show, with the time written like "9:14 PM". Titles are 2-4 words, sources 1-3 words.

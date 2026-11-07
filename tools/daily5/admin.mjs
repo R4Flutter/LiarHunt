@@ -219,7 +219,7 @@ const server = http.createServer(async (req, res) => {
       const b = await body(req);
       if (b.remix) startJob(["--remix", String(b.remix)].concat(b.dry ? ["--dry-run"] : []));
       else if (b.redo) startJob(["--redo", String(b.redo)].concat(b.case ? ["--case", String(b.case)] : []).concat(b.dry ? ["--dry-run"] : []));
-      else startJob(["--count", String(Math.max(1, Math.min(10, +b.count || 5)))].concat(b.dry ? ["--dry-run"] : []));
+      else startJob(["--count", String(Math.max(1, Math.min(30, +b.count || 5)))].concat(+b.season > 0 ? ["--season", String(+b.season)] : []).concat(b.dry ? ["--dry-run"] : []));
       return send(200, { ok: true });
     }
     if (req.method === "POST" && m[1] === "draft") {

@@ -10,6 +10,7 @@
   uses the current season. Run `node tools/check-cases.mjs` after editing.
 
   name, tagline   shown on the season card
+  town, places    where the season's Daily 5 stories happen (tools/daily5 --season N)
   cast            [name, role]: locals who appear as suspects all season (first names, not used elsewhere)
   premises        { title, setup, motives: ["{name} ..."], at }: what happened. {name} becomes the liar.
                   at: "night" (the default) or "day". The game adds the crime's time window to the setup and only
@@ -28,6 +29,10 @@ window.WL_SEASONS = [
   {
     name: "The Port Ellery Files",
     icon: "⚓",
+    // For the Daily 5 story tools (tools/daily5): every story this season happens in this town, at these places.
+    town: "Port Ellery",
+    places: ["the lighthouse", "the ferry terminal", "the harbor office", "the old cannery", "the Maritime Museum", "the Harbor Hotel",
+      "Sadie's Café", "the boatyard", "The Anchor pub", "the yacht club", "the Gazette office", "the fish market"],
     tagline: "Fog, ferries and a harbor full of secrets. Four weeks, one small town, a lot of lies.",
     cast: [
       ["Marta", "Harbor master"], ["Otto", "Ferry captain"], ["Ines", "Fishmonger"], ["Jonah", "Lighthouse keeper"],
