@@ -8,7 +8,7 @@ import http from "node:http";
 import { spawn } from "node:child_process";
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, resolve, extname, relative } from "node:path";
-import { check, split, dataDir, readJson, writeJson, ROOT } from "./lib.mjs";
+import { check, split, dataDir, readJson, writeJson, ROOT, importDraft } from "./lib.mjs";
 
 const PORT = +process.env.PORT || 8787, HOST = "127.0.0.1";
 const DRAFTS = dataDir("drafts");
@@ -209,6 +209,42 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && m[1] === "state") {
       const list = allDrafts();
       return send(200, { stock: stock(list), drafts: list.map(summary), job: job && { running: job.running, code: job.code, log: job.log.slice(-40), args: job.args }, project: PROJECT });
+    }
+    // A story written somewhere else comes in as a draft; the checker runs at once.
+    if (req.method === "POST" && m[1] === "import") {
+      const story = await body(req);
+      if (!story || typeof story !== "object" || !Array.isArray(story.cases) || !Array.isArray(story.people)) {
+        throw httpErr(400, "That isn't a story file. It needs a title, people and five cases (see tools/daily5/WRITING.md).");
+      }
+      const id = "imp-" + new Date().toISOString().slice(0, 19).replace(/\D/g, "");
+      const d = importDraft(story, id);
+      saveDraft(d);
+      return send(200, { id, ok: d.meta.status === "ready", errors: d.meta.report.errors.slice(0, 12),
+        message: d.meta.status === "ready" ? "Imported and it passes the check. Play it, then approve it." : "Imported, but it doesn't pass the check yet: " + d.meta.report.errors.length + " problem(s)." });
+    }
+    // The story file itself, to edit and import again. It holds the answers: keep it out of the game folder.
+    if (req.method === "GET" && m[1] === "draft" && m[3] === "export") {
+      const d = loadDraft(m[2]);
+      if (!d.story) throw httpErr(400, "This draft has no story yet.");
+      res.writeHead(200, { "Content-Type": "application/json", "Content-Disposition": `attachment; filename="${d.meta.id}.json"`, "Cache-Control": "no-store" });
+      return res.end(JSON.stringify(d.story, null, 2));
+    }
+    // Approved Daily drafts (oldest first) fill the empty days from a start day onward.
+    if (req.method === "POST" && m[1] === "schedule-run") {
+      const b = await body(req), from = b.date ? dayOf(b.date) : +b.from;
+      if (!(from > istDay())) throw httpErr(400, "Pick a day after today (IST).");
+      const list = allDrafts(), taken = new Set(list.filter((x) => x.meta.day && ["scheduled", "published"].includes(x.meta.status)).map((x) => x.meta.day));
+      const free = list.filter((x) => x.meta.status === "approved" && !x.meta.day && x.meta.for !== "night")
+        .sort((a, c) => String(a.meta.createdAt).localeCompare(String(c.meta.createdAt)));
+      const out = [];
+      let day = from;
+      for (const d of free) {
+        while (taken.has(day)) day++;
+        d.meta.day = day; d.meta.status = "scheduled";
+        d.meta.notes = (d.meta.notes || []).concat({ at: new Date().toISOString(), text: "Scheduled for Daily #" + day });
+        saveDraft(d); taken.add(day); out.push({ id: d.meta.id, day });
+      }
+      return send(200, { scheduled: out, message: out.length ? `Scheduled ${out.length} stor${out.length > 1 ? "ies" : "y"}: Daily #${out[0].day} to #${out[out.length - 1].day}. Publish each one to upload it.` : "No approved stories are waiting." });
     }
     if (req.method === "GET" && m[1] === "draft") {
       const d = loadDraft(m[2]), res2 = d.story ? check(d.story) : null;

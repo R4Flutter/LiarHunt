@@ -37,6 +37,13 @@ export function writeJson(p, data) {
 }
 export const exists = existsSync;
 export function hashOf(story) { return createHash("sha256").update(JSON.stringify(story)).digest("hex").slice(0, 16); }
+// A story written somewhere else (by hand, or with Claude in a chat), as a draft for the admin desk. It is "ready" when it
+// passes the checker; the blind solvers and the critic can still be run on it from the desk ("Run AI review").
+export function importDraft(story, id) {
+  const r = check(story), now = new Date().toISOString();
+  return { meta: { id, job: "import", slot: 0, brief: {}, createdAt: now, updatedAt: now, status: r.ok ? "ready" : "failed", source: "import", for: "daily", remixOf: "",
+    report: { stage: "checked", gate: r.ok, errors: r.errors, warnings: r.warnings }, cost: { usd: 0, input: 0, output: 0, calls: 0 }, hash: hashOf(story), day: 0, notes: [] }, story };
+}
 
 /* ---------- facts ---------- */
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;

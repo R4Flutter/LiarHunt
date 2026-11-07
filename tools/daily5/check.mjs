@@ -3,7 +3,7 @@
 //   node tools/daily5/check.mjs --self-test            the Crown Job must pass, and broken copies of it must fail
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { check, split, ROOT, proofKey } from "./lib.mjs";
+import { check, split, ROOT, proofKey, importDraft } from "./lib.mjs";
 
 const arg = process.argv[2];
 if (!arg) { console.log("Usage: node tools/daily5/check.mjs <story.json> | --self-test"); process.exit(2); }
@@ -61,6 +61,12 @@ expect("the keys use the rules' format", out.keys.c3.s === "s7" && out.keys.c3.p
 expect("each case says how many facts to tap", out.cases[1].need === 1 && out.cases[3].need === 2);
 expect("the Hunch never rules out the answer", [1, 2, 3, 4].every((n) => out.hunch[n].out !== out.keys["c" + n].s) && out.hunch[5].out !== out.reveals[5].answer.parts[out.hunch[5].part]);
 expect("carried findings appear as facts on the next case", out.cases[3].facts.some((f) => f.id === "f2" && f.from === 2));
+
+// A story written elsewhere (by hand, or with Claude in a chat) comes in through the admin desk's Import.
+const imp = importDraft(clone(), "imp-1");
+expect("an imported story that passes is ready", imp.meta.status === "ready" && imp.meta.source === "import" && imp.meta.for === "daily" && imp.meta.day === 0 && imp.story.title === good.title);
+const bad = importDraft(Object.assign(clone(), { cases: clone().cases.slice(0, 4) }), "imp-2"); // the fixture has 5 cases
+expect("an imported story that fails the check is marked failed, with the reasons", bad.meta.status === "failed" && bad.meta.report.errors.length > 0);
 
 console.log(failed ? `\n${failed} check(s) failed.` : "\nAll Daily 5 checks passed.");
 process.exit(failed ? 1 : 0);

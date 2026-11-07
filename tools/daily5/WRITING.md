@@ -62,7 +62,7 @@ Exactly one statement may clash with what the player knows (this case's evidence
    > Write a new LiarHunt Daily 5 story as one JSON file in exactly the same shape as the attached example, following tools/daily5/WRITING.md (attached too). Setting: *(for example: the ferry terminal in Port Ellery)*. Crime: *(for example: stolen ticket money)*. Give every statement and piece of evidence its facts, make exactly one liar per case, and check each case against the rules before you answer. Reply with the JSON only.
 
 2. Save the reply as a `.json` file outside the game folder.
-3. Start the admin desk (`node tools/daily5/admin.mjs`), click **Import JSON** and pick the file. The desk runs the checker straight away and shows what's wrong, if anything. You can also run the blind AI solvers and the critic on it.
+3. Start the admin desk (`node tools/daily5/admin.mjs`), click **Import JSON** and pick the file. The desk runs the checker straight away and shows what's wrong, if anything.
 4. Fix and re-import until it's **ready**, play it in the real game from the desk, then approve, schedule and publish it as usual.
 
 To make many at once instead, let the generator write them: `node generate.mjs --count 30 --season 1` (about $90 to $150 of Claude API use), then review them in the desk.

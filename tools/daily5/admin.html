@@ -54,6 +54,8 @@
     <label class="small">Season <input type="number" id="gen-season" min="0" max="99" value="1" style="width:3.5em" title="0 = Indian cities, no season town"></label>
     <button class="primary" id="gen">Generate</button>
     <label class="small"><input type="checkbox" id="dry"> dry run (free, uses the Crown Job)</label>
+    <label class="small">Import JSON <input type="file" id="imp" accept=".json,application/json"></label>
+    <label class="small">From <input type="date" id="run-date"></label><button id="run-go">Schedule approved</button>
   </span>
 </header>
 <main>
@@ -114,6 +116,7 @@ function render(res) {
   // actions
   h += '<div class="row">';
   if (s && res.check && res.check.ok) h += '<button class="primary" id="a-play">▶ Play it in the game</button>';
+  if (s) h += '<button id="a-export">Export JSON</button>';
   if (["ready", "failed", "rejected"].includes(m.status)) h += '<button id="a-approve">Approve</button>';
   if (!["published", "rejected", "night"].includes(m.status)) h += '<button class="danger" id="a-reject">Reject</button>';
   var night = m.for === "night";
@@ -169,6 +172,7 @@ function wire(d, res) {
   var id = d.meta.id, on = function (el, f) { if ($(el)) $(el).onclick = f; };
   on("a-play", function () { api("/api/play/" + id + "/reset/0", {}).then(function () { window.open("/index.html?test=1&lb=demo&d5=local&fresh=1&draft=" + encodeURIComponent(id), "_blank"); }); });
   on("a-approve", function () { act(id, "approve"); });
+  on("a-export", function () { if (confirm("This file holds the answers. Keep it out of the game folder and never put it on GitHub. Download it?")) location.href = "/api/draft/" + id + "/export"; });
   on("a-npub", function () { if (confirm("Publish this story to Story Night? Hosts can pick it at once.")) act(id, "night-publish"); });
   on("a-nunpub", function () { if (confirm("Take this story off Story Night?")) act(id, "night-unpublish"); });
   on("a-remix", function () { if (confirm("Write a Story Night remix of this story: same setting, a new cast and a different twist? It costs about the same as a new story (free with dry run).")) api("/api/generate", { remix: id, dry: $("dry").checked }).then(function () { toast("Remix started."); load(); }).catch(function (e) { toast(e.message); }); });
@@ -189,6 +193,16 @@ function wire(d, res) {
     }).catch(function (e) { $("st-out").textContent = e.message; });
   });
 }
+$("imp").onchange = function () {
+  var f = this.files && this.files[0], el = this;
+  if (!f) return;
+  f.text().then(function (t) { return api("/api/import", JSON.parse(t)); }).then(function (r) { toast(r.message); load(); })
+    .catch(function (e) { toast(e instanceof SyntaxError ? "That file isn't valid JSON." : e.message); }).then(function () { el.value = ""; });
+};
+$("run-go").onclick = function () {
+  if (!$("run-date").value) { toast("Pick the first day to fill."); return; }
+  api("/api/schedule-run", { date: $("run-date").value }).then(function (r) { toast(r.message); load(); }).catch(function (e) { toast(e.message); });
+};
 $("gen").onclick = function () {
   var n = Math.max(1, Math.min(30, +$("gen-n").value || 5)), season = Math.max(0, +$("gen-season").value || 0);
   if (!$("dry").checked && !confirm("Generate " + n + " stor" + (n > 1 ? "ies" : "y") + (season ? " in Season " + season + "'s town" : "") + " with Claude? About $" + Math.round(n * 3) + "-" + Math.round(n * 5) + " at list price.")) return;
