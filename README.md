@@ -226,7 +226,7 @@ It stores four collections:
 **Before the cloud save goes live** (two steps, once):
 
 1. Deploy the rules below, so `players/{uid}` is allowed. Until then the game quietly keeps saving on the device.
-2. Firebase console → **Authentication → Sign-in method** → turn on **Google**. Then **Authentication → Settings → Authorized domains**: make sure `liarhunt.com` is listed (`localhost` is there already).
+2. Firebase console → **Authentication → Sign-in method** → turn on **Google**. Then **Authentication → Settings → Authorized domains**: add `liarhunt.com`, `www.liarhunt.com` and `localhost`. (The project starts with only `whoslying-daily.firebaseapp.com` and `whoslying-daily.web.app`; without your own domain on the list, every Google sign-in fails.) Google never allows sign-in inside apps' own browsers (WhatsApp, Instagram…), so the game asks those players to open Chrome or Safari.
 
 Everything about the database is in this repo: `firebase.json` (location, anonymous sign-in), `firebase/firestore.rules` and `firebase/firestore.indexes.json`. After you change any of them, run:
 

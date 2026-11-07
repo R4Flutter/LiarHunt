@@ -1027,8 +1027,21 @@
     if (!u || /example/.test(u)) u = location.origin && location.origin !== "null" ? location.origin : "";
     return u.replace(/\/$/, "");
   }
+  // Apps whose built-in browser Google refuses to sign in from. "" for a normal browser.
+  function inAppBrowser(ua) {
+    ua = String(ua || "");
+    if (/WhatsApp/i.test(ua)) return "whatsapp";
+    if (/Instagram/i.test(ua)) return "instagram";
+    if (/FBAN|FBAV|FB_IAB/.test(ua)) return "facebook";
+    if (/Snapchat/i.test(ua)) return "snapchat";
+    if (/\bLine\//.test(ua)) return "line";
+    if (/musical_ly|TikTok|BytedanceWebview/i.test(ua)) return "tiktok";
+    if (/; wv\)/.test(ua)) return "webview";
+    return "";
+  }
 
   window.WL = {
+    inAppBrowser: inAppBrowser,
     cfg: CFG, rngFrom: rngFrom, shuffle: shuffle, pick: pick,
     dayNumber: dayNumber, dateForDay: dateForDay, formatDate: formatDate, msToNextDay: msToNextDay, istHour: istHour,
     buildDay: buildDay, generateCase: generateCase, endlessSpec: endlessSpec, endlessSeconds: endlessSeconds,

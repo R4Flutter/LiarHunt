@@ -3737,8 +3737,22 @@
 
   /* Google sign-in. Usually this upgrades the player's account in place. If that Google account already has a
      game (from another device), this device signs in to it: we load that game, or ask which one to keep. */
+  // Google refuses sign-in inside WhatsApp's, Instagram's and other apps' browsers, so say so instead of failing.
+  function openInBrowser() {
+    var url = WL.siteUrl() || location.origin, android = /Android/i.test(navigator.userAgent);
+    closeDialog("dlg-stats");
+    showNotice({ icon: "🔒", title: "Open in your browser to sign in",
+      text: "Google doesn't allow sign-in inside this app's browser. Open LiarHunt in Chrome or Safari, then sign in there. Your progress comes with you.",
+      html: android ? '<a class="btn ghost wide" href="intent://' + esc(url.replace(/^https?:\/\//, "")) + '#Intent;scheme=https;package=com.android.chrome;end">Open in Chrome</a>' : "",
+      yes: "Copy link", no: "Not now",
+      onYes: function () {
+        var done = function () { toast("Link copied. Paste it into Chrome or Safari."); };
+        try { navigator.clipboard.writeText(url).then(done, function () { toast(esc(url), "", 6000); }); } catch (e) { toast(esc(url), "", 6000); }
+      } });
+  }
   function signInGoogle() {
     if (!cloudOn()) return;
+    if (WL.inAppBrowser(navigator.userAgent)) { WL.track("google_sign_in_blocked", { app: WL.inAppBrowser(navigator.userAgent) }); openInBrowser(); return; }
     var mine = S, json = JSON.stringify(S);
     cloudFlush().then(function () { return LB.account.google(); }).then(function (r) {
       if (!r.switched) {
