@@ -26,12 +26,11 @@ It is plain HTML, CSS and JavaScript with no build step. The web version is host
 |---|---|
 | Cloud save (web) | Every player's game is saved in their own Firebase account (`players/{uid}`), not on the device: an anonymous account from the first visit, which **Sign in with Google** (in the profile) turns into one that follows them to any device. The game needs a connection to start. Old 12-letter save codes still bring their progress into the account once; no new codes are made. |
 | Streak Shields | Save your Daily streak if you miss a day (used automatically, hold up to 2). Earn one every 7 days in a row or buy one for 200 coins. |
-| Case Keys + Case Files | Case Files lists every past Daily. A Case Key opens a missed day with full rewards. Earn one every 7 days in a row, on day 7 of the login calendar, or buy them. |
-| Comeback gift | Players who return after 3+ days get 150 coins, 2 Magnifiers and a Case Key. |
+| Comeback gift | Players who return after 3+ days get 250 coins and 2 Magnifiers. |
 | Friend challenges | Every shared result is a challenge link. Your friend plays the same Daily and sees "You beat Raj by 12 seconds!" with a rematch button. Works on CrazyGames too (invite links). |
 | Rank among everyone | After the Daily: "#37 of 230 today, better than 84% of players", also in the share text. |
-| Weekly leagues (web) | Bronze → Silver → Gold → Platinum → Diamond. Points are liars caught in that week's Dailies. Top 20% move up on Monday, bottom 20% move down. |
-| Friend groups (web) | Make a group, share the code or link, see each member's Daily result side by side. Up to 50 per group. |
+| Season league (web) | Bronze → Silver → Gold → Platinum → Diamond, one ladder per season. Each Daily case solved earns league points (LP): +30 clean, +20 with a hint. A wrong answer costs 50/40/30/20/10 LP at case 1/2/3/4/5, never in Bronze. Silver starts at 400 LP, Gold 1,000, Platinum 1,800, Diamond 2,800; dropping below a mark drops a league. At season end everyone gets coins for their league and starts the next season one league lower. The leaderboard shows the top 40 (LP, then solve rate, then fewer fails). |
+| Friends (web) | Up to 8 friends, added with a 6-letter friend code or a `?f=CODE` link. The other player accepts the request. See each friend's league, LP, solve rate and today's result. |
 | Install + reminder (web) | Installs as an app (works offline). A "Remind me" button adds a daily calendar alarm (Google Calendar or .ics). |
 | Stars and chapters | Up to 3 stars per Career mission (a mistake or a Magnifier costs one), a rank badge and coins for every chapter, a Book map, and replays for the story. |
 | Streak bonus | Solve cases in a row on the first try for up to ×2 coins. |
@@ -46,6 +45,8 @@ It is plain HTML, CSS and JavaScript with no build step. The web version is host
 **Works everywhere:** phones, tablets and desktop, 16:9 game frames down to 800×450, light and dark mode, keyboard (1–5, Enter, Esc), reduced motion.
 
 **Never runs out:** 75 hand-written cases plus a generator with 55 fact types and 50 story openers. `node tools/check-cases.mjs` tests 300 Rush cases and 400 days of daily cases; `node tools/check-book.mjs` checks every Career mission.
+
+**Players set up a detective:** after the training case they pick one of 16 faces and a name (on CrazyGames, a face only). A name can be changed once afterwards. Google sign-in doesn't work inside WhatsApp's or Instagram's own browser, so the game asks those players to open Chrome or Safari.
 
 ---
 
@@ -65,7 +66,7 @@ js/progress.js             levels, coins, stars, missions, login calendar, shop,
 js/game.js                 all the screens
 js/platform.js             web vs CrazyGames: ads, saves, mute, username, invite links
 js/audio.js, js/fx.js      sound and visual effects
-js/leaderboard.js          web leaderboard, top-10 rewards, rank, weekly leagues, friend groups (Firebase)
+js/leaderboard.js          web leaderboard, top-10 rewards, the season ladder, friends, rooms (Firebase)
 js/ads.js                  web ads (none / demo / AdSense)
 assets/                    sounds, music, fonts, icons
 sw.js                      offline play + app install (web only)
@@ -92,7 +93,7 @@ Test addresses:
 - `?lb=demo` turns on the leaderboard with made-up players.
 - `#endless` jumps straight into Rush.
 - `?c=6.ggyrg.92.Raj` opens a friend challenge (Daily #6, 4 of 5, 92 seconds, from Raj).
-- `?g=ABC234` opens a friend group invite.
+- `?f=ABC234` opens Friends with that friend code ready to send a request.
 - `?restore=ABCDEFGHJKMN` brings progress from an old save code into the player's account.
 - `?test=1` adds `window.__WLtest` for automated checks (start any mode, read the saved state).
 
@@ -153,7 +154,7 @@ Needs Node.js 18+:
 node tools/build-crazygames.mjs
 ```
 
-This makes `dist/liarhunt-crazygames.zip` (about 1.3 MB, 39 files). Upload that zip. The build:
+This makes `dist/liarhunt-crazygames.zip` (about 3.4 MB, 45 files). Upload that zip. The build:
 - adds the CrazyGames SDK v3
 - sends ads, saves, the mute setting, the username and invite links through the SDK
 - removes everything CrazyGames doesn't allow: AdSense, the Firebase leaderboard, WhatsApp/X buttons, links to other pages
@@ -215,9 +216,9 @@ It stores four collections:
 | Collection | What's in it |
 |---|---|
 | `scores` | One Daily result per player per day (can't be changed later). |
-| `endless` | Each player's best Rush run (can only go up). |
-| `league` | One entry per player per week. The rules re-add the player's own Daily scores, so league points can't be faked. |
-| `groups` | Friend groups: name and members. Members can only add, rename or remove themselves. |
+| `ladder` | The season league: one entry per player per season. Every write adds exactly one posted Daily, and the rules recompute its LP from that day's grid, so league points can't be faked. |
+| `fcodes`, `friends` | Friend codes, each player's list (up to 8) and an inbox of friend requests that only its owner reads. |
+| `endless`, `league`, `seasons`, `groups` | Retired (the Rush board, the weekly league, the season scoreboard and friend groups). Old data stays; the game no longer writes them. |
 | `players` | Each player's game, under their account ID. Only that player can read or write it, and every save raises a revision number, so a device that loaded an older copy can't overwrite newer progress from another device. |
 | `saves` | Old progress backups, one per save code (retired: read once to move into an account, and written when the game moves to a new web address). |
 
@@ -325,8 +326,9 @@ The checker also makes sure Dailies #1 to #14 never change (players already play
 From Daily #15 (Monday 9 November 2026) the game runs in seasons of 4 weeks. Each season has its own case templates in `js/seasons.js`: a town, a cast of locals, story openers with motives, facts and two-fact puzzles. The generator mixes them with the built-in facts for every Daily and Rush case, so each season feels different.
 
 - To add Season 2, copy Season 1's block in `js/seasons.js`, change the content, and run the checker. When a season ends without a new block, the next season reuses the last one's templates in a new mix, so the game never stops.
-- The season score is the number of liars caught in that season's Dailies, played on the day. Badges: Bronze 25, Silver 60, Gold 100, Platinum 125.
-- The season scoreboard needs the Firestore rules and index in `firebase/` (run `firebase deploy --only firestore`). The rules assume Season 1 starts in week 3; keep that in step with `SEASON_ONE` in `js/engine.js`.
+- The season league runs on league points from every Daily of the season (see "Why players come back"). `js/engine.js` (`LADDER`) and `firebase/firestore.rules` (season ladder section) hold the same numbers: change both together.
+- The ladder needs the Firestore rules and indexes in `firebase/` (run `firebase deploy --only firestore`). The rules assume Season 1 starts at Daily #15; keep that in step with `SEASON_ONE` in `js/engine.js`.
+- Each season can name its `town` and `places`: the Daily 5 story tools set every story of that season there (`node tools/daily5/generate.mjs --count 30 --season 1`).
 - To try a season early on your computer, open `index.html?test=1&today=20` (pretends today is Daily #20).
 
 ### Career: Book 1, The Black Ledger
@@ -380,6 +382,7 @@ node admin.mjs                             # the admin desk: http://127.0.0.1:87
 - **The admin desk** shows each draft's checks, blind-solver results and critic notes, lets you play it in the real game (`?d5=local`), approve or reject it, rewrite one case, schedule it for a day and publish it. It warns when fewer than 14 days are covered, and shows how players did on each day (from the run docs).
 - **Publishing** writes the day's docs with the Firebase Admin SDK. It needs Google credentials for the project: `gcloud auth application-default login`, or `GOOGLE_APPLICATION_CREDENTIALS` pointing at a key file outside this repo. A published day can't change once it has started.
 - **Rules tests:** `cd tools/daily5 && npm run test:rules` runs `rules.test.mjs` on the Firestore emulator (needs Java; with Java 17 use `npx firebase-tools@13 emulators:exec --only firestore --project demo-liarhunt "node tools/daily5/rules.test.mjs"` from the game folder).
+- **Ladder and friends rules tests:** `cd tools/daily5 && npm run test:social` runs `social.rules.test.mjs` the same way. `node tools/check-social.mjs` checks the league maths, the season clock, faces, names and sign-in rules without the emulator.
 - After changing the rules: `firebase deploy --only firestore`.
 
 ## Tech notes
