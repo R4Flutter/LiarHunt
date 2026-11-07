@@ -11,5 +11,3 @@ docs
 wrangler.jsonc
 .assetsignore
 .gitignore
-.nojekyll
-CNAME
