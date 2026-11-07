@@ -6,8 +6,8 @@
 
   WLLB.enabled()                      is the leaderboard switched on?
   WLLB.submitDaily(entry)             post today's result      -> Promise
-  WLLB.submitEndless(entry)           post an endless best     -> Promise
-  WLLB.topDaily(day) / topEndless()   top 10 lists             -> Promise<rows>
+  WLLB.topDaily(day)                  top 10 of a day           -> Promise<rows>
+  WLLB.ladder.*                       the season ladder (league points)
   WLLB.myId()                         this player's id (after the first call)
   WLLB.rewardsFor(days, history)      finished days -> ranks   -> Promise<[{day, rank}]>
 */
@@ -232,26 +232,7 @@
     TOP: LADDER_TOP
   };
 
-  /* ---------- weekly league ----------
-     One doc per player per week. Points = liars caught in that week's Dailies (from the
-     player's own posted scores, which the rules re-add to check). 5 tiers. */
   var LEAGUES = window.WL.LADDER.names.map(function (n, i) { return { name: n, icon: window.WL.LADDER.icons[i] }; });
-  // Top 20% move up, bottom 20% move down (only when there are 5+ players in the tier).
-  function leagueMove(tier, rank, total, pts) {
-    var up = Math.max(1, Math.round(total * 0.2)), down = total >= 5 ? Math.floor(total * 0.2) : 0;
-    if (tier < LEAGUES.length - 1 && pts > 0 && rank <= up) return 1;
-    if (tier > 0 && down && rank > total - down) return -1;
-    return 0;
-  }
-  function weekTotals(week) {
-    var ids = [];
-    for (var i = 0; i < 7; i++) ids.push(((week - 1) * 7 + 1 + i) + "_" + uid);
-    return Promise.all(ids.map(function (id) { return db.collection("scores").doc(id).get(); })).then(function (snaps) {
-      var t = { pts: 0, timeMs: 0, days: 0 };
-      snaps.forEach(function (s) { if (s.exists) { t.pts += s.data().score; t.timeMs += s.data().timeMs; t.days++; } });
-      return t;
-    });
-  }
 
   /* ---------- friend groups ---------- */
   var CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -631,22 +612,6 @@
       });
     },
 
-    submitEndless: function (e) {
-      return ready().then(function () {
-        var doc = { uid: uid, name: e.name, badge: e.badge || "", best: e.best };
-        if (provider === "demo") {
-          var s = demoStore(); var old = s.endless[uid];
-          if (!old || old.best < e.best) { s.endless[uid] = doc; demoSave(s); }
-          return true;
-        }
-        doc.updatedAt = window.firebase.firestore.FieldValue.serverTimestamp();
-        return db.collection("endless").doc(uid).set(doc).then(function () { return true; }, function (err) {
-          if (err && err.code === "permission-denied") return false; // not higher than the saved best
-          throw err;
-        });
-      });
-    },
-
     topDaily: function (day) {
       return ready().then(function () {
         if (provider === "demo") {
@@ -657,14 +622,6 @@
         return db.collection("scores").where("day", "==", day).orderBy("score", "desc").orderBy("timeMs", "asc").limit(LIMIT).get()
           .then(function (snap) { return snap.docs.map(function (d) { return d.data(); }); });
       }).then(withBots("daily", day));
-    },
-
-    topEndless: function () {
-      return ready().then(function () {
-        if (provider === "demo") { var s = demoStore(); return Object.keys(s.endless).map(function (k) { return s.endless[k]; }); }
-        return db.collection("endless").orderBy("best", "desc").limit(LIMIT).get()
-          .then(function (snap) { return snap.docs.map(function (d) { return d.data(); }); });
-      }).then(withBots("endless", 0));
     },
 
     /* Rank among everyone who posted today: { rank, total } */
@@ -683,58 +640,8 @@
       });
     },
 
-    /* ---------- season scoreboard ----------
-       One entry per player per season: the sum of their 4 weekly league entries (the rules re-add them to check).
-       Season 1 is weeks 3 to 6 (Daily #15 to #42); firebase/firestore.rules assumes the same. */
-    syncSeason: function (e) {
-      if (provider !== "firebase") return demoOff();
-      return ready().then(function () {
-        var w = e.season * 4 - 1;
-        return Promise.all([w, w + 1, w + 2, w + 3].map(function (x) { return db.collection("league").doc(x + "_" + uid).get(); }));
-      }).then(function (snaps) {
-        var t = { pts: 0, timeMs: 0, days: 0 };
-        snaps.forEach(function (s) { if (s.exists) { var d = s.data(); t.pts += d.pts; t.timeMs += d.timeMs; t.days += d.days; } });
-        var doc = { uid: uid, name: e.name, badge: e.badge || "", season: e.season, pts: t.pts, timeMs: t.timeMs, days: t.days,
-          updatedAt: window.firebase.firestore.FieldValue.serverTimestamp() };
-        return db.collection("seasons").doc(e.season + "_" + uid).set(doc).then(function () { return doc; });
-      });
-    },
-    seasonTop: function (season) {
-      if (provider !== "firebase") return demoOff();
-      return ready().then(function () {
-        return db.collection("seasons").where("season", "==", season).orderBy("pts", "desc").orderBy("timeMs", "asc").limit(LIMIT).get();
-      }).then(function (snap) { return snap.docs.map(function (d) { return d.data(); }); }).then(withBots("season", season));
-    },
-    seasonStanding: function (season, pts, timeMs) {
-      return standing("seasons", [["season", season]], "pts", pts, timeMs).then(plusBots("season", season, { pts: pts, timeMs: timeMs }));
-    },
-
     ladder: ladder,
     LEAGUES: LEAGUES,
-    leagueMove: leagueMove,
-    // Writes this week's league entry from the player's posted Daily scores. -> the entry
-    syncLeague: function (e) {
-      if (provider !== "firebase") return demoOff();
-      return ready().then(function () { return weekTotals(e.week); }).then(function (t) {
-        var doc = { uid: uid, name: e.name, badge: e.badge || "", week: e.week, tier: e.tier, pts: t.pts, timeMs: t.timeMs, days: t.days,
-          updatedAt: window.firebase.firestore.FieldValue.serverTimestamp() };
-        return db.collection("league").doc(e.week + "_" + uid).set(doc).then(function () { return doc; });
-      });
-    },
-    leagueMine: function (week) {
-      if (provider !== "firebase") return demoOff();
-      return ready().then(function () { return db.collection("league").doc(week + "_" + uid).get(); })
-        .then(function (s) { return s.exists ? s.data() : null; });
-    },
-    leagueTop: function (week, tier) {
-      if (provider !== "firebase") return demoOff();
-      return ready().then(function () {
-        return db.collection("league").where("week", "==", week).where("tier", "==", tier)
-          .orderBy("pts", "desc").orderBy("timeMs", "asc").limit(50).get();
-      }).then(function (snap) { return snap.docs.map(function (d) { return d.data(); }); });
-    },
-    leagueStanding: function (week, tier, pts, timeMs) { return standing("league", [["week", week], ["tier", tier]], "pts", pts, timeMs); },
-
     cleanCode: cleanCode,
     cleanGroupName: cleanGroupName,
     getGroup: function (code) {

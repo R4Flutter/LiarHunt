@@ -319,7 +319,6 @@
     $("btn-board").hidden = !lbOn();
     $("btn-friends").hidden = !lbOn();
     $("tile-room").hidden = !lbOn();
-    renderLeagueCard();
     renderBanner();
     renderCoins(false);
   }
@@ -396,6 +395,17 @@
     $("season-sub").textContent = pk.tagline;
     $("season-next").textContent = c.phase === "before" ? "New cases, a cast of locals and a season league: climb from Bronze to Diamond before the season ends." : "";
     paintSeasonClock(c);
+    // web: your league, LP and the way to the next league
+    var row = $("season-league"), L = S.ladder, X = WL.LADDER;
+    row.hidden = !lbOn() || !S.settings.playerName || c.phase !== "during";
+    if (row.hidden) return;
+    var mine = L.season === c.season, lp = mine ? L.lp : 0, t = mine ? L.tier : 0, nx = X.marks[t + 1];
+    $("season-emblem").className = "league-emblem t" + t;
+    $("season-emblem").textContent = X.icons[t];
+    $("season-lname").textContent = X.names[t] + " League";
+    $("season-lp").textContent = (mine ? lp.toLocaleString("en") + " LP" + (L.rank && L.total >= RANK_MIN ? " · #" + L.rank + " of " + L.total : "") : "Finish today's Daily to enter") +
+      (nx != null ? " · " + (nx - lp).toLocaleString("en") + " LP to " + X.names[t + 1] : " · Top league");
+    $("season-bar").firstElementChild.style.width = (nx != null ? Math.round((100 * (lp - X.marks[t])) / (nx - X.marks[t])) : 100) + "%";
   }
   function paintSeasonClock(c) {
     c = c || WL.seasonClock(WL.now());
@@ -1938,7 +1948,7 @@
       var onRank = function (rank) { known = rank; setShare(shareFn); };
       if (S.settings.playerName) postDaily(day, p, onRank);
       else {
-        joinCard("See where you rank against other detectives today.", function () { postDaily(day, p, onRank); postEndless(); });
+        joinCard("See where you rank against other detectives today.", function () { postDaily(day, p, onRank); });
         // posted without a name, so today's player count is honest; joining later puts the name on it
         postAnon(day, p).then(function () { return LB.dailyStanding(day, score, p.elapsed); }).then(function (st) {
           S.lb.stand = { day: day, rank: st.rank, total: st.total }; persist();
@@ -1992,15 +2002,6 @@
     $("res-rewards").innerHTML = r.endBonus ? '<span class="rw coin">' + COIN_SVG + "Run bonus +" + r.endBonus + "</span>" : "";
     setShare(rushShareText(score));
     rankCard("");
-    if (LB.enabled() && Plat.allowExternal() && S.endless.best > 0) {
-      var boardCard = function () {
-        rankCard('<p class="rank-head">Your best run of <strong>' + S.endless.best + "</strong> is on the Rush leaderboard.</p>" +
-          '<button class="btn ghost wide" type="button" id="rank-view">View Rush leaderboard</button>');
-        $("rank-view").addEventListener("click", function () { openBoard("endless"); });
-      };
-      if (S.settings.playerName) postEndless(boardCard);
-      else joinCard("Put your best run of " + S.endless.best + " on the Rush leaderboard.", function () { postEndless(boardCard); afterJoin(); });
-    }
     $("res-stats").innerHTML = statsRow([["Cases", r.n], ["Caught", score], ["Best", S.endless.best], ["Runs", S.endless.runs]]);
     resProgress();
     var dailyDone = S.daily && S.daily.day === TODAY && S.daily.done;
@@ -2420,7 +2421,6 @@
       S.lb.posted[day] = 1;
       if (anon) delete S.lb.anon[day];
       persist();
-      syncLeague();
       return Promise.all([LB.topDaily(day), LB.dailyStanding(day, entry.score, entry.timeMs).catch(function () { return null; })]);
     }).then(function (res) {
       var rank = rankOf(res[0]), stand = res[1];
@@ -2428,6 +2428,7 @@
       S.lb.ranks[day] = rank; persist();
       showRankCard(rank, stand);
       if (onRank) onRank(rank);
+      postLadder(day, p).catch(function () { ladderFailed(day, p); });
     }).catch(function (e) {
       rankCard('<p class="rank-sub">' + esc(LB.friendlyError(e)) + '</p><button class="btn ghost wide" type="button" id="rank-retry">Try again</button>');
       $("rank-retry").addEventListener("click", function () { postDaily(day, p, onRank); });
@@ -2446,39 +2447,30 @@
     rankCard('<p class="rank-head">' + text + '</p><p class="rank-sub">The top 10 each day win a badge and a free Magnifier.</p><button class="btn primary wide" type="button" id="rank-join">Join the leaderboard</button>');
     $("rank-join").addEventListener("click", function () { askName(onJoined); });
   }
-  function postEndless(onDone) {
-    if (!LB.enabled() || !S.settings.playerName || S.endless.best < 1 || (S.lb.endlessPosted || 0) >= S.endless.best) { if (onDone) onDone(); return; }
-    LB.submitEndless({ name: S.settings.playerName, badge: bestBadge(), best: S.endless.best }).then(function () {
-      S.lb.endlessPosted = S.endless.best; persist(); if (onDone) onDone();
-    }).catch(function () { if (onDone) onDone(); });
-  }
   function afterJoin() {
     var p = S.daily && S.daily.day === TODAY && S.daily.done ? S.daily : null;
     if (p && (!S.lb.posted[TODAY] || (S.lb.anon && S.lb.anon[TODAY]))) postDaily(TODAY, p, function (rank) { setShare(dailyShareText(TODAY, p, false, rank)); if ($("dlg-board") && $("dlg-board").open) loadBoard(); });
-    postEndless(function () { if ($("dlg-board") && $("dlg-board").open) loadBoard(); });
   }
   function openBoard(tab) {
     if (!LB.enabled() || !$("dlg-board")) return;
-    boardTab = tab || "today";
+    boardTab = tab || "league";
     $("board-demo").hidden = !(LB.isDemo && LB.isDemo());
     openDialog("dlg-board");
     loadBoard();
-    postEndless(function () { if (boardTab === "endless" && $("dlg-board").open) loadBoard(); });
   }
   function loadBoard() {
     [].forEach.call(document.querySelectorAll("#dlg-board .tab"), function (t) { t.setAttribute("aria-selected", t.dataset.tab === boardTab ? "true" : "false"); });
     $("board-head").hidden = true;
     var tok = ++boardTok;
-    if (boardTab === "league") { loadLeague(tok); return; }
+    if (boardTab === "league") { loadLadder(tok); return; }
     if (boardTab === "friends") { loadFriends(tok); return; }
     var list = $("board-list"), tab = boardTab;
-    $("board-note").textContent = tab === "endless" ? "The longest Rush runs of all time."
-      : "Daily #" + TODAY + ". Ranks lock in once the day ends everywhere. The top 10 win a badge.";
+    $("board-note").textContent = "Daily #" + TODAY + ". Ranks lock in once the day ends everywhere. The top 10 win a badge.";
     list.innerHTML = '<li class="board-empty">Loading...</li>';
-    (tab === "endless" ? LB.topEndless() : LB.topDaily(TODAY)).then(function (rows) {
+    LB.topDaily(TODAY).then(function (rows) {
       if (tok !== boardTok) return;
       list.innerHTML = boardRows(rows, function (r) {
-        return tab === "endless" ? '<span class="b-score">' + r.best + "</span>" : '<span class="b-score">' + r.score + '/5</span><span class="b-time">' + WL.fmtTime(r.timeMs) + "</span>";
+        return '<span class="b-score">' + r.score + '/5</span><span class="b-time">' + WL.fmtTime(r.timeMs) + "</span>";
       });
       renderBoardMe(rows);
     }).catch(function (e) { if (tok === boardTok) list.innerHTML = '<li class="board-empty">' + esc(LB.friendlyError(e)) + "</li>"; });
@@ -2637,99 +2629,94 @@
     if (k === "rush") startRush(); else if (k === "reminder") openReminder(); else if (k === "write") openWrite();
   });
 
-  /* ---------- weekly league (web) ---------- */
-  var leagueP = null;
-  function weekLeft() { return WDAY === 6 ? "ends tonight" : (7 - WDAY) + " days left"; }
-  // Works out this week's tier from last week's final standing (once a week), cached per session.
-  function resolveLeague() {
-    if (!lbOn() || !S.settings.playerName) return Promise.resolve(null);
-    if (leagueP) return leagueP;
-    var L = S.league;
-    leagueP = Promise.all([LB.leagueMine(WEEK), WEEK > 1 ? LB.leagueMine(WEEK - 1) : Promise.resolve(null)]).then(function (r) {
-      var mine = r[0], prev = r[1];
-      var lastP = !prev ? Promise.resolve(null)
-        : L.last && L.last.week === WEEK - 1 ? Promise.resolve(L.last)
-        : LB.leagueStanding(WEEK - 1, prev.tier, prev.pts, prev.timeMs).then(function (st) {
-          return { week: WEEK - 1, tier: prev.tier, rank: st.rank, total: st.total, pts: prev.pts, move: LB.leagueMove(prev.tier, st.rank, st.total, prev.pts) };
-        });
-      return lastP.then(function (last) {
-        var tier = mine ? mine.tier : last ? Math.max(0, Math.min(LB.LEAGUES.length - 1, last.tier + last.move)) : 0;
-        S.league = { week: WEEK, tier: tier, entered: !!mine, pts: mine ? mine.pts : 0, timeMs: mine ? mine.timeMs : 0, days: mine ? mine.days : 0,
-          rank: L.week === WEEK ? L.rank : 0, total: L.week === WEEK ? L.total : 0, last: last, told: L.told || 0 };
-        if (last && S.league.told !== last.week) {
-          S.league.told = last.week;
-          if (last.move > 0) P.count("promotions");
-          leagueNotice(last);
-        }
-        persist();
-        return S.league;
-      });
-    });
-    leagueP.catch(function () { leagueP = null; });
-    return leagueP;
+  /* ---------- season ladder (web): league points from each Daily (js/engine.js LADDER, LB.ladder) ---------- */
+  function setLadder(doc) {
+    var L = S.ladder;
+    ["season", "lp", "tier", "days", "rate", "failRate"].forEach(function (k) { L[k] = doc[k]; });
+    persist();
+    if (screen === "hq") renderSeason();
   }
-  function leagueNotice(last) {
-    var from = LB.LEAGUES[last.tier], to = LB.LEAGUES[Math.max(0, Math.min(LB.LEAGUES.length - 1, last.tier + last.move))];
-    var place = "You finished <b>#" + last.rank + " of " + last.total + "</b> in the " + from.name + " League last week.";
-    notice(last.move > 0 ? { icon: to.icon, eyebrow: "Weekly league", title: "Promoted to " + to.name + "!", text: place + " Welcome to the big leagues.", yes: "Let's go", sound: "levelup" }
-      : last.move < 0 ? { icon: to.icon, eyebrow: "Weekly league", title: "Down to " + to.name, text: place + " Play every Daily this week to climb back up.", yes: "Challenge accepted" }
-      : { icon: to.icon, eyebrow: "Weekly league", title: "You stay in " + to.name, text: place + " Finish in the top 20% to move up.", yes: "OK" });
-  }
-  function syncLeague() {
-    if (!lbOn() || !S.settings.playerName) return;
-    resolveLeague().then(function (L) {
-      if (!L) return null;
-      return LB.syncLeague({ name: S.settings.playerName, badge: bestBadge(), week: WEEK, tier: L.tier });
-    }).then(function (doc) {
+  // Reads this season's entry and rank (at most every 5 minutes unless forced).
+  function refreshLadder(force) {
+    if (!lbOn() || !S.settings.playerName || !SEASON) return Promise.resolve();
+    if (!force && Date.now() - (S.ladder.at || 0) < 300000) return Promise.resolve();
+    return LB.ladder.mine(SEASON).then(function (doc) {
       if (!doc) return;
-      Object.assign(S.league, { entered: true, pts: doc.pts, timeMs: doc.timeMs, days: doc.days });
-      persist();
-      return refreshLeague(true);
-    }).catch(function (e) { console.warn("[league]", e && e.message); });
-  }
-  function refreshLeague(force) {
-    var L = S.league;
-    if (!lbOn() || !L.entered || L.week !== WEEK || (!force && Date.now() - (L.at || 0) < 300000)) { renderLeagueCard(); return Promise.resolve(); }
-    return LB.leagueStanding(WEEK, L.tier, L.pts, L.timeMs).then(function (st) {
-      L.rank = st.rank; L.total = st.total; L.at = Date.now(); persist(); renderLeagueCard();
+      setLadder(doc);
+      return LB.ladder.standing(SEASON, doc.lp).then(function (st) {
+        S.ladder.rank = st.rank; S.ladder.total = st.total; S.ladder.at = Date.now(); persist();
+        if (screen === "hq") renderSeason();
+      });
     }).catch(function () { /* keep the old numbers */ });
   }
-  function renderLeagueCard() {
-    var el = $("league-card");
-    if (!el) return;
-    el.hidden = !lbOn() || !unlocked("league");
-    if (el.hidden) return;
-    var L = S.league, t = L.week === WEEK ? L.tier : 0, lg = LB.LEAGUES[t], sub;
-    $("league-emblem").className = "league-emblem t" + t;
-    $("league-emblem").textContent = lg.icon;
-    $("league-name").textContent = lg.name + " League";
-    if (!S.settings.playerName) sub = "Join the leaderboard to compete every week";
-    else if (L.week !== WEEK || !L.entered) sub = "Finish today's Daily to enter this week · " + weekLeft();
-    else sub = (L.rank ? "#" + L.rank + " of " + L.total + " · " : "") + L.pts + " caught · " + weekLeft();
-    $("league-sub").textContent = sub;
+  // After today's Daily is posted: add the day to the ladder. Rejects when it couldn't be saved.
+  function postLadder(day, p) {
+    if (!lbOn() || !S.settings.playerName || day !== TODAY || !WL.seasonOf(day)) return Promise.resolve(null);
+    var before = S.ladder.season === WL.seasonOf(day) ? S.ladder.tier : null;
+    return LB.ladder.post({ name: S.settings.playerName, av: myFace(), badge: bestBadge(), day: day, grid: p.results.join("") }).then(function (doc) {
+      var e = $("ladder-err"); if (e) e.remove();
+      if (!doc) return refreshLadder(true);
+      setLadder(doc);
+      var N = WL.LADDER.names;
+      if (before != null && doc.tier > before) { P.count("promotions"); Snd.play("levelup"); toast("Promoted to " + N[doc.tier] + " League!", "gold", 3600); }
+      else if (before != null && doc.tier < before) toast("Down to " + N[doc.tier] + " League. Win it back tomorrow.", "", 3600);
+      return refreshLadder(true);
+    });
   }
-  function loadLeague(tok) {
-    var list = $("board-list"), L = S.league, tier = L.week === WEEK ? L.tier : 0, lg = LB.LEAGUES[tier];
+  function ladderFailed(day, p) {
+    var box = $("res-rank"), old = $("ladder-err");
+    if (old) old.remove();
+    box.hidden = false;
+    box.insertAdjacentHTML("beforeend", '<p class="rank-sub" id="ladder-err">Couldn\'t update your league. <button class="link-btn" type="button" id="ladder-retry">Try again</button></p>');
+    $("ladder-retry").addEventListener("click", function () { Snd.play("click"); postLadder(day, p).catch(function () { ladderFailed(day, p); }); });
+  }
+  // The first visit in a new season: coins for the league you finished last season.
+  function ladderSeasonEnd() {
+    var prev = SEASON - 1;
+    if (!lbOn() || prev < 1 || !S.settings.playerName || S.ladder.paid[prev]) return;
+    LB.ladder.mine(prev).then(function (doc) {
+      S.ladder.paid[prev] = true; persist();
+      if (!doc) return;
+      var X = WL.LADDER, coins = X.rewards[doc.tier], start = WL.tierOf(WL.seasonStartLp(doc.tier));
+      P.grant({ coins: coins }); persist(); renderCoins(true);
+      notice({ icon: X.icons[doc.tier], eyebrow: "Season " + prev + " is over", title: "You finished in the " + X.names[doc.tier] + " League", sound: "fanfare",
+        text: "You played " + doc.days + " Dail" + (doc.days === 1 ? "y" : "ies") + " and solved " + Math.round(doc.rate / 10) + "% of the cases. You start Season " + SEASON + " in the " + X.names[start] + " League.",
+        html: rewardList({ coins: coins }), yes: "On to Season " + SEASON });
+    }).catch(function () { /* try again next visit */ });
+  }
+  function ladderRow(r, rank, me) {
+    var every = r.failRate ? Math.round(1000 / r.failRate) : 0;
+    var fr = !every ? "no fails" : every <= 1 ? "fails every day" : "fails 1 day in " + every;
+    return '<li class="board-row lad' + (r.uid === me ? " me" : "") + '"><span class="b-rank">' + rank + '</span><span class="b-face">' + WL.avatar(r.name || "Detective", r.av) +
+      '</span><span class="b-name">' + (r.badge ? '<span class="b-badge" aria-hidden="true">' + esc(r.badge) + "</span>" : "") + esc(r.name || "Detective") + (r.uid === me ? " <em>(you)</em>" : "") +
+      '<span class="b-sub">' + Math.round((r.rate || 0) / 10) + "% solved · " + fr + '</span></span><span class="b-score">' + (r.lp || 0).toLocaleString("en") + "<small> LP</small></span></li>";
+  }
+  function loadLadder(tok) {
+    var list = $("board-list"), c = WL.seasonClock(WL.now()), season = c.phase === "during" ? c.season : 0, X = WL.LADDER;
+    var L = S.ladder, mine = !!season && L.season === season, t = mine ? L.tier : 0, me = LB.myId();
     $("board-head").hidden = false;
-    $("board-head").innerHTML = '<span class="league-emblem t' + tier + '" aria-hidden="true">' + lg.icon + "</span><span><b>" + lg.name + " League</b>" +
-      '<span class="muted small">Week ' + WEEK + " · " + weekLeft() + "</span></span>";
-    $("board-note").textContent = "Points are liars caught in this week's Daily Cases. On Monday the top 20% move up a league and the bottom 20% move down.";
-    if (!S.settings.playerName) { list.innerHTML = '<li class="board-empty">Join the leaderboard to enter the weekly league.</li>'; renderBoardMe(null); return; }
+    $("board-head").innerHTML = '<span class="league-emblem t' + t + '" aria-hidden="true">' + X.icons[t] + "</span><span><b>Season " + Math.max(1, season) + " league</b>" +
+      '<span class="muted small">' + (season ? "Ends in " + WL.fmtLong(c.left) : "Starts " + WL.formatDate(WL.dateForDay(WL.SEASON_ONE))) + "</span></span>";
+    $("board-note").textContent = "Top " + LB.ladder.TOP + " this season. Solving earns league points (LP), wrong answers cost LP (not in Bronze). Silver 400 · Gold 1,000 · Platinum 1,800 · Diamond 2,800 LP.";
+    if (!season) { list.innerHTML = '<li class="board-empty">Season 1 starts ' + WL.formatDate(WL.dateForDay(WL.SEASON_ONE)) + ". Every Daily you play then earns league points.</li>"; renderBoardMe(null); return; }
+    if (!S.settings.playerName) { list.innerHTML = '<li class="board-empty">Join the leaderboard to enter the season league.</li>'; renderBoardMe(null); return; }
     list.innerHTML = '<li class="board-empty">Loading...</li>';
-    resolveLeague().then(function (R) {
-      tier = R ? R.tier : 0;
-      return LB.leagueTop(WEEK, tier);
-    }).then(function (rows) {
+    LB.ladder.top(season).then(function (rows) {
       if (tok !== boardTok) return;
-      var me = LB.myId(), tot = Math.max(rows.length, S.league.total || 0);
-      var up = tier < LB.LEAGUES.length - 1 ? Math.max(1, Math.round(tot * 0.2)) : 0, down = tier > 0 && tot >= 5 ? Math.floor(tot * 0.2) : 0;
-      list.innerHTML = (rows.length ? rows.map(function (r, i) {
-        var zone = i < up && r.pts > 0 ? " up" : down && i >= tot - down ? " down" : "";
-        return '<li class="board-row' + zone + (r.uid === me ? " me" : "") + '"><span class="b-rank">' + (i + 1) + '</span><span class="b-name">' +
-          (r.badge ? '<span class="b-badge" aria-hidden="true">' + esc(r.badge) + "</span>" : "") + esc(r.name) + (r.uid === me ? " <em>(you)</em>" : "") +
-          '</span><span class="b-score">' + r.pts + '</span><span class="b-time">' + r.days + "/7 days</span></li>";
-      }).join("") : '<li class="board-empty">Nobody in this league has played this week yet. Finish today\'s Daily to take the lead!</li>') +
-        (!S.league.entered && rows.length ? '<li class="board-empty">You\'re not in this week\'s league yet. Finish today\'s Daily to enter.</li>' : "");
+      var html = "", lastT = -1, inTop = false;
+      rows.forEach(function (r, i) {
+        if (r.tier !== lastT) { lastT = r.tier; html += '<li class="board-div t' + r.tier + '"><span aria-hidden="true">' + X.icons[r.tier] + "</span> " + X.names[r.tier] + " League</li>"; }
+        if (r.uid === me) inTop = true;
+        html += ladderRow(r, i + 1, me);
+      });
+      list.innerHTML = html || '<li class="board-empty">Nobody has league points yet this season. Finish today\'s Daily to take the lead!</li>';
+      if (!inTop && mine) {
+        LB.ladder.standing(season, L.lp).then(function (st) {
+          if (tok !== boardTok) return;
+          list.insertAdjacentHTML("beforeend", '<li class="board-gap" aria-hidden="true">⋯</li>' +
+            ladderRow({ uid: me, name: S.settings.playerName, av: myFace(), badge: bestBadge(), lp: L.lp, rate: L.rate, failRate: L.failRate }, st.rank, me));
+        }).catch(function () { /* the list is enough */ });
+      }
       renderBoardMe(rows);
     }).catch(function (e) { if (tok === boardTok) list.innerHTML = '<li class="board-empty">' + esc(LB.friendlyError(e)) + "</li>"; });
   }
@@ -3859,13 +3846,13 @@
   $("btn-daily").addEventListener("click", function () { Snd.play("click"); startDaily(TODAY); });
   $("streak-chip").addEventListener("click", function () { Snd.play("click"); streakInfo(); });
   $("btn-friends").addEventListener("click", function () { Snd.play("click"); openBoard("friends"); });
-  if ($("league-card")) $("league-card").addEventListener("click", function () { Snd.play("click"); openBoard("league"); });
+  $("season-card").addEventListener("click", function () { if (lbOn() && SEASON) { Snd.play("click"); openBoard("league"); } });
   $("tile-rush").addEventListener("click", function () { Snd.play("click"); if (!unlocked("rush")) return toast("Rush opens tomorrow, or after 10 solved cases."); startRush(); });
   $("btn-shop").addEventListener("click", function () { Snd.play("click"); openShop(false); });
   $("btn-ach").addEventListener("click", function () { Snd.play("click"); openAch(); });
   $("btn-stats").addEventListener("click", function () { Snd.play("click"); openProfile(); });
   $("btn-profile").addEventListener("click", function () { Snd.play("click"); openProfile(); });
-  $("btn-board").addEventListener("click", function () { Snd.play("click"); openBoard("today"); });
+  $("btn-board").addEventListener("click", function () { Snd.play("click"); openBoard("league"); });
   $("btn-accuse").addEventListener("click", confirmNow);
   $("btn-cancel").addEventListener("click", function () { Snd.play("click"); cancelPick(); });
   $("btn-next").addEventListener("click", next);
@@ -3914,7 +3901,7 @@
     if (screen === "hq" && paintSeasonClock().left <= 0) renderSeason();
     if (screen === "hq" && !run) {
       if (WL.dayNumber() !== TODAY) location.reload();
-      else if (new Date().getSeconds() === 0) { renderHQ(); refreshLeague(false); }
+      else if (new Date().getSeconds() === 0) { renderHQ(); refreshLadder(false); }
     }
     if (screen === "shop" && P.coolLeft("coinsAd", 240) === 0 && $("btn-free-coins") && $("btn-free-coins").disabled) renderShop();
   }, 1000);
@@ -3953,7 +3940,8 @@
     S.settings = Object.assign({ sound: true, music: !coarse, tutorialDone: false, playerName: "" }, S.settings || {});
     S.lb = Object.assign({ posted: {}, claimed: {}, badges: [], ranks: {} }, S.lb || {});
     delete S.arc; delete S.night; // the Case of the Week and the Night Shift are gone
-    S.league = Object.assign({ week: 0, tier: 0, entered: false }, S.league || {});
+    S.ladder = Object.assign({ season: 0, lp: 0, tier: 0, days: 0, rate: 0, failRate: 0, rank: 0, total: 0, at: 0, paid: {} }, S.ladder || {});
+    delete S.league; // the old weekly league
     S.groups = S.groups || [];
     S.pwa = S.pwa || {};
     S.sync = Object.assign({ code: "", dirty: false, stamp: 0 }, S.sync || {});
@@ -4053,7 +4041,7 @@
       if (cloud.migrate && started()) { S.sync.dirty = true; cloudFlush(); } // this device's old save moves into the account now
       if (lbOn()) {
         setTimeout(checkRewards, 1500);
-        if (S.settings.playerName) resolveLeague().then(function () { return refreshLeague(true); }).catch(function () { /* offline */ });
+        if (S.settings.playerName) { refreshLadder(true); ladderSeasonEnd(); }
       }
       persist();
       if (later) later.then(function (d) { if (d) cloudReady(d); else cloud.busy = false; }); // offline: keeps saving on this device

@@ -93,7 +93,7 @@
     { id: "streak30", name: "Iron Habit", desc: "Play the Daily Case 30 days in a row", stat: "bestStreak", goal: 30, coins: 500 },
     { id: "shield", name: "Saved by the Shield", desc: "Let a Streak Shield save your streak", stat: "shieldSaves", goal: 1, coins: 50 },
     { id: "rival3", name: "Top Dog", desc: "Beat 3 friends' challenges", stat: "challengesWon", goal: 3, coins: 150 },
-    { id: "promoted", name: "Moving Up", desc: "Get promoted in the weekly league", stat: "promotions", goal: 1, coins: 100 }
+    { id: "promoted", name: "Moving Up", desc: "Get promoted to a higher league", stat: "promotions", goal: 1, coins: 100 }
   ];
 
   /* ---------- helpers ---------- */

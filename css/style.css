@@ -738,6 +738,13 @@ body:not(.booting) .boot { opacity: 0; pointer-events: none; }
 .b-time { color: var(--pencil); font-size: var(--s-1); min-width: 3.2em; text-align: right; }
 .board-row.me .b-time { color: inherit; }
 .board-empty { padding: 1rem 0.2rem; color: var(--pencil); }
+.board-row.lad { grid-template-columns: 2.2rem 2.4rem minmax(0, 1fr) auto; }
+.b-face { width: 2.4rem; }
+.b-sub { display: block; font-weight: 400; font-size: var(--s-1); color: var(--pencil); overflow: hidden; text-overflow: ellipsis; }
+.board-row.me .b-sub { color: inherit; }
+.b-score small { font-family: var(--body); font-size: 0.7em; font-weight: 700; }
+.board-div { padding: 0.55rem 0.2rem 0.25rem; font-family: var(--display); font-weight: 900; font-size: 1.05rem; border-bottom: 2px solid var(--ink); }
+.board-gap { text-align: center; color: var(--pencil); padding: 0.15rem; }
 .board-me { display: grid; gap: 0.45rem; }
 /* top 3 on a podium: 2nd, 1st, 3rd from the left */
 .podium { display: flex; align-items: flex-end; justify-content: center; gap: 0.45rem; padding: 1.1rem 0.3rem 0; border-bottom: 2px solid var(--ink); }
