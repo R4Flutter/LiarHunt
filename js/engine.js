@@ -1011,12 +1011,19 @@
     return squeeze(raw, CompressionStream).then(function (z) { return "z" + toB64(z); }, function () { return "j" + toB64(raw); });
   }
   // -> Promise of the case, or null when the link is broken or not a valid case.
+  // A story made with an AI chat comes back as { k: "d5" | "career", s: story, b: author }: game.js runs js/storycheck.js on it.
+  // Story links may be 12,000 characters, quick cases keep 9,000.
   function unpackWritten(code) {
     try {
-      if (!code || code.length > 9000) return Promise.resolve(null);
+      if (!code || code.length > 12000) return Promise.resolve(null);
       var kind = code.charAt(0), bytes = fromB64(code.slice(1));
       var p = kind === "z" ? squeeze(bytes, DecompressionStream) : kind === "j" ? Promise.resolve(bytes) : Promise.reject(new Error("bad link"));
-      return p.then(function (b) { var w = JSON.parse(new TextDecoder().decode(b)); return checkWritten(w) ? null : w; }).catch(function () { return null; });
+      return p.then(function (b) {
+        if (b.length > 60000) return null; // a story is never this big: a damaged or hand-made link
+        var w = JSON.parse(new TextDecoder().decode(b));
+        if (w && (w.k === "d5" || w.k === "career")) return w.s && typeof w.s === "object" ? w : null;
+        return code.length > 9000 || checkWritten(w) ? null : w;
+      }).catch(function () { return null; });
     } catch (e) { return Promise.resolve(null); }
   }
   // A written case in the game's case shape, shuffled the same way for everyone with the same link.

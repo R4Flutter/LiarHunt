@@ -13,12 +13,27 @@
   Stars: 3, minus one per mistake, minus one if a Magnifier helped (at least 1). A third mistake makes the case fall
   apart: the player retries that step and the mission can earn 1 star. Replays keep the first run's stars.
   game.js calls mount() with the helpers it shares (save, screens, sounds, rewards, hints).
+  It also plays a player's own investigation (startStory, from "Write a case"): one chapter of 3 to 6 missions that
+  js/storycheck.js already passed. Those give no rewards and no hints, and their progress is kept per story (the last 5).
 */
 (function () {
   "use strict";
-  var WL = window.WL, B = window.WL_BOOK1;
+  var WL = window.WL, BOOK1 = window.WL_BOOK1, B = BOOK1;
   if (!B) return;
-  var PER = 6, N = B.missions.length, MAX_MISTAKES = 3;
+  var PER = 6, N = 0, MAX_MISTAKES = 3, foundIn = {};
+  // mine: null for Book 1, or { key, by, share(stars, of) } while a player's investigation is open
+  var mine = null;
+  function use(book, o) {
+    B = book; mine = o || null; N = B.missions.length; foundIn = {};
+    B.missions.forEach(function (m, i) {
+      var mark = function (id) { foundIn[id] = foundIn[id] || i + 1; };
+      (m.gives || []).forEach(mark);
+      m.steps.forEach(function (k) { stepGains(k).forEach(mark); });
+    });
+  }
+  // What HQ and the Book map show is always Book 1, whatever was played last.
+  function b1(fn) { return function () { var keep = B, o = mine; if (B !== BOOK1) use(BOOK1); try { return fn.apply(null, arguments); } finally { if (keep !== BOOK1) use(keep, o); } }; }
+  function track(e, p) { if (!mine) WL.track(e, p); }
   var KIND = { search: ["🔍", "Search"], talk: ["💬", "Interview"], timeline: ["🕒", "Timeline"], compare: ["📄", "Documents"],
     link: ["🔗", "Connections"], accuse: ["⚖️", "Accusation"], think: ["💡", "Deduction"] };
   var TIP = {
@@ -37,9 +52,15 @@
 
   /* ---------- progress ---------- */
   function st() {
-    var s = api.S();
-    s.book = s.book || {};
-    var b = s.book[B.id] = s.book[B.id] || {};
+    var s = api.S(), b;
+    if (mine) {
+      var runs = s.storyRuns = s.storyRuns || {};
+      if (!runs[mine.key]) { runs[mine.key] = {}; var ks = Object.keys(runs); while (ks.length > 5) delete runs[ks.shift()]; } // the last 5 stories
+      b = runs[mine.key];
+    } else {
+      s.book = s.book || {};
+      b = s.book[B.id] = s.book[B.id] || {};
+    }
     b.at = b.at || 1; b.stars = b.stars || {}; b.seen = b.seen || {};
     return b;
   }
@@ -56,12 +77,7 @@
     if (n <= N) { add(mission(n).gives || []); mission(n).steps.slice(0, k).forEach(function (s) { add(stepGains(s)); }); }
     return out;
   }
-  var foundIn = {};
-  B.missions.forEach(function (m, i) {
-    var mark = function (id) { foundIn[id] = foundIn[id] || i + 1; };
-    (m.gives || []).forEach(mark);
-    m.steps.forEach(function (k) { stepGains(k).forEach(mark); });
-  });
+  use(BOOK1);
   function shuffled(list, seed) { return WL.shuffle(list, WL.rngFrom("book1:" + seed)); }
   function hashOf(m) { return WL.hash(JSON.stringify(m)); }
   // Missions completed in the story so far (on a replay: the ones before it), for notes and the Broker board.
@@ -70,15 +86,15 @@
   /* ---------- small pieces of HTML ---------- */
   function mug(id, cls) {
     var p = B.people[id];
-    return '<span class="mug ' + (cls || "") + '">' + (p.org ? '<span class="bk-org" aria-hidden="true">' + p.org + "</span>" : WL.avatar(p.name)) + "</span>";
+    return '<span class="mug ' + (cls || "") + '">' + (p.org ? '<span class="bk-org" aria-hidden="true">' + esc(p.org) + "</span>" : WL.avatar(p.name)) + "</span>";
   }
   function evChip(id, attrs) {
     var e = B.evidence[id];
-    return '<span class="bk-chip"' + (attrs || "") + '><span aria-hidden="true">' + e[0] + "</span>" + esc(e[1]) + "</span>";
+    return '<span class="bk-chip"' + (attrs || "") + '><span aria-hidden="true">' + esc(e[0]) + "</span>" + esc(e[1]) + "</span>";
   }
   function evCard(id, extra, tag) {
     var e = B.evidence[id], t = tag || "div";
-    return "<" + t + ' class="bk-evcard ' + (extra || "") + '"' + (t === "button" ? ' type="button" data-a="pe" data-i="' + id + '"' : "") + '><span class="bk-evico" aria-hidden="true">' + e[0] +
+    return "<" + t + ' class="bk-evcard ' + (extra || "") + '"' + (t === "button" ? ' type="button" data-a="pe" data-i="' + id + '"' : "") + '><span class="bk-evico" aria-hidden="true">' + esc(e[0]) +
       '</span><span class="bk-evtxt"><b>' + esc(e[1]) + "</b><span>" + esc(e[2]) + "</span></span></" + t + ">";
   }
   function paras(text) { return String(text || "").split("\n\n").map(function (p) { return "<p>" + esc(p) + "</p>"; }).join(""); }
@@ -99,7 +115,7 @@
         var it = k.items[ix], id = it[0], open = s.open === id, marked = s.marked.indexOf(id) >= 0, out = s.out[id], ok = s.ok[id];
         var cls = "bk-item" + (open ? " open" : "") + (marked ? " marked" : "") + (out ? " out" : "") + (ok ? " ok" : "");
         return '<div class="' + cls + '"><button type="button" class="bk-face" data-a="open" data-i="' + id + '" aria-expanded="' + open + '">' +
-          '<span class="bk-ico" aria-hidden="true">' + it[1] + '</span><span class="bk-nm">' + esc(it[2]) + "</span>" +
+          '<span class="bk-ico" aria-hidden="true">' + esc(it[1]) + '</span><span class="bk-nm">' + esc(it[2]) + "</span>" +
           (marked || ok ? '<span class="bk-pin">' + (ok ? "Clue" : "Marked") + "</span>" : out ? '<span class="bk-pin no">Not a clue</span>' : "") + "</button>" +
           (open ? '<p class="bk-look">' + esc(it[3]) + "</p>" + (out || ok ? "" : '<button type="button" class="btn small ' + (marked ? "ghost" : "danger") + '" data-a="mark" data-i="' + id + '">' + (marked ? "Unmark" : "Mark as a clue") + "</button>") : "") +
           "</div>";
@@ -161,7 +177,7 @@
           return '<button type="button" class="chip-btn bk-q' + (s.hintQ === q.id ? " hint" : "") + '" data-a="ask" data-i="' + q.id + '">' + esc(q.q) + "</button>";
         }).join("") : '<span class="muted small">No more questions. Break the story with your evidence.</span>') + "</div></div>" +
         '<div class="bk-box"><p class="bk-lbl">Your evidence</p><div class="bk-tray">' + s.pool.map(function (id) {
-          return '<button type="button" class="bk-chip pick' + (s.selE === id ? " sel" : "") + '" data-a="ev" data-i="' + id + '"' + pressed(s.selE === id) + '><span aria-hidden="true">' + B.evidence[id][0] + "</span>" + esc(B.evidence[id][1]) + "</button>";
+          return '<button type="button" class="bk-chip pick' + (s.selE === id ? " sel" : "") + '" data-a="ev" data-i="' + id + '"' + pressed(s.selE === id) + '><span aria-hidden="true">' + esc(B.evidence[id][0]) + "</span>" + esc(B.evidence[id][1]) + "</button>";
         }).join("") + "</div>" + (sel ? '<p class="bk-evtext">' + esc(sel[2]) + "</p>" : "") + "</div></div>";
     },
     act: function (k, s, a, id) {
@@ -437,9 +453,12 @@
     api.persist();
   }
   // n: a mission up to the one the player is on. No n: the current mission (or the map once the book is done).
-  function start(n) {
+  function start(n) { use(BOOK1); open(n); }
+  // A player's investigation. o: { key, by, share(stars, of) }
+  function startStory(book, o) { use(book, o); open(); }
+  function open(n) {
     var b = st();
-    if (!n && finished()) { api.openMap(); return; }
+    if (!n && finished()) { if (mine) n = 1; else { api.openMap(); return; } }
     n = Math.max(1, Math.min(n || b.at, b.at, N));
     var m = mission(n), w = b.wip;
     R = { n: n, m: m, replay: n < b.at, k: 0, phase: "brief", mistakes: 0, hint: false, retried: false, gained: [], st: null };
@@ -453,11 +472,12 @@
     hud();
     render(true);
     if (R.phase === "play") { api.toast("Picking up where you left off: step " + (R.k + 1) + " of " + m.steps.length + "."); api.Plat.gameplayStart(); }
-    WL.track("book_start", { mission: n, replay: R.replay });
+    track("book_start", { mission: n, replay: R.replay });
   }
   function hud() {
     var ch = chapterOf(R.n);
-    api.setHud("Mission " + R.n, "Chapter " + ch + " · " + B.chapters[ch - 1].title);
+    if (mine) api.setHud("Mission " + R.n + " of " + N, B.title);
+    else api.setHud("Mission " + R.n, "Chapter " + ch + " · " + B.chapters[ch - 1].title);
   }
   function go() {
     if (!R) return;
@@ -484,7 +504,7 @@
     var k = step();
     gain(k.gives || []);
     if (!R.replay) st().seen[k.type] = 1;
-    WL.track("book_step", { mission: R.n, step: R.k + 1, type: k.type });
+    track("book_step", { mission: R.n, step: R.k + 1, type: k.type });
     if (R.k === R.m.steps.length - 1) { finish(k.done); return; }
     R.phase = "solved";
     saveWip(R.k + 1);
@@ -499,10 +519,10 @@
     R.mistakes++;
     api.Snd.play("wrong");
     api.FX.shake($("bk-body"));
-    WL.track("book_mistake", { mission: R.n, step: R.k + 1, type: step().type, count: R.mistakes });
+    track("book_mistake", { mission: R.n, step: R.k + 1, type: step().type, count: R.mistakes });
     if (R.mistakes >= MAX_MISTAKES) {
       R.phase = "fail"; saveWip(); render(true);
-      WL.track("book_failed", { mission: R.n, step: R.k + 1 });
+      track("book_failed", { mission: R.n, step: R.k + 1 });
       return;
     }
     api.toast(esc(msg) + (R.mistakes === MAX_MISTAKES - 1 ? " Careful: one more mistake and the case falls apart." : ""), "", 3400);
@@ -510,8 +530,9 @@
   }
   function finish(lastDone) {
     var b = st(), n = R.n, stars = potential(), first = !R.replay, ch = chapterOf(n);
-    var chapterDone = first && n % PER === 0, bookDone = first && n === N;
-    R.result = api.P.bookSolved({ ch: ch, stars: stars, hint: R.hint, replay: R.replay, chapterDone: chapterDone, bookDone: bookDone });
+    var chapterDone = !mine && first && n % PER === 0, bookDone = !mine && first && n === N;
+    // a player's own story pays nothing, so nobody can farm coins with stories they wrote themselves
+    R.result = mine ? {} : api.P.bookSolved({ ch: ch, stars: stars, hint: R.hint, replay: R.replay, chapterDone: chapterDone, bookDone: bookDone });
     if (first) { b.stars[n] = stars; b.at = n + 1; }
     b.wip = null;
     R.phase = "end"; R.stars = stars; R.lastDone = lastDone; R.chapterDone = chapterDone; R.bookDone = bookDone;
@@ -521,19 +542,20 @@
     for (var i = 0; i < stars; i++) api.Snd.play("star", { delay: 0.35 + i * 0.18, rate: 1 + i * 0.12 });
     if (R.result.coins) api.renderCoins(true);
     if (chapterDone) { api.FX.confetti({ count: bookDone ? 200 : 140 }); api.Snd.play("fanfare", { delay: 0.6 }); api.Plat.happytime(); }
+    else if (mine && n === N) { api.FX.confetti({ count: 140 }); api.Snd.play("fanfare", { delay: 0.6 }); }
     else if (stars === 3) api.FX.confetti({ count: 60 });
     setTimeout(api.flushQueue, 1100);
-    WL.track(first ? "book_done" : "book_replay", { mission: n, stars: stars, hint: R.hint, retried: R.retried });
-    if (chapterDone) WL.track("book_chapter_done", { chapter: ch });
-    if (bookDone) WL.track("book_finished", {});
+    track(first ? "book_done" : "book_replay", { mission: n, stars: stars, hint: R.hint, retried: R.retried });
+    if (chapterDone) track("book_chapter_done", { chapter: ch });
+    if (bookDone) track("book_finished", {});
   }
   function nextMission() {
     var n = R.n + 1;
-    if (n > N || n > st().at) { api.openMap(); return; }
-    api.midgame("book_next").then(function () { start(n); });
+    if (n > N || n > st().at) { if (mine) api.goHQ(); else api.openMap(); return; }
+    api.midgame("book_next").then(function () { open(n); });
   }
   function useHint() {
-    if (!R || R.phase !== "play" || R.stepHint) return;
+    if (!R || R.phase !== "play" || R.stepHint || mine) return;
     var k = step(), t = T[k.type], m = api.hintMode();
     if (!t.canHint(k, R.st) || (m !== "item" && m !== "ad")) return;
     var keep = R;
@@ -543,7 +565,7 @@
       R.hint = true; R.stepHint = true;
       api.Snd.play("whoosh");
       saveWip(); render();
-      WL.track("hint_used", { kind: "book", type: m });
+      track("hint_used", { kind: "book", type: m });
     });
   }
 
@@ -583,7 +605,7 @@
   function renderBar() {
     var bar = $("bk-bar"), goBtn = $("bk-go"), hint = $("bk-hint"), note = $("bk-note");
     bar.hidden = R.phase === "end";
-    hint.hidden = R.phase !== "play";
+    hint.hidden = R.phase !== "play" || !!mine; // a friend's story is played straight, no hints
     goBtn.disabled = false; goBtn.className = "btn primary";
     if (R.phase === "brief") { goBtn.textContent = "Start the mission"; note.textContent = R.m.goal; return; }
     if (R.phase === "solved") { goBtn.textContent = "Next step"; note.textContent = "Step " + (R.k + 1) + " of " + R.m.steps.length + " done"; return; }
@@ -607,7 +629,8 @@
   function briefHtml() {
     var n = R.n, m = R.m, ch = chapterOf(n), c = B.chapters[ch - 1], h = "";
     if ((n - 1) % PER === 0) {
-      h += '<section class="bk-chapter"><span class="bk-chico" aria-hidden="true">' + c.icon + '</span><p class="eyebrow">Book 1 · Chapter ' + ch + " of " + B.chapters.length + "</p>" +
+      h += '<section class="bk-chapter"><span class="bk-chico" aria-hidden="true">' + esc(c.icon) + '</span><p class="eyebrow">' +
+        (mine ? esc(B.title) + " · by " + esc(mine.by) : "Book 1 · Chapter " + ch + " of " + B.chapters.length) + "</p>" +
         '<h2 class="bk-chtitle">' + esc(c.title) + "</h2><p>" + esc(c.intro) + "</p></section>";
     } else if (mission(n - 1).outro) h += '<p class="bk-prev"><b>Previously</b> ' + esc(mission(n - 1).outro) + "</p>";
     h += '<article class="bk-brief"><span class="folder-tab">Mission ' + n + " of " + N + "</span>" +
@@ -616,25 +639,33 @@
       '<p class="bk-goal"><b>Your goal</b> ' + esc(m.goal) + "</p>" +
       (m.cast && m.cast.length ? '<div class="bk-cast">' + m.cast.map(function (id) { return '<span class="bk-person">' + mug(id, "small") + "<b>" + esc(B.people[id].name) + "</b><span>" + esc(B.people[id].role) + "</span></span>"; }).join("") + "</div>" : "") +
       (m.gives && m.gives.length ? '<p class="bk-lbl">New in your dossier</p><div class="bk-evlist small">' + m.gives.map(function (id) { return evCard(id, "static"); }).join("") + "</div>" : "") +
-      (R.replay ? '<p class="muted small">Replay: you keep the stars from your first run. Replays give a little XP.</p>' : "") + "</article>";
+      (R.replay ? '<p class="muted small">Replay: you keep the stars from your first run.' + (mine ? "" : " Replays give a little XP.") + "</p>" : "") + "</article>";
     return h;
   }
   function endHtml() {
     var n = R.n, c = B.chapters[chapterOf(n) - 1], r = R.result || {}, h = "";
     var items = r.items ? Object.keys(r.items).map(function (x) { return '<span class="rw">' + ({ magnifier: "🔍", key: "🔑" }[x] || "") + " +" + r.items[x] + "</span>"; }).join("") : "";
     h += '<section class="bk-end"><p class="eyebrow">Mission ' + n + " of " + N + " · " + esc(R.m.title) + "</p>" +
-      '<p class="verdict-head good">' + (R.bookDone ? "Book 1 solved!" : R.chapterDone ? "Chapter " + chapterOf(n) + " solved!" : CRACKED[n % CRACKED.length]) + "</p>" +
+      '<p class="verdict-head good">' + (R.bookDone ? "Book 1 solved!" : R.chapterDone ? "Chapter " + chapterOf(n) + " solved!" : mine && n === N ? "Investigation solved!" : CRACKED[n % CRACKED.length]) + "</p>" +
       '<div class="verdict-stars">' + [0, 1, 2].map(function (i) { return '<span class="st' + (i < R.stars ? " on" : "") + '"></span>'; }).join("") + "</div>" +
       (R.chapterDone ? '<p class="verdict-banner">' + esc(c.icon + " New rank badge: " + c.badge) + "</p>" : R.replay ? '<p class="muted">Replay: your first-run stars stay.</p>' : "") +
       '<div class="rewards big">' + api.rw(r.coins, r.xp) + items + "</div>" +
       '<p class="bk-lastdone">' + esc(R.lastDone) + "</p>" +
       (R.gained.length ? '<p class="bk-lbl">Added to your dossier</p><div class="bk-chips">' + R.gained.map(function (id) { return evChip(id); }).join("") + "</div>" : "");
-    if (R.bookDone || (R.replay && n === N)) {
-      h += '<div class="bk-story ending"><p class="bk-lbl">' + esc(B.ending.title) + "</p>" + paras(B.ending.text) + '<p class="bk-hook">' + esc(B.ending.hook) + "</p></div>";
-    } else if (n % PER === 0) {
+    if (R.bookDone || ((R.replay || mine) && n === N)) {
+      h += '<div class="bk-story ending"><p class="bk-lbl">' + esc(B.ending.title || "Case closed") + "</p>" + paras(B.ending.text) + '<p class="bk-hook">' + esc(B.ending.hook) + "</p></div>";
+    } else if (!mine && n % PER === 0) {
       h += '<div class="bk-story"><p class="bk-lbl">Chapter ' + chapterOf(n) + " reveal</p><p>" + esc(c.outro) + "</p></div>";
     } else if (R.m.outro) h += '<div class="bk-story"><p>' + esc(R.m.outro) + "</p></div>";
     var more = n < N && n + 1 <= st().at;
+    if (mine) {
+      var got = starsTotal();
+      h += (n === N ? '<p class="muted">' + got + " of " + N * 3 + " stars across the " + N + " missions.</p>" : "") + '<div class="bk-endacts">' +
+        (more ? '<button type="button" class="btn primary wide" data-a="next">Next mission</button>' : "") +
+        (n === N ? '<button type="button" class="btn primary wide" data-a="share">' + esc(mine.label || "Share your result") + "</button>" : "") +
+        '<button type="button" class="btn ghost" data-a="hq">HQ</button></div></section>';
+      return h;
+    }
     h += '<div class="bk-endacts">' + (more ? '<button type="button" class="btn primary wide" data-a="next">' + (n % PER === 0 ? "Start chapter " + (chapterOf(n) + 1) : "Next mission") + "</button>" : "") +
       '<button type="button" class="btn ' + (more ? "ghost" : "primary wide") + '" data-a="map">Book map</button><button type="button" class="btn ghost" data-a="hq">HQ</button></div></section>';
     return h;
@@ -650,13 +681,13 @@
   function renderDossier() {
     var done = storyDone(), held = R && R.phase !== "end" ? R.ev : evidenceAt(st().at, 0).filter(function (id) { return foundIn[id] < st().at; });
     var boardOpen = (B.board || []).some(function (x) { return x[1] <= done; });
-    $("dos-tabs").innerHTML = [["ev", "Evidence"], ["people", "People"]].concat(boardOpen ? [["board", "Who is B?"]] : []).map(function (t) {
+    $("dos-tabs").innerHTML = [["ev", "Evidence"], ["people", "People"]].concat(boardOpen ? [["board", mine ? "Suspects" : "Who is B?"]] : []).map(function (t) {
       return '<button type="button" data-tab="' + t[0] + '" aria-pressed="' + (dosTab === t[0]) + '">' + t[1] + "</button>";
     }).join("");
     if (dosTab === "board" && !boardOpen) dosTab = "ev";
     var h = "";
     if (dosTab === "ev") {
-      if (!held.length) h = '<p class="muted">Nothing yet. Start Book 1 to open the case.</p>';
+      if (!held.length) h = '<p class="muted">Nothing yet.' + (mine ? "" : " Start Book 1 to open the case.") + "</p>";
       B.chapters.forEach(function (c, i) {
         var list = held.filter(function (id) { return chapterOf(foundIn[id]) === i + 1; });
         if (list.length) h += '<h3>' + (i + 1) + ". " + esc(c.title) + '</h3><div class="bk-evlist small">' + list.map(function (id) { return evCard(id, "static"); }).join("") + "</div>";
@@ -665,7 +696,7 @@
       // everyone met so far: the agency team, each mission's cast, the people you interviewed or could accuse
       var met = [], upto = R && R.phase !== "end" ? R.n : Math.min(st().at - 1, N);
       var add = function (id) { if (B.people[id] && met.indexOf(id) < 0) met.push(id); };
-      if (upto >= 1) ["evelyn", "marcus", "nia"].forEach(add);
+      if (upto >= 1 && !mine) ["evelyn", "marcus", "nia"].forEach(add);
       for (var n = 1; n <= upto; n++) {
         (mission(n).cast || []).forEach(add);
         mission(n).steps.forEach(function (k) { if (k.type === "talk") add(k.who); if (k.type === "accuse") k.who.forEach(add); });
@@ -675,15 +706,15 @@
         return '<div class="bk-person row">' + mug(id, "small") + "<span><b>" + esc(p.name) + "</b><span>" + esc(p.role) + "</span>" + (note ? "<em>" + esc(note[1]) + "</em>" : "") + "</span></div>";
       }).join("") + "</div>" : '<p class="muted">You haven\'t met anyone yet.</p>';
     } else {
-      h = '<p class="muted small">Every payment ends with a 10% fee for someone called B. These are the people who could be B.</p><div class="bk-people">' +
+      h = '<p class="muted small">' + (mine ? "Everyone who could be behind it." : "Every payment ends with a 10% fee for someone called B. These are the people who could be B.") + '</p><div class="bk-people">' +
         B.board.filter(function (x) { return x[1] <= done; }).map(function (x) {
           var p = B.people[x[0]], out = x[2] && x[2] <= done, caught = !x[2] && done >= N;
-          return '<div class="bk-person row' + (out ? " out" : "") + (caught ? " caught" : "") + '">' + mug(x[0], "small") + "<span><b>" + esc(p.name) + "</b><em>" + esc(caught ? "B, the Broker. Caught." : x[3]) + "</em></span>" +
+          return '<div class="bk-person row' + (out ? " out" : "") + (caught ? " caught" : "") + '">' + mug(x[0], "small") + "<span><b>" + esc(p.name) + "</b><em>" + esc(caught && !mine ? "B, the Broker. Caught." : x[3]) + "</em></span>" +
             (out ? '<span class="stamp cleared">Ruled out</span>' : caught ? '<span class="stamp">Caught</span>' : "") + "</div>";
         }).join("") + "</div>";
     }
     $("dos-body").innerHTML = h;
-    $("dos-sub").textContent = held.length + " piece" + (held.length === 1 ? "" : "s") + " of evidence · " + (finished() ? "Book 1 solved" : "Mission " + current() + " of " + N);
+    $("dos-sub").textContent = held.length + " piece" + (held.length === 1 ? "" : "s") + " of evidence · " + (finished() ? (mine ? "Solved" : "Book 1 solved") : "Mission " + current() + " of " + N);
   }
 
   /* ---------- HQ card and Book map ---------- */
@@ -737,6 +768,7 @@
     if (a === "next") { api.Snd.play("click"); nextMission(); return; }
     if (a === "map") { api.Snd.play("click"); api.openMap(); return; }
     if (a === "hq") { api.Snd.play("click"); api.goHQ(); return; }
+    if (a === "share" && mine) { api.Snd.play("click"); mine.share(starsTotal(), N * 3); return; }
     if (R.phase !== "play") return;
     var k = step(), res = T[k.type].act(k, R.st, a, id);
     render(false, res === "scroll");
@@ -749,13 +781,13 @@
       return true;
     }
     if (e.key === "Enter" && e.target.tagName !== "BUTTON") {
-      var g = R.phase === "end" ? $("bk-body").querySelector('[data-a="next"],[data-a="map"]') : $("bk-go");
+      var g = R.phase === "end" ? $("bk-body").querySelector('[data-a="next"],[data-a="map"],[data-a="share"]') : $("bk-go");
       if (g && !g.disabled) { g.click(); e.preventDefault(); }
       return true;
     }
     return false;
   }
-  function leave() { R = null; }
+  function leave() { R = null; if (B !== BOOK1) use(BOOK1); }
   function migrate() {
     var s = api.S();
     if (s.book && s.book[B.id]) return null;
@@ -776,9 +808,11 @@
   }
 
   window.WLBook = {
-    mount: mount, start: start, leave: leave, key: key, migrate: migrate,
-    renderCard: renderCard, renderMap: renderMap, openDossier: openDossier,
-    finished: finished, current: current, starsTotal: starsTotal, total: N, title: B.title,
+    mount: mount, start: start, startStory: startStory, leave: leave, key: key, migrate: b1(migrate),
+    renderCard: b1(renderCard), renderMap: b1(renderMap), openDossier: openDossier,
+    finished: b1(finished), current: b1(current), starsTotal: b1(starsTotal), total: N, title: B.title,
+    // a player's investigation: { at, stars } so far (null if never opened)
+    storyProgress: function (key) { var r = api.S().storyRuns; return (r && r[key]) || null; },
     playing: function () { return !!R; },
     // for tools and tests (?test=1)
     _state: function () { return R; }, _evidenceAt: evidenceAt

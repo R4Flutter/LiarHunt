@@ -150,10 +150,13 @@ service cloud.firestore {
 
     // Live rooms: one link, friends playing the same cases at the same time. mode: 'race' (when missing), 'partners'
     // (two players share each case) or 'night' (Story Night: story is the nights/{id} the room plays, '' until picked).
+    // A Story Night can also play a story the host made in "Write a case": story is then "u-" + a hash, and pack holds
+    // the story's link code (up to 12,000 characters). Every phone checks the story itself before playing it.
     // Rooms aren't listed anywhere: you need the code. The host starts the room and moves it on;
     // a player in the room can move a stuck round on by one (the host's tab may have closed).
     // Each player writes only their own entry: their name, their answers and their score.
     function okStory(s) { return s is string && s.size() <= 40; }
+    function okPack(p) { return p is string && p.size() <= 12000; }
     function inRoom(code) { return exists(/databases/$(database)/documents/rooms/$(code)/players/$(request.auth.uid)); }
     match /rooms/{code} {
       allow read: if true;
@@ -175,8 +178,9 @@ service cloud.firestore {
         && request.resource.data.seed is string && request.resource.data.seed.size() >= 4 && request.resource.data.seed.size() <= 40
         && (
           (resource.data.host == request.auth.uid
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['state', 'round', 'roundAt', 'seed', 'story'])
-            && (!('story' in request.resource.data) || (resource.data.get('mode', '') == 'night' && okStory(request.resource.data.story))))
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['state', 'round', 'roundAt', 'seed', 'story', 'pack'])
+            && (!('story' in request.resource.data) || (resource.data.get('mode', '') == 'night' && okStory(request.resource.data.story)))
+            && (!('pack' in request.resource.data) || (resource.data.get('mode', '') == 'night' && okPack(request.resource.data.pack))))
           || (inRoom(code) && resource.data.state == 'play'
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['state', 'round', 'roundAt'])
             && ((request.resource.data.state == 'play' && request.resource.data.round == resource.data.round + 1)

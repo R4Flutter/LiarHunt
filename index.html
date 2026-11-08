@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>LiarHunt – Free Daily Detective Puzzle Game | Catch the Liar</title>
-<meta name="description" content="Play LiarHunt, a free daily detective puzzle game. Read the facts, check three suspects' stories and catch the liar. 5 new cases every day, no download.">
+<title>Free Online Detective Game: Investigate Cases &amp; Catch the Liar | LiarHunt</title>
+<meta name="description" content="Investigate 5 new cases every day: read the case file, check three suspects' alibis and catch the liar. Free online detective mystery game, no download.">
 <meta name="robots" content="max-image-preview:large">
 <meta name="theme-color" content="#e7eee5" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0e1612" media="(prefers-color-scheme: dark)">
@@ -17,7 +17,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="LiarHunt">
 <meta property="og:title" content="LiarHunt: every lie leaves a trace">
-<meta property="og:description" content="5 new cases every day. Catch the liar, keep your streak, beat your friends.">
+<meta property="og:description" content="A free detective investigation game. 5 new cases every day: check the alibis, catch the liar, beat your friends.">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
@@ -32,7 +32,7 @@
 <meta name="msvalidate.01" content="3F257D5771038F5E3291F29C6F86359F">
 <script type="application/ld+json">
 [{"@context":"https://schema.org","@type":"WebSite","name":"LiarHunt","alternateName":"Liar Hunt","url":"https://liarhunt.com/","sameAs":["https://www.instagram.com/liarhuntgame/"]},
-{"@context":"https://schema.org","@type":"VideoGame","name":"LiarHunt","url":"https://liarhunt.com/","image":"https://liarhunt.com/assets/og-image.jpg","description":"A free daily detective puzzle game: read the facts, check every story and catch the liar.","genre":["Puzzle","Mystery"],"playMode":"SinglePlayer","gamePlatform":"Web browser","applicationCategory":"Game","operatingSystem":"Any","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}]
+{"@context":"https://schema.org","@type":"VideoGame","name":"LiarHunt","url":"https://liarhunt.com/","image":"https://liarhunt.com/assets/og-image.jpg","description":"A free online detective investigation game. Every day brings 5 new cases: read the case file, check three suspects' alibis and catch the liar.","genre":["Detective","Mystery","Investigation"],"inLanguage":"en","playMode":"SinglePlayer","gamePlatform":"Web browser","applicationCategory":"Game","operatingSystem":"Any","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}]
 </script>
 <!-- WEB-ONLY:END -->
 <!-- PLATFORM-HEAD -->
@@ -160,6 +160,13 @@
               <span class="mode-txt"><b>Instagram</b><span>@liarhuntgame</span></span>
             </a>
           </nav>
+          <!-- what Google reads about the game: keep it short, true and in the game's voice -->
+          <section class="hq-about" aria-labelledby="about-h">
+            <h2 id="about-h">A free online detective game</h2>
+            <p>LiarHunt is a detective investigation game you play in your browser. Every day brings 5 new crime cases, the same for every player. The police checked the facts, three suspects give their alibis, and one of them is lying. Read the case file, find the story that breaks a fact and prove it.</p>
+            <p>Solve a 30-mission mystery in Career, race the clock in Rush, or play live with friends. Free on phone, tablet and computer, with nothing to download.</p>
+            <p><a href="how-to-play.html">How to play</a> · <a href="archive.html">Past cases and answers</a> · <a href="privacy.html">Privacy</a></p>
+          </section>
           <!-- WEB-ONLY:END -->
         </div>
       </div>
@@ -343,6 +350,7 @@
         <p class="muted" id="room-sub"></p>
         <div class="room-extra" id="room-extra" aria-live="polite"></div>
         <div class="room-code" id="room-code"></div>
+        <p class="room-vs" id="room-vs"></p>
         <ol class="room-players" id="room-players" aria-live="polite"></ol>
         <div class="dlg-row" id="room-acts"></div>
       </div>
@@ -350,8 +358,30 @@
 
     <!-- WRITE A CASE for friends: the case travels inside the link -->
     <section class="scr list-scr" id="scr-write" aria-labelledby="write-h" hidden>
-      <form class="list-in write" id="write-form" novalidate autocomplete="off">
+      <div class="list-in write w-top">
         <h2 class="page-h" id="write-h">Write a case</h2>
+        <div class="w-kinds" id="w-kinds" role="group" aria-label="What do you want to make?">
+          <button type="button" class="w-kind" data-wk="quick" aria-pressed="true"><b>Quick case</b><span>One case. You write it.</span></button>
+          <button type="button" class="w-kind" data-wk="d5" aria-pressed="false"><b>Daily 5 story</b><span>Five connected cases. An AI writes it.</span></button>
+          <button type="button" class="w-kind" data-wk="career" aria-pressed="false"><b>Career investigation</b><span>3 to 6 missions. An AI writes it.</span></button>
+        </div>
+      </div>
+      <!-- a story made with an AI chat: the player brings the idea, the AI writes the file, the game checks it -->
+      <div class="list-in write" id="w-ai" hidden>
+        <p class="muted" id="w-ai-intro"></p>
+        <ol class="w-steps">
+          <li><b>Copy the blueprint</b><span>The instructions for the AI, with the exact format it must use.</span>
+            <span class="w-acts"><button type="button" class="btn primary small" id="w-bp-copy">Copy the blueprint</button><a class="btn ghost small" id="w-bp-dl" href="#" download>Download (.txt)</a></span></li>
+          <li><b>Paste it into ChatGPT or any AI chat</b><span>Then add your idea: the place, the crime, the people.</span></li>
+          <li><b>Paste the AI's reply here</b><span>Or upload the file it gave you.</span>
+            <textarea class="field w-paste" id="w-paste" rows="5" spellcheck="false" placeholder="Paste the AI's whole reply here" aria-label="The AI's reply"></textarea>
+            <span class="w-acts"><label class="btn ghost small" for="w-file">Upload the file</label><input type="file" id="w-file" accept=".json,.txt,application/json,text/plain" hidden>
+              <button type="button" class="btn danger small" id="w-check">Check my story</button></span></li>
+        </ol>
+        <div class="w-result" id="w-result" aria-live="polite"></div>
+        <div class="w-recent" id="w-recent"></div>
+      </div>
+      <form class="list-in write" id="write-form" novalidate autocomplete="off">
         <p class="muted">Make up a mystery, hide one lie in it and send it to your friends. The whole case lives in the link, so only the people you send it to can play it.</p>
         <p><button type="button" class="link-btn" id="w-example">Fill in an example to see how it works</button></p>
         <label class="field-label" for="w-t">Case title</label>
@@ -390,6 +420,8 @@
   </div>
 </div>
 
+<!-- data-nosnippet: keeps Google from quoting popup text ("You can delete it any time. OK.") in search results -->
+<div data-nosnippet>
 <dialog id="dlg-settings" aria-labelledby="set-h">
   <div class="dlg">
     <button class="icon-btn dlg-close" type="button" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
@@ -658,6 +690,7 @@
     <button class="btn ghost wide" id="notice-no" type="button" hidden></button>
   </div>
 </dialog>
+</div>
 
 <!-- WEB-ONLY:START -->
 <aside class="ad-rail left" aria-label="Advertisement" hidden></aside>
@@ -693,6 +726,7 @@
 <script src="js/audio.js"></script>
 <script src="js/fx.js"></script>
 <script src="js/book.js"></script>
+<script src="js/storycheck.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

@@ -12,7 +12,7 @@
   if (next < 1) {
     list.innerHTML = '<div class="empty"><p><strong>No past cases yet.</strong> Daily #1 is today.</p>' +
       "<p>Come back tomorrow to replay it here, with every answer explained.</p>" +
-      '<a class="btn primary wide" href="index.html">Play today\'s cases</a></div>';
+      '<a class="btn primary wide" href="./">Play today\'s cases</a></div>';
     return;
   }
 
@@ -33,15 +33,9 @@
     art.innerHTML =
       '<div class="day-head"><h2>Daily #' + d + '</h2><span class="day-date">' + WL.formatDate(WL.dateForDay(d), "short") + "</span>" +
       (h ? '<span class="chip">' + h.score + "/5" + (h.replay ? " replay" : "") + "</span>" : "") + "</div>" +
-      '<div class="day-actions"><a class="btn small primary" href="index.html#day-' + d + '">' + (h ? "Play again" : "Play") + "</a>" +
-      "<details><summary>Show answers (spoilers)</summary><ol class=\"answers\"></ol></details></div>";
-    var det = art.querySelector("details");
-    det.addEventListener("toggle", function () {
-      if (det.open && !det.dataset.done) {
-        det.dataset.done = "1";
-        det.querySelector(".answers").innerHTML = WL.buildDay(d).map(answerHtml).join("");
-      }
-    });
+      '<div class="day-actions"><a class="btn small primary" href="./#day-' + d + '">' + (h ? "Play again" : "Play") + "</a>" +
+      // answers are built up front (still folded away) so search engines can read every past case
+      "<details><summary>Show answers (spoilers)</summary><ol class=\"answers\">" + WL.buildDay(d).map(answerHtml).join("") + "</ol></details></div>";
     return art;
   }
 

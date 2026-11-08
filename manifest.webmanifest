@@ -7,7 +7,7 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "categories": ["games", "puzzle", "entertainment"],
+  "categories": ["games", "entertainment"],
   "background_color": "#e7eee5",
   "theme_color": "#e7eee5",
   "icons": [

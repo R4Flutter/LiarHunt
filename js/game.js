@@ -275,7 +275,7 @@
     book: '<svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5M9 8h7M9 11.5h5"/></svg>',
     rush: '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg>',
     room: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3.5 19.5c0-3.2 2.5-5.5 5.5-5.5s5.5 2.3 5.5 5.5M15 14.2c2.9 0 5.2 1.9 5.2 4.8"/></svg>',
-    friend: PENCIL_SVG, write: PENCIL_SVG,
+    friend: PENCIL_SVG, write: PENCIL_SVG, story: PENCIL_SVG,
     map: '<svg viewBox="0 0 24 24"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>',
     shop: '<svg viewBox="0 0 24 24"><path d="M5 8h14l-1.2 12H6.2z"/><path d="M9 10V6a3 3 0 0 1 6 0v4"/></svg>',
     ach: '<svg viewBox="0 0 24 24"><circle cx="12" cy="15" r="5"/><path d="M8.6 10.7L6 3h4l2 4 2-4h4l-2.6 7.7"/></svg>',
@@ -637,7 +637,7 @@
         $("rec-time").classList.toggle("urgent", rl < 10000);
         if (rl < 5500 && rs !== clock.lastTickSec && rs > 0) { clock.lastTickSec = rs; Snd.play("tick"); }
         if (rl <= 0) accuse(true);
-      } else if (run.kind === "train" || run.kind === "friend") {
+      } else if (run.kind === "train" || run.kind === "friend" || run.kind === "story") {
         $("rec-time").textContent = WL.fmtTime(run.caseElapsed);
         clock.sinceSave += dt;
         if (clock.sinceSave > 4000) { clock.sinceSave = 0; saveMemo(); }
@@ -827,7 +827,7 @@
   // The card between cases: where the story stands, then the new case. The clock waits.
   function d5Intro(n) {
     var c = run.c, ed = run.d5.ed, el = $("stage-card"), keep = run;
-    $("stage-n").textContent = n === 1 ? (run.night ? "Story Night · " : "Daily 5 · ") + ed.title : "Case " + n + " of 5";
+    $("stage-n").textContent = n === 1 ? (run.night ? (run.label || "Story Night") + " · " : "Daily 5 · ") + ed.title : "Case " + n + " of 5";
     $("stage-name").textContent = n === 1 ? "Case 1 · " + c.title : c.title;
     $("stage-text").textContent = n === 1 ? ed.intro : c.prev;
     el.querySelector(".stage-tap").textContent = "Tap to open the case";
@@ -911,7 +911,7 @@
     if (correct) Snd.play("cuffs", { delay: 0.3 });
     setTimeout(function () { Snd.play(correct ? "correct" : "wrong"); }, correct ? 700 : 170);
     if (!correct) FX.shake($("case-grid"));
-    if (run.kind === "room") verdictRoom(correct, how || "verdict"); else verdictDaily(correct, "verdict");
+    if (run.kind === "room") verdictRoom(correct, how || "verdict"); else if (run.kind === "story") verdictStory(correct, "verdict"); else verdictDaily(correct, "verdict");
   }
   // Case 5: one choice per question, then submit them together.
   function renderVerdictParts(c) {
@@ -938,7 +938,7 @@
   // Next case: the next doc only opens once this one is solved, so fetch it now.
   function d5Next() {
     var res = run.prog.results;
-    if (res.length >= 5) { finishDaily(); return; }
+    if (res.length >= 5) { if (run.kind === "story") storyEnd(); else finishDaily(); return; }
     persist();
     Snd.play("pen"); // the finding is written into the notebook
     $("verdict").hidden = true;
@@ -995,7 +995,7 @@
     nbTab = tab || nbTab;
     var x = nbData();
     run.d5.st.seen = x.ev.length + x.fi.length; persist();
-    $("nb-eyebrow").textContent = (run.night ? "Story Night" : "Daily #" + run.day) + " · " + run.d5.ed.title;
+    $("nb-eyebrow").textContent = (run.night ? run.label || "Story Night" : "Daily #" + run.day) + " · " + run.d5.ed.title;
     renderNotebook(x);
     openDialog("dlg-notebook");
     renderMeta();
@@ -1153,6 +1153,9 @@
     } else if (run.kind === "rush") {
       setHud("Rush", "Case " + run.n + " · " + (run.rule ? run.rule.name : "Stage 1"));
       $("case-kicker").textContent = LEVEL[c.level] || "Case";
+    } else if (run.kind === "story") {
+      setHud(run.label, "Case " + c.n + " of 5 · " + run.d5.ed.title);
+      $("case-kicker").textContent = run.label + " · Case " + c.n + " of 5 · " + (c.n === 5 ? "The verdict" : "One try");
     } else if (run.kind === "room" && run.night) {
       setHud("Story Night", "Case " + c.n + " of 5 · " + run.d5.ed.title);
       $("case-kicker").textContent = "Story Night · Case " + c.n + " of 5 · " + (c.n === 5 ? "The verdict" : "One try");
@@ -1326,8 +1329,8 @@
     if (run.d5 && run.c) { var nx = nbData(), fresh = nx.ev.length + nx.fi.length - (run.d5.st.seen || 0); $("nb-new").hidden = fresh <= 0; $("nb-new").textContent = fresh; nb.setAttribute("aria-label", "Open the notebook" + (fresh > 0 ? ", " + fresh + " new" : "")); }
     $("stars-live").hidden = true;
     $("lives").hidden = k !== "rush";
-    $("replay-tag").hidden = !(k === "replay" || k === "friend" || k === "room");
-    $("replay-tag").textContent = k === "room" ? "Live" : k === "friend" ? (run.preview ? "Preview" : run.again ? "Again" : "Friend's case") : k === "replay" ? "Practice" : "Replay";
+    $("replay-tag").hidden = !(k === "replay" || k === "friend" || k === "room" || k === "story");
+    $("replay-tag").textContent = k === "room" ? "Live" : k === "story" ? (run.story.mine ? "Yours" : "Friend's story") : k === "friend" ? (run.preview ? "Preview" : run.again ? "Again" : "Friend's case") : k === "replay" ? "Practice" : "Replay";
     var combo = k === "rush" ? run.combo : 0;
     $("combo").hidden = combo < 2;
     $("combo").innerHTML = FLAME_SVG + "×" + combo;
@@ -1355,7 +1358,7 @@
   /* ---------- power-ups ---------- */
   function hintMode() {
     if (!run || run.revealed || run.hint) return "used";
-    if (run.kind === "friend" || run.kind === "room" || rule("nohint")) return "off"; // played straight: everyone on equal terms
+    if (run.kind === "friend" || run.kind === "room" || run.kind === "story" || rule("nohint")) return "off"; // played straight: everyone on equal terms
     if (run.c && run.c.d5) return run.d5.r.hunch ? "spent" : run.phase === "pick" ? "hunch" : "later"; // one free Hunch a day, checked by the file
     if ((S.inv.magnifier || 0) > 0) return "item";
     if (run.kind !== "rush" && canRewarded() && P.coolLeft("hintAd", 90) === 0) return "ad";
@@ -1371,7 +1374,7 @@
       $("btn-freeze").hidden = true;
       $("tool-note").textContent = run.phase === "proof" ? "Tap the " + (need > 1 ? need + " facts that prove" : "fact that proves") + " it." :
         m === "hunch" ? (run.c.mode === "verdict" ? "Your free Hunch rules out one wrong answer." : "Your free Hunch rules out one innocent suspect.") + " The case turns amber." :
-        m === "used" ? "Your Hunch ruled one out." : m === "spent" ? "You've used today's Hunch." : m === "off" ? "No Hunch in Story Night. One try per case." : "";
+        m === "used" ? "Your Hunch ruled one out." : m === "spent" ? "You've used today's Hunch." : m === "off" ? "No Hunch in " + (run.kind === "story" ? "a player's story" : "Story Night") + ". One try per case." : "";
       return;
     }
     hb.disabled = m === "used" || m === "none" || m === "off";
@@ -1594,6 +1597,7 @@
     else if (run.kind === "rush") verdictRush(correct, how);
     else if (run.kind === "friend") verdictFriend(correct, how);
     else if (run.kind === "room") verdictRoom(correct, how);
+    else if (run.kind === "story") verdictStory(correct, how);
     else verdictDaily(correct, how);
   }
   /* ---------- case board string ----------
@@ -2866,8 +2870,8 @@
   function openWrite(fresh) {
     if (fresh || !S.draft) S.draft = blankDraft();
     show("write");
-    setHud("Write a case", "Hide a lie, fool your friends");
     renderWrite();
+    setWriteKind(wKind);
     WL.track("write_open", {});
   }
   function renderWrite() {
@@ -3019,6 +3023,199 @@
     shareOut(lines.join("\n"));
   }
 
+  /* ---------- stories made with an AI chat: a Daily 5 story or a Career investigation ----------
+     The player copies a blueprint (blueprints/*.txt) into any AI chat, adds their idea and pastes the reply back.
+     js/storycheck.js checks it strictly: nothing can be played or sent before it passes. Like a written case, the whole
+     story travels in the ?w= link as { k: "d5" | "career", s: story, b: author }, and the friend's game checks it again
+     before playing. No rewards. The last 5 the player made are kept in S.made (as link codes). */
+  var STORY = window.WLStory || null, LINK_MAX = 12000;
+  var BLUEPRINT = { d5: "blueprints/daily5-story.txt", career: "blueprints/career-investigation.txt" }, bpText = {};
+  var KIND_NAME = { d5: "Daily 5 story", career: "Career investigation" };
+  var wKind = "quick", wFix = "";
+  function setWriteKind(k) {
+    if (!STORY && k !== "quick") k = "quick";
+    wKind = k;
+    [].forEach.call($("w-kinds").querySelectorAll("[data-wk]"), function (b) { b.setAttribute("aria-pressed", b.dataset.wk === k ? "true" : "false"); });
+    $("write-form").hidden = k !== "quick";
+    $("w-ai").hidden = k === "quick";
+    setHud("Write a case", k === "quick" ? "Hide a lie, fool your friends" : KIND_NAME[k] + " · made with an AI chat");
+    if (k === "quick") return;
+    $("w-ai-intro").textContent = k === "d5"
+      ? "Five connected cases. Each one you solve adds a finding to the notebook, and case 5 names everyone behind it. You bring the idea, an AI chat writes the story, and the game checks that every case has exactly one answer."
+      : "A short investigation in 3 to 6 missions: searches, interviews, documents and an accusation at the end. You bring the idea, an AI chat writes it, and the game checks that it can be solved.";
+    $("w-bp-dl").href = BLUEPRINT[k];
+    $("w-bp-dl").setAttribute("download", BLUEPRINT[k].split("/").pop());
+    $("w-result").innerHTML = "";
+    loadBlueprint(k).catch(function () { /* Copy says so */ });
+    renderRecent();
+  }
+  // fetched when the screen opens, so Copy can write it straight away (phones only allow that inside the tap)
+  function loadBlueprint(k) {
+    if (bpText[k]) return Promise.resolve(bpText[k]);
+    return fetch(BLUEPRINT[k]).then(function (r) { if (!r.ok) throw new Error("blueprint " + r.status); return r.text(); }).then(function (t) { bpText[k] = t; return t; });
+  }
+  function cleanBy(b) { return String(b || "").replace(/\s+/g, " ").trim().slice(0, 16) || "A friend"; }
+  function storyCast(k, s) {
+    return k === "d5" ? s.people.map(function (p) { return p.name; })
+      : Object.keys(s.people).filter(function (id) { return !s.people[id].org; }).map(function (id) { return s.people[id].name; });
+  }
+  function checkMine() {
+    var raw = $("w-paste").value;
+    if (!raw.trim()) { toast("Paste the AI's reply first, or upload its file."); return; }
+    var r = STORY.parse(raw);
+    if (!r.ok) { showProblems(r); return; }
+    WL.packWritten({ k: r.kind, s: r.story, b: myName() || "" }).then(function (code) {
+      if (code.length > LINK_MAX) {
+        showProblems({ errors: ["Too long for a link (" + code.length + " characters, the most is " + LINK_MAX + "). Ask the AI to shorten it: fewer suspects, shorter texts."], warnings: [] });
+        return;
+      }
+      var m = { k: r.kind, t: r.story.title, code: code, at: Date.now() };
+      S.made = [m].concat((S.made || []).filter(function (x) { return x.code !== code; })).slice(0, 5);
+      persist();
+      showPassed(m, r);
+      renderRecent();
+      WL.track("story_pass", { kind: r.kind, length: code.length });
+    });
+  }
+  // "case 3 statement s7: ..." reads better with a capital letter; at most 20, then "…and N more"
+  function problemLines(errors) {
+    var out = errors.slice(0, 20).map(function (e) { return e.charAt(0).toUpperCase() + e.slice(1); });
+    if (errors.length > 20) out.push("…and " + (errors.length - 20) + " more");
+    return out;
+  }
+  function showProblems(r) {
+    var lines = problemLines(r.errors), n = r.errors.length;
+    wFix = "Fix these problems in the LiarHunt story and send the whole JSON again, as one code block:\n" +
+      lines.map(function (e, i) { return e.charAt(0) === "…" ? e : i + 1 + ". " + e; }).join("\n");
+    $("w-result").innerHTML = '<div class="w-problems"><p class="field-error">' + (n === 1 ? "1 problem" : n + " problems") + " to fix before anyone can play it</p>" +
+      "<ol>" + lines.map(function (e) { return "<li>" + esc(e) + "</li>"; }).join("") + "</ol>" +
+      (r.warnings && r.warnings.length ? '<p class="muted small">Style notes (they don\'t stop the story): ' + esc(problemLines(r.warnings).join(" · ")) + "</p>" : "") +
+      '<button type="button" class="btn primary small" data-w="fix">Copy the problems for the AI</button>' +
+      '<p class="muted small">Paste them into the same chat. When the AI sends the whole story again, paste it above and check it again.</p></div>';
+    Snd.play("wrong");
+    $("w-result").scrollIntoView({ block: "start", behavior: reduceMotion ? "auto" : "smooth" });
+    WL.track("story_fail", { problems: n });
+  }
+  function storyCardHtml(m, i, s) {
+    var count = m.k === "d5" ? "5 connected cases" : s.missions.length + " missions";
+    return '<p class="w-tag">' + KIND_NAME[m.k] + "</p><b>" + esc(m.t) + '</b><span class="muted small">' + esc(count + " · " + storyCast(m.k, s).join(", ")) + "</span>" +
+      '<span class="w-acts"><button type="button" class="btn ghost small" data-w="try" data-i="' + i + '">Try it</button>' +
+      '<button type="button" class="btn primary small" data-w="send" data-i="' + i + '">Send to friends</button>' +
+      (m.k === "d5" && lbOn() ? '<button type="button" class="btn ghost small" data-w="room" data-i="' + i + '">Play in a room</button>' : "") + "</span>";
+  }
+  function showPassed(m, r) {
+    $("w-result").innerHTML = '<div class="w-card w-pass"><p class="eyebrow">✓ Passed the check</p>' + storyCardHtml(m, 0, r.story) +
+      (r.warnings.length ? '<p class="muted small">Style notes (optional): ' + esc(problemLines(r.warnings).join(" · ")) + "</p>" : "") + "</div>";
+    Snd.play("stamp");
+    $("w-result").scrollIntoView({ block: "start", behavior: reduceMotion ? "auto" : "smooth" });
+  }
+  function renderRecent() {
+    var list = S.made || [];
+    if (!list.length) { $("w-recent").innerHTML = ""; return; }
+    $("w-recent").innerHTML = '<h3 class="sec">Your recent stories</h3><div class="w-list2">' + list.map(function (m, i) {
+      return '<div class="w-card">' + '<p class="w-tag">' + KIND_NAME[m.k] + "</p><b>" + esc(m.t) + "</b>" +
+        '<span class="w-acts"><button type="button" class="btn ghost small" data-w="try" data-i="' + i + '">Try it</button>' +
+        '<button type="button" class="btn primary small" data-w="send" data-i="' + i + '">Send</button>' +
+        (m.k === "d5" && lbOn() ? '<button type="button" class="btn ghost small" data-w="room" data-i="' + i + '">Room</button>' : "") + "</span></div>";
+    }).join("") + "</div>";
+  }
+  function sendStory(m) {
+    var u = Plat.shareLink({ w: m.code });
+    if (!u) { toast("Story links can't be shared from here."); return; }
+    WL.track("story_send", { kind: m.k, length: u.length });
+    shareOut((m.k === "d5" ? "📖 I made a LiarHunt mystery for you: “" + m.t + "”. Five connected cases, one try each. How many can you solve?"
+      : "🕵️ I made a LiarHunt investigation for you: “" + m.t + "”. Can you crack it?") + "\n" + u, "Link copied. Paste it to a friend!");
+  }
+  function shareStoryResult(o, score) {
+    var u = Plat.shareLink({});
+    WL.track("story_result_share", { kind: o.k });
+    shareOut("🕵️ I played your LiarHunt " + (o.k === "d5" ? "story" : "investigation") + " “" + o.t + "”: " + score + ".\nYour turn: make me another one, or try today's cases." + (u ? "\n" + u : ""));
+  }
+  // A story from a link (or the player's own): check it again, then play it. -> false if it's broken
+  function openStory(code, w, how) {
+    var r = STORY && w && w.s ? STORY.checkStory(w.s) : null;
+    if (!r || !r.ok || r.kind !== w.k) { toast("This story link is broken. Ask your friend to send it again.", "", 4000); return false; }
+    var mine = how === "preview" || (S.made || []).some(function (x) { return x.code === code; });
+    var o = { k: w.k, t: r.story.title, code: code, key: "s" + WL.hash(code), by: mine ? "you" : cleanBy(w.b), mine: mine, preview: how === "preview" };
+    WL.track(o.preview ? "story_try" : "story_open", { kind: o.k });
+    if (w.k === "d5") startStoryD5(r.story, o); else startCareer(r.story, o);
+    return true;
+  }
+  function openMade(i, how) {
+    var m = (S.made || [])[i];
+    if (!m) return;
+    WL.unpackWritten(m.code).then(function (w) { if (w) openStory(m.code, w, how); else toast("That story can't be opened any more."); });
+  }
+  function startCareer(book, o) {
+    var b = JSON.parse(JSON.stringify(book));
+    b.id = o.key;
+    run = null;
+    Book.startStory(b, { key: o.key, by: o.by, label: o.mine ? "Send it to friends" : "Tell " + o.by + " how you did",
+      share: function (got, of) { if (o.mine) sendStory(o); else shareStoryResult(o, got + " of " + of + " stars"); } });
+  }
+  // Story Night's rules: one try per case, no Hunch; a wrong answer scores 0, shows the answer and the story carries on.
+  function memNight(id, dx) { return { id: id, docs: dx, ed: dx.edition, finale: dx.finale, st: { cases: {}, reveals: {}, notes: {}, seen: 0 }, r: { picks: {}, grid: "", strikes: 99, hunch: 0 } }; }
+  function startStoryD5(story, o) {
+    var n = memNight(o.key, STORY.docs(story));
+    run = { kind: "story", night: true, label: o.mine ? "Your story" : "A friend's story", story: o, day: 0, cases: [null, null, null, null, null], idx: 0, elapsed: 0,
+      prog: { results: [], cur: null }, d5: { ed: n.ed, st: n.st, api: nightApi(n), r: n.r, fin: n.finale } };
+    d5Open(1);
+  }
+  function verdictStory(correct, how) {
+    var c = run.c;
+    run.prog.results = d5Results(run.d5.r);
+    setVerdict({
+      head: correct ? (c.mode === "verdict" ? "Case closed!" : pick(CAUGHT)) : how === "proof" ? "Not proven." : c.mode === "verdict" ? "Not the whole truth." : "Not quite.", good: correct,
+      sub: c.mode === "verdict" ? (correct ? "You named everyone behind it." : "Here's what the file proves.") : missLine(how) + answerLine(),
+      story: c.finding ? "📓 New in your notebook: " + c.finding.text : "",
+      next: c.n === 5 ? "See how it ended" : "Next case", hq: run.story.preview ? "Back to your story" : "HQ"
+    });
+    renderMeta();
+  }
+  function storyEnd() {
+    var o = run.story, ed = run.d5.ed, fin = run.d5.fin, got = scoreOf(run.prog.results);
+    if (o.preview) openWrite(); else goHQ();
+    showNotice({ icon: "📜", eyebrow: ed.title + " · the ending", title: "You solved " + got + " of 5", html: finaleHtml(fin),
+      yes: o.mine ? "Send it to friends" : "Tell " + o.by + " how you did", onYes: function () { if (o.mine) sendStory(o); else shareStoryResult(o, "I solved " + got + " of 5 cases"); },
+      no: "Close" });
+    if (got === 5) FX.confetti({ count: 120 });
+    WL.track("story_done", { kind: "d5", solved: got, preview: o.preview });
+  }
+  $("w-kinds").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-wk]");
+    if (!b || b.dataset.wk === wKind) return;
+    Snd.play("click"); setWriteKind(b.dataset.wk);
+  });
+  $("w-bp-copy").addEventListener("click", function () {
+    Snd.play("click");
+    var t = bpText[wKind];
+    if (t) { copyText(t, "Blueprint copied. Paste it into your AI chat, then add your idea."); WL.track("story_blueprint", { kind: wKind, how: "copy" }); return; }
+    toast("The blueprint is still loading. Try again in a moment, or use Download.");
+    loadBlueprint(wKind).catch(function () { toast("Couldn't load the blueprint. Check your connection."); });
+  });
+  $("w-check").addEventListener("click", function () { Snd.play("click"); checkMine(); });
+  $("w-file").addEventListener("change", function () {
+    var f = this.files && this.files[0];
+    this.value = "";
+    if (!f) return;
+    if (f.size > STORY.MAX_IN) { showProblems({ errors: ["This file is too big (over 60 KB). Ask the AI to make the story shorter: fewer suspects, shorter texts."], warnings: [] }); return; }
+    var rd = new FileReader();
+    rd.onload = function () { $("w-paste").value = String(rd.result || ""); checkMine(); };
+    rd.onerror = function () { toast("Couldn't read that file."); };
+    rd.readAsText(f);
+  });
+  $("w-ai").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-w]");
+    if (!b) return;
+    Snd.play("click");
+    var a = b.dataset.w, i = +b.dataset.i, m = (S.made || [])[i];
+    if (a === "fix") { copyText(wFix, "Copied. Paste it into the same AI chat."); return; }
+    if (!m) return;
+    if (a === "try") openMade(i, "preview");
+    else if (a === "send") sendStory(m);
+    else if (a === "room") withName(function () { createRoom("night", { story: "u-" + WL.hash(m.code), pack: m.code }); }, "room");
+  });
+
   /* ---------- live rooms: one link, friends playing together (they talk on a call or WhatsApp) ----------
      Three kinds of room (room.data.mode):
        race      up to 10 players race through the same 5 cases (WL.roomCase). A proven catch scores 100, plus up to 50 for speed.
@@ -3080,7 +3277,8 @@
         nb.disabled = true; nb.querySelector(".rmode-txt span").textContent = "Coming soon: the first stories are on their way.";
       };
       if (!LB.nights) { soon(); return; }
-      LB.nights.list().then(function (l) { if (!l.length) soon(); }).catch(function () { /* checked again in the lobby */ });
+      var made = (S.made || []).some(function (m) { return m.k === "d5"; });
+      LB.nights.list().then(function (l) { if (!l.length && !made) soon(); }).catch(function () { /* checked again in the lobby */ });
     }, "room");
   }
   $("notice-body").addEventListener("click", function (e) {
@@ -3088,12 +3286,13 @@
     if (!b || b.disabled) return;
     Snd.play("click"); closeNotice(false); createRoom(b.getAttribute("data-rmode"));
   });
-  function createRoom(mode) {
+  // pick: a first change to the room (a Story Night opened from "Play in a room" starts with that story picked)
+  function createRoom(mode, pick) {
     var name = myName();
     toast("Opening a room...");
     LB.rooms.create({ name: name, seed: newSeed(), season: Math.max(1, SEASON), rounds: 5, mode: mode }).then(function (code) {
-      WL.track("room_create", { mode: mode });
-      return joinRoom(code, name);
+      WL.track("room_create", { mode: mode, mine: !!pick });
+      return (pick ? LB.rooms.update(code, pick) : Promise.resolve()).then(function () { return joinRoom(code, name); });
     }).catch(function (e) { toast(esc(LB.friendlyError(e))); });
   }
   function joinRoom(code, name) {
@@ -3131,7 +3330,8 @@
   // Back from WhatsApp: say "still here" at once and catch up with the room.
   document.addEventListener("visibilitychange", function () { if (room && !document.hidden) { room.pinged = 0; roomTick(); } });
   function onRoomData(d) {
-    if (room.seed && d.seed !== room.seed) { room.pts = {}; room.night = null; LB.rooms.reset(room.code).catch(function () {}); } // the host started a new game
+    // the host started a new game (the seed is taken first: a demo room answers the reset at once, and would loop)
+    if (room.seed && d.seed !== room.seed) { room.pts = {}; room.night = null; room.seed = d.seed; LB.rooms.reset(room.code).catch(function () {}); }
     room.seed = d.seed; room.data = d;
     if (room.overRound !== d.round) { room.overRound = d.round; room.overAt = 0; } // a new case isn't closed yet (or Story Night would load its answer)
     if (d.state === "end" && once("wl-re:" + room.code + ":" + d.seed)) {
@@ -3240,17 +3440,31 @@
   }
 
   /* Story Night: the story's docs come from nights/{id}; the run lives in room.night, never in the Daily's save. */
+  // A player's story ("u-" + hash, from "Write a case") isn't in nights/: the room carries its link code (pack),
+  // and every phone unpacks it and checks it before playing.
   function loadNight(id) {
     if (room.night && room.night.id === id) return room.night.ready;
     var n = room.night = { id: id, ed: null, finale: null, st: { cases: {}, reveals: {}, notes: {}, seen: 0 }, r: { picks: {}, grid: "", strikes: 99, hunch: 0 } };
-    n.ready = LB.nights.edition(id).then(function (ed) { if (!ed) throw new Error("That story isn't there any more."); n.ed = ed; return n; });
-    n.ready.catch(function (e) { if (room && room.night === n) { room.night = null; toast(esc(LB.friendlyError(e))); } });
+    var broken = function () { var e = new Error("This story is broken, so it can't be played. Pick another one."); e.story = true; throw e; };
+    var ed = id.indexOf("u-") !== 0 ? LB.nights.edition(id) : WL.unpackWritten((room.data && room.data.pack) || "").then(function (w) {
+      var r = w && w.k === "d5" && STORY ? STORY.checkStory(w.s) : null;
+      if (!r || !r.ok) broken();
+      n.docs = STORY.docs(r.story);
+      return Object.assign({ id: id, by: cleanBy(w.b) }, n.docs.edition);
+    });
+    n.ready = ed.then(function (x) { if (!x) throw new Error("That story isn't there any more."); n.ed = x; return n; });
+    n.ready.catch(function (e) { if (room && room.night === n) { room.night = null; toast(esc(e && e.story ? e.message : LB.friendlyError(e))); } });
     return n.ready;
+  }
+  // a story's case or reveal: from memory (a player's story), or from nights/{id}
+  function nightDoc(n, sub, k) {
+    if (n.docs) return Promise.resolve(n.docs[sub][k] || null);
+    return sub === "cases" ? LB.nights.caseDoc(n.id, k) : LB.nights.reveal(n.id, k);
   }
   function nightApi(n) {
     return {
-      caseDoc: function (d, k) { return LB.nights.caseDoc(n.id, k); },
-      reveal: function (d, k) { return LB.nights.reveal(n.id, k); },
+      caseDoc: function (d, k) { return nightDoc(n, "cases", k); },
+      reveal: function (d, k) { return nightDoc(n, "reveals", k); },
       run: function () { return Promise.resolve(n.r); },
       commit: function (d, k, pick) { n.r.picks["c" + k] = n.r.picks["c" + k] || { s: pick.s, p: pick.p }; return Promise.resolve(n.r); },
       resolve: function (d, k, letter) { n.r.grid = (n.r.grid + "-----").slice(0, k - 1) + letter; return Promise.resolve(n.r); },
@@ -3265,8 +3479,8 @@
       // the notebook carries every earlier case and what it revealed, even for someone who just joined
       var need = [];
       for (var k = 1; k < r; k++) (function (k) {
-        if (!n.st.cases[k]) need.push(LB.nights.caseDoc(n.id, k).then(function (doc) { n.st.cases[k] = doc; }));
-        if (!n.st.reveals[k]) need.push(LB.nights.reveal(n.id, k).then(function (rev) { n.st.reveals[k] = rev; }));
+        if (!n.st.cases[k]) need.push(nightDoc(n, "cases", k).then(function (doc) { n.st.cases[k] = doc; }));
+        if (!n.st.reveals[k]) need.push(nightDoc(n, "reveals", k).then(function (rev) { n.st.reveals[k] = rev; }));
       })(k);
       return Promise.all(need).then(function () {
         if (room !== keep || room.starting !== key) return;
@@ -3333,6 +3547,18 @@
   }
 
   var MODE_NAME = { race: "Live room", partners: "Partners", night: "Story Night" };
+  // Who plays against whom, said in words and in colour: rivals each get their own colour (in the order they joined),
+  // partners share one team colour.
+  var VS_LINE = {
+    race: "⚔️ You're playing against each other. Everyone has their own score.",
+    partners: "🤝 You're one team. You crack every case together and share one score.",
+    night: "📖 You play the story together, but everyone answers for their own score."
+  };
+  var RIVAL_COLORS = ["#e0475b", "#3b82f6", "#22a55a", "#f08a24", "#a855f7", "#14b8a6", "#ec4899", "#b8860b", "#84cc16", "#64748b"];
+  function rivalColor(id) {
+    var ids = Object.keys(room.players).sort(function (a, b) { return (room.players[a].joinedAt || 9e15) - (room.players[b].joinedAt || 9e15) || (a < b ? -1 : 1); });
+    return RIVAL_COLORS[ids.indexOf(id) % RIVAL_COLORS.length];
+  }
   function renderRoom() {
     if (!room || screen !== "room") return;
     var d = room.data, m = rmode(), host = d && d.host === room.me, list = d ? roomRanked() : [], acts = [], extra = "";
@@ -3354,7 +3580,7 @@
         $("room-sub").textContent = (host ? "Send the link and get everyone on a call. " : "Waiting for " + d.hostName + " to " + (story ? "start." : "pick a story.") + " ") +
           "Everyone plays the same five connected cases. After each one, you all see what it revealed.";
         if (host) extra = nightPicker(d);
-        else if (story) extra = '<div class="night-card"><b>' + esc(story.title) + "</b><span>" + esc(story.place || "") + "</span></div>";
+        else if (story) extra = '<div class="night-card"><b>' + esc(story.title) + "</b><span>" + esc(story.place || "") + (story.by ? " · made by " + esc(story.by) : "") + "</span></div>";
         ready = ready && !!story;
       } else {
         $("room-h").textContent = host ? "Get your friends in" : "You're in!";
@@ -3399,6 +3625,8 @@
     acts.push('<button class="btn ghost wide" type="button" data-room="leave">Leave room</button>');
     $("room-acts").innerHTML = acts.join("");
     $("room-extra").innerHTML = extra;
+    $("room-vs").textContent = VS_LINE[m];
+    $("room-vs").className = "room-vs " + (m === "partners" ? "team" : "vs");
     $("room-players").innerHTML = list.map(function (x, i) {
       var a = roomDone(x.p, r), away = !isLive(x.id), mark = d.state !== "play" ? "" : a ? (a.ok ? '<span class="rm-mark ok">✓ +' + a.pts + "</span>" : '<span class="rm-mark no">✕</span>')
         : '<span class="rm-mark wait">' + (away ? "away" : room.overAt ? "no answer" : "thinking…") + "</span>";
@@ -3406,30 +3634,36 @@
       var tags = (x.id === d.host ? " <em>host</em>" : "") + (x.id === room.me ? " <em>(you)</em>" : "") +
         (m === "partners" && d.state === "play" ? " <em>" + (ptSide(x.id, r) === "suspects" ? "stories" : "facts") + "</em>" : "") +
         (m === "night" && d.state === "lobby" && x.p.seen ? ' <em class="seen">played it</em>' : "") + (away && d.state !== "play" ? " <em>away</em>" : "");
-      return '<li class="' + (x.id === room.me ? "me" : "") + (away ? " away" : "") + (d.state === "end" && i === 0 && m !== "partners" ? " win" : "") + '"><span class="rm-rank">' + place + '</span><span class="rm-name">' + esc(x.name) +
+      return '<li class="' + (x.id === room.me ? "me" : "") + (away ? " away" : "") + (d.state === "end" && i === 0 && m !== "partners" ? " win" : "") + '"' +
+        (m === "partners" ? "" : ' style="--pc:' + rivalColor(x.id) + '"') + '><span class="rm-rank">' + place + '</span><span class="rm-name">' + esc(x.name) +
         tags + "</span>" + mark + '<span class="rm-score">' + (d.state === "lobby" ? "" : x.score) + "</span></li>";
     }).join("");
   }
   function nightPicker(d) {
-    var l = room.nightList, played = nightsPlayed();
-    if (!l || !l.length) return '<p class="muted small">' + (l ? "No stories yet. The first Story Nights are on their way." : "Opening the story shelf…") + "</p>";
+    var l = room.nightList, played = nightsPlayed(), made = (S.made || []).map(function (m, i) { return { m: m, i: i }; }).filter(function (x) { return x.m.k === "d5"; });
+    var mine = made.length ? '<h3 class="sec">A story I made</h3><div class="night-list" role="list">' + made.map(function (x) {
+      var id = "u-" + WL.hash(x.m.code), on = id === d.story;
+      return '<button class="night-pick' + (on ? " on" : "") + '" type="button" role="listitem" aria-pressed="' + on + '" data-room="mystory" data-i="' + x.i + '"><b>' + esc(x.m.t) +
+        "</b><span>Made in Write a case" + (played[id] ? " · you've played it" : "") + "</span></button>";
+    }).join("") + "</div>" : "";
+    if (!l || !l.length) return (l && made.length ? "" : '<p class="muted small">' + (l ? "No stories yet. The first Story Nights are on their way." : "Opening the story shelf…") + "</p>") + mine;
     return '<div class="night-list" role="list">' + l.map(function (s) {
       var on = s.id === d.story;
       return '<button class="night-pick' + (on ? " on" : "") + '" type="button" role="listitem" aria-pressed="' + on + '" data-room="story" data-id="' + esc(s.id) + '"><b>' + esc(s.title) +
         "</b><span>" + esc(s.place || "") + (played[s.id] ? " · you've played it" : "") + "</span></button>";
-    }).join("") + "</div>";
+    }).join("") + "</div>" + mine;
   }
   function nightReveal(r) {
     var n = room.night, rev = n && n.st.reveals[r];
     if (!n) return "";
-    if (rev === undefined) { n.st.reveals[r] = null; LB.nights.reveal(n.id, r).then(function (x) { n.st.reveals[r] = x; renderRoom(); }, function () { delete n.st.reveals[r]; }); }
+    if (rev === undefined) { n.st.reveals[r] = null; nightDoc(n, "reveals", r).then(function (x) { n.st.reveals[r] = x; renderRoom(); }, function () { delete n.st.reveals[r]; }); }
     if (!rev || !rev.finding) return r === 5 ? '<p class="muted small">The verdict is in. The full story is next.</p>' : "";
     return '<div class="night-card reveal"><span class="eyebrow">What case ' + r + " revealed</span><b>" + esc(rev.finding.text) + "</b></div>";
   }
   function nightFinale() {
     var n = room.night;
     if (!n) return "";
-    if (n.finale === null) { n.finale = false; LB.nights.finale(n.id).then(function (f) { n.finale = f || false; renderRoom(); }, function () { n.finale = null; }); }
+    if (n.finale === null) { n.finale = false; (n.docs ? Promise.resolve(n.docs.finale) : LB.nights.finale(n.id)).then(function (f) { n.finale = f || false; renderRoom(); }, function () { n.finale = null; }); }
     return n.finale ? '<div class="night-card end"><h3 class="sec">How it happened</h3>' + finaleHtml(n.finale) + "</div>" : '<p class="muted small">Opening the full story…</p>';
   }
   $("scr-room").addEventListener("click", function (e) {
@@ -3446,12 +3680,21 @@
     } else if (k === "start") {
       WL.track("room_start", { mode: m, players: liveIds().length });
       LB.rooms.update(room.code, { state: "play", round: 1, roundAt: true }).catch(function (er) { toast(esc(LB.friendlyError(er))); });
-    } else if (k === "story") LB.rooms.update(room.code, { story: b.dataset.id }).catch(function (er) { toast(esc(LB.friendlyError(er))); });
+    } else if (k === "story" || k === "mystory") {
+      var mm = k === "mystory" ? (S.made || [])[+b.dataset.i] : null;
+      if (k === "mystory" && !mm) return;
+      // pack: the link code of a story the host made. Only sent when it changes, so a published pick still works if the rules don't know pack yet.
+      var patch = mm ? { story: "u-" + WL.hash(mm.code), pack: mm.code } : { story: b.dataset.id };
+      if (!mm && d.pack) patch.pack = "";
+      LB.rooms.update(room.code, patch).catch(function (er) { toast(esc(LB.friendlyError(er))); });
+    }
     else if (k === "next") { room.moving = d.seed + d.round; LB.rooms.update(room.code, d.round < d.rounds ? { round: d.round + 1, roundAt: true } : { state: "end" }); }
     else if (k === "again") {
       WL.track("room_rematch", { mode: m, players: liveIds().length });
       room.nightList = null;
-      LB.rooms.update(room.code, m === "night" ? { state: "lobby", round: 0, story: "", seed: newSeed() } : { state: "play", round: 1, seed: newSeed(), roundAt: true });
+      var again = m === "night" ? { state: "lobby", round: 0, story: "", seed: newSeed() } : { state: "play", round: 1, seed: newSeed(), roundAt: true };
+      if (m === "night" && d.pack) again.pack = "";
+      LB.rooms.update(room.code, again);
     } else if (k === "lobby") LB.rooms.update(room.code, { state: "lobby", round: 0, seed: newSeed() });
     else if (k === "back") { room.starting = ""; startRoomRound(d.round); }
     else if (k === "leave") { leaveRoom(); goHQ(); }
@@ -3863,6 +4106,7 @@
     if (run && (run.kind === "daily" || run.kind === "replay") && run.prog.results.length >= run.cases.length) { $("verdict").hidden = true; finishDaily(); return; }
     if (run && run.kind === "friend" && !run.preview && !run.again) { openWrite(); return; } // "Write one back"
     if (run && run.kind === "room") { leaveRoom(); goHQ(); return; } // "Leave room"
+    if (run && run.kind === "story" && run.story.preview) { $("verdict").hidden = true; openWrite(); return; } // "Back to your story"
     goHQ();
   });
   $("tile-write").addEventListener("click", function () { Snd.play("click"); openWrite(); });
@@ -3966,7 +4210,12 @@
     var wc = Plat.inviteParam("w"); // a case a friend wrote
     if (wc) {
       goHQ();
-      WL.unpackWritten(wc).then(function (w) { if (w) openFriend(w, wc); else toast("That case link doesn't work. Ask your friend to send it again.", "", 4000); });
+      WL.unpackWritten(wc).then(function (w) {
+        if (!w) toast("That case link doesn't work. Ask your friend to send it again.", "", 4000);
+        else if (!w.k) openFriend(w, wc);
+        // a story: keep the link in the address bar while it plays, so a reload picks the investigation up again
+        else if (openStory(wc, w)) { try { history.replaceState(null, "", location.pathname + (location.search ? location.search + "&" : "?") + "w=" + wc); } catch (e) { /* ignore */ } }
+      });
       return;
     }
     var ch = parseChallenge(Plat.inviteParam("c"));

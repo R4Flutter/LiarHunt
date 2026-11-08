@@ -167,6 +167,13 @@ await t("rooms: only a Story Night host can pick its story", async () => {
   await assertFails(updateDoc(room(ana, "RACE22"), { story: "demo-crown" }));
   await assertSucceeds(updateDoc(room(ana, "NITE22"), { state: "lobby", round: 0, story: "", seed: "newseed1" }));
 });
+await t("rooms: a Story Night host can play a story they made (its link code in pack, up to 12,000 characters)", async () => {
+  await assertSucceeds(updateDoc(room(ana, "NITE22"), { story: "u-1a2b3c", pack: "z" + "A".repeat(11999) }));
+  await assertFails(updateDoc(room(ana, "NITE22"), { pack: "z" + "A".repeat(12000) }));
+  await assertFails(updateDoc(room(ben, "NITE22"), { pack: "zAAAA" }));
+  await assertFails(updateDoc(room(ana, "RACE22"), { pack: "zAAAA" }));
+  await assertSucceeds(updateDoc(room(ana, "NITE22"), { story: "demo-crown", pack: "" }));
+});
 await t("Story Night stories are public to read, and nobody writes them from the game", async () => {
   await env.withSecurityRulesDisabled((ctx) => setDoc(doc(ctx.firestore(), "nights/demo-crown"), { title: "x" }));
   await assertSucceeds(getDoc(doc(anon, "nights/demo-crown")));

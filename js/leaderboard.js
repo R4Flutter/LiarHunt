@@ -601,7 +601,7 @@
       }, function (e) { console.warn("[room]", e && e.message); });
       var stop2 = roomRef(code).collection("players").onSnapshot(function (q) {
         var out = {};
-        q.docs.forEach(function (d) { var x = d.data(); if (x.at) x.at = ms(x.at); out[d.id] = x; });
+        q.docs.forEach(function (d) { var x = d.data(); if (x.at) x.at = ms(x.at); if (x.joinedAt) x.joinedAt = ms(x.joinedAt); out[d.id] = x; });
         onPlayers(out);
       }, function (e) { console.warn("[room]", e && e.message); });
       return function () { stop1(); stop2(); };

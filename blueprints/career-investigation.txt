@@ -1,0 +1,399 @@
+LIARHUNT BLUEPRINT: CAREER INVESTIGATION
+A LiarHunt player pasted this into the chat. It tells you, the AI, how to write an investigation the game can play.
+Read all of it, then follow it exactly.
+
+==================================================
+WHAT LIARHUNT IS
+==================================================
+LiarHunt is a free detective game. In Career, the player works a case mission by mission: they search places,
+interview people and catch their lies with evidence, read documents, put events in order, and finally accuse
+the culprit. Every piece of evidence they find goes into a dossier that carries through the whole investigation.
+
+You will write a short investigation: one chapter of 3 to 6 missions, each mission 1 to 4 steps, and the last
+mission ends with an accusation.
+
+==================================================
+YOUR JOB
+==================================================
+1. If the player hasn't given you an idea yet, ask for one in one short message: the place, the crime and the
+   people (or tell them you can invent everything). Then wait for their answer.
+2. Plan what REALLY happened first, minute by minute: who did it, how, why, and every clue they left. Every
+   clue, statement and answer must agree with that plan. The game can't check this part for you, so be careful:
+   a lie must really be broken by the evidence that catches it, and a "think" answer must really follow from
+   the evidence it shows.
+3. Write it as ONE JSON object in exactly the format below. Use the complete example at the end as your model.
+4. Before you reply, go through "THE RULES THE GAME CHECKS" one by one and fix anything that breaks a rule.
+   The game checks every rule with code. An investigation that breaks one can't be played.
+5. Reply with ONE JSON code block only. No text before or after it.
+6. If the player pastes a list of problems from the game, fix every one of them, keep everything else that
+   works, and send the WHOLE investigation again as one JSON code block.
+
+==================================================
+THE VOICE
+==================================================
+- Short sentences in plain English (many players read English as a second language). Second person in the
+  briefings ("Your partner meets you at the flat").
+- Exact clock times ("9:41 PM") and names. Evidence reads like records: logs, receipts, camera stills.
+- People sound real: first person, one or two sentences at a time.
+- Non-violent crimes only: theft, fraud, sabotage, forgery, someone missing who left on their own. No real
+  people, brands or companies.
+
+==================================================
+THE FORMAT
+==================================================
+Top level:
+  "title"      the investigation's name (max 44 characters)
+  "tagline"    one line that sells it (max 200)
+  "people"     { "<person id>": { "name" (max 40), "role" (max 40) } }
+               optional: "org": an emoji, for a company that appears as a suspect (shown instead of a face)
+               optional: "notes": [[mission number, "note" (max 200)]], shown in the dossier from that mission on
+  "evidence"   { "<evidence id>": ["<emoji>", "<name> (max 28)", "<what it says> (max 260)"] }
+  "chapters"   exactly ONE chapter: [{ "title" (max 40), "icon": an emoji, "intro" (max 360) }]
+  "missions"   3 to 6 missions (below)
+  "ending"     { "title" (max 40, optional), "text": how it all happened (max 1200; "\n\n" between paragraphs),
+                 "hook": one last line (max 300) }
+
+A mission:
+  "title"      max 40, different from every other mission and from the chapter title
+  "goal"       one line (max 90)
+  "brief"      the briefing (max 620; "\n\n" between paragraphs)
+  "outro"      one line on what this mission proved (max 200). Every mission has one, except the last.
+  "cast"       optional: person ids shown on the briefing
+  "gives"      optional: evidence ids handed to the player at the briefing
+  "steps"      1 to 4 steps
+
+Every step has:
+  "type"       one of: "search", "talk", "timeline", "compare", "link", "accuse", "think"
+  "title"      max 40
+  "ask"        the instruction or question (max 200)
+  "done"       what the player learns when they solve it (max 320)
+  "gives"      optional: evidence ids added to the dossier when the step is solved
+
+Ids are 1 to 24 letters, digits, "-" or "_" (for example "silas", "doorcam", "q1", "s2").
+
+==================================================
+THE SEVEN STEP TYPES
+==================================================
+search: tap things in a place, mark the ones that matter.
+  "items": 5 to 9 of [id, "<emoji>", "<name> (max 28)", "<what you see when you look closer> (max 150)", 1 or 0]
+           1 = a clue, 0 = not a clue. At least 1 clue and at least 2 things that aren't.
+  The "ask" must say how many clues to mark, as a digit: "Mark the 3 signs that...".
+
+talk: ask questions, then catch a statement with a piece of evidence.
+  "who": the person id. "intro": their first line (max 220).
+  "qs": the questions: [{ "id", "q": the question (max 70), "a": [["<statement id>", "<what they say> (max 220)"]],
+        "after": optional, the id of a question or break that must come first }]
+  "breaks": at least one lie to catch: [{ "id", "s": [statement ids it breaks], "ev": [evidence ids that break it],
+        "react": what they say when caught (max 460), "gives": optional evidence ids }]
+  "pool": the evidence tray: evidence ids the player already holds. At least (number of breaks + 2) of them,
+        so there are wrong choices. Every break's "ev" must be in the pool.
+  "wrong": what they say when shown the wrong evidence (max 200).
+
+timeline: tap events into the order they happened.
+  "events": 4 to 8 of [id, "<event> (max 100)", "<time>" or ""], written in the RIGHT order (the game shuffles
+  them). An event with no time must be placeable from the dossier.
+
+compare: find the changed or impossible lines in one to three documents.
+  "docs": 1 to 3 of { "title" (max 60), "rows": [[id, "<label> (max 30)", "<text> (max 120)"]] }
+  "answer": [row ids]. At least 2 rows that aren't answers. With more than one answer, the "ask" says how many,
+  as a digit: "Tap the 2 lines that...".
+
+link: match every item on the left to one on the right.
+  "left": [[id, "<text> (max 80)"]], "right": [[id, "<text> (max 100)", "<small print> (optional, max 60)"]],
+  "pairs": { "<left id>": "<right id>" } for every left item. At least one right item matches nothing.
+
+accuse: name the culprit, prove it with evidence, pick the motive.
+  "who": 3 or more person ids, the answer among them. "notes": optional { "<person id>": "<line> (max 120)" }
+  "answer": the culprit's person id
+  "proofAsk": the proof question (max 200), saying how many to pick as a digit: "Pick the 2 pieces of evidence..."
+  "pool": evidence ids the player already holds. "proof": the ones in the pool that prove it.
+  "need": how many to pick (1 up to the number of "proof"). The pool has at least 2 wrong choices.
+  "motive": optional { "ask" (max 120), "options": 2 to 4 (max 120 each), "answer": the right option's index, from 0 }
+
+think: pick the conclusion the evidence supports.
+  "show": optional evidence ids shown on screen (already held). "options": 2 to 4 (max 120 each).
+  "answer": the right option's index, from 0.
+
+==================================================
+THE RULES THE GAME CHECKS
+==================================================
+Check each one before you reply.
+ 1. Every limit and count above, and every required text is there.
+ 2. Exactly one chapter, 3 to 6 missions, 1 to 4 steps each. The LAST step of the LAST mission is an accusation.
+ 3. Every person id you use (cast, talk "who", accuse "who" and "answer") is in "people".
+ 4. Every evidence id is in "evidence", and every piece of evidence is given to the player exactly once: in a
+    mission's "gives", a step's "gives" or a break's "gives".
+ 5. Evidence is found before it's needed. A talk "pool", an accuse "pool" or a think "show" may only use evidence
+    given in an earlier mission, in this mission's "gives", or by an earlier step of this mission.
+ 6. Ids don't repeat: people, evidence, a search's items, a talk's questions and statements, timeline events,
+    a document's rows, a link's left items and right items.
+ 7. A break points at statements the player can hear, and "after" points at a question or break of the same talk.
+ 8. The numbers in the questions are right (search clues, compare answers, accuse "need").
+
+==================================================
+A COMPLETE EXAMPLE
+==================================================
+This investigation passes every rule. Write a NEW one with a different place, crime and cast, in exactly this shape.
+(It has search, think, talk, compare and accuse steps. Timeline and link steps are described above: use them too.)
+
+```json
+{
+ "title": "The Missing Analyst",
+ "tagline": "An analyst vanishes, and someone searches his flat after he's gone.",
+ "people": {
+  "helen": {"name":"Helen Marsh","role":"Senior partner, Ashford & Lane"},
+  "marcus": {"name":"Marcus Reed","role":"Your partner"},
+  "daniel": {"name":"Daniel Cross","role":"Missing analyst, Ashford & Lane"},
+  "alma": {"name":"Alma Bell","role":"Neighbor, Flat 4B"},
+  "silas": {"name":"Silas Crane","role":"Head of security, Blackstone"},
+  "bale": {"name":"Tom Bale","role":"Driver, Kestrel Logistics"}
+ },
+ "evidence": {
+  "report": [
+   "📄",
+   "Helen's report",
+   "Missing-person report, Sat 8 March, 9:00 AM, from Helen Marsh, Ashford & Lane, 40 Mercer Street: 'Daniel hasn't been at work since Thursday, and his work laptop is missing. I knocked on his door on Friday evening. No answer.'"
+  ],
+  "doorcam": [
+   "📹",
+   "Door camera",
+   "Building door camera, Thu 6 March, 8:52 PM: Daniel leaves with a small sports bag. His brown leather laptop bag isn't with him."
+  ],
+  "packed": [
+   "🧳",
+   "Packed and gone",
+   "Daniel's toothbrush and sports bag are gone, and he emptied his fridge. He packed and left on his own."
+  ],
+  "greycoat": [
+   "🧥",
+   "Man in a grey coat",
+   "Alma Bell, Flat 4B: at 9:55 PM a man in a grey coat came out of Daniel's flat carrying a brown leather laptop bag."
+  ],
+  "phonelog": [
+   "📞",
+   "Daniel's phone record",
+   "Thu 6 March, 6:30 PM: a 2-minute call from 0770-555-0148, a prepaid phone. Alma heard Daniel shout: 'How do you know about the files?' 7:10 PM: a 1-minute call to his sister Sara."
+  ],
+  "van": [
+   "🚐",
+   "Grey van",
+   "A neighbor's dashcam: grey van KL-2207 parked outside Daniel's building from 9:30 to 10:00 PM on Thursday."
+  ],
+  "vanlog": [
+   "📋",
+   "Kestrel van log",
+   "Kestrel Logistics, Dock Road: van KL-2207 was signed out by S. Crane on Thursday from 9:00 to 10:30 PM."
+  ],
+  "silas": [
+   "🪪",
+   "Silas Crane",
+   "Head of security at Blackstone Holdings, the company Daniel was auditing. He wears size 44 boots and had van KL-2207 that night."
+  ]
+ },
+ "chapters": [
+  {
+   "title": "The First Lead",
+   "icon": "🔎",
+   "intro": "First week at the agency. Evelyn Shaw drops a thin file on your desk: Daniel Cross, a financial analyst, hasn't been seen since Thursday night. His boss is worried. Find him."
+  }
+ ],
+ "missions": [
+  {
+   "title": "The Missing Analyst",
+   "goal": "Find out if Daniel left on his own.",
+   "cast": ["helen","marcus","daniel"],
+   "gives": ["report","doorcam"],
+   "brief": "Helen Marsh, a senior partner at the audit firm Ashford & Lane, reported her best analyst missing this morning. Daniel Cross, 34, hasn't been seen since Thursday night.\n\nYour new partner, Marcus Reed, meets you at Daniel's flat with a key from the landlord. 'People walk out on their lives all the time, rookie. Let's see if he packed.'",
+   "steps": [
+    {
+     "type": "search",
+     "title": "Search Daniel's flat",
+     "ask": "Tap things to look closer. Mark the 3 signs that Daniel packed and left on his own.",
+     "items": [
+      ["brush","🪥","Bathroom cup","Empty. No toothbrush, and the toothpaste is gone too.",1],
+      ["ward","🚪","Wardrobe","A clean gap on the top shelf, the size of a sports bag. Dust all around it.",1],
+      [
+       "fridge",
+       "🧊",
+       "Fridge",
+       "Emptied and switched off, the door propped open so it won't smell. Someone planned to be away.",
+       1
+      ],
+      ["pass","🛂","Passport","Still in the desk drawer. Wherever he went, it wasn't abroad.",0],
+      ["mug","☕","Coffee mug","Half full and cold, on the table. Could be from any day.",0],
+      ["post","✉️","Post on the mat","Two days of letters, unopened.",0],
+      ["plant","🪴","Plant","Healthy and green. Daniel looks after his plants.",0],
+      ["tv","📺","TV remote","On the sofa. Nothing odd about it.",0]
+     ],
+     "done": "He packed: no toothbrush, no bag, and an emptied fridge. Nobody drags a man away and then cleans out his fridge.",
+     "gives": ["packed"]
+    },
+    {
+     "type": "think",
+     "title": "Think it through",
+     "ask": "So what happened on Thursday night?",
+     "show": ["doorcam","packed"],
+     "options": [
+      "Someone took Daniel from his flat by force",
+      "Daniel packed and left on his own, in a hurry",
+      "Daniel never left the building"
+     ],
+     "answer": 1,
+     "done": "Daniel walked out with his bag at 8:52 PM. But Marcus is crouched by the front door, frowning at the lock: 'Somebody scratched this. Recently.'"
+    }
+   ],
+   "outro": "Daniel left on his own. But fresh scratches on his lock say somebody else came later."
+  },
+  {
+   "title": "The Last Phone Call",
+   "goal": "Find out what the neighbor heard, and who called Daniel.",
+   "cast": ["alma"],
+   "brief": "Alma Bell in Flat 4B has lived next to Daniel for six years. She says she heard 'all sorts' on Thursday. The phone company has also sent over Daniel's calls for that evening.",
+   "steps": [
+    {
+     "type": "talk",
+     "who": "alma",
+     "title": "Talk to Alma Bell",
+     "ask": "Ask Alma what she heard. When something she says doesn't fit the evidence, tap it, pick the evidence and present it.",
+     "intro": "Come in, come in. Poor Daniel. Such a quiet young man.",
+     "qs": [
+      {
+       "id": "q1",
+       "q": "What did you hear on Thursday?",
+       "a": [["s1","Shouting through the wall, at half past six. Daniel yelled: 'How do you know about the files?'"]]
+      },
+      {
+       "id": "q2",
+       "q": "Did you hear him go out?",
+       "a": [["s2","Oh yes. His door, at ten o'clock. Then footsteps on the stairs. That was Daniel going out."]]
+      },
+      {"id":"q3","q":"Did you see anyone?","a":[["s3","I don't spy on my neighbors, detective."]]}
+     ],
+     "breaks": [
+      {
+       "id": "b1",
+       "s": ["s2"],
+       "ev": ["doorcam"],
+       "react": "He left at 8:52? Then... oh dear. The man at ten wasn't Daniel. I looked through my peephole, I'll admit it. A man in a grey coat, carrying a brown leather laptop bag."
+      }
+     ],
+     "pool": ["doorcam","packed","report"],
+     "wrong": "Alma blinks. 'I don't see what that has to do with anything, dear.'",
+     "done": "Alma wasn't lying, just wrong. The man at ten was a stranger in a grey coat, carrying Daniel's laptop bag.",
+     "gives": ["greycoat"]
+    },
+    {
+     "type": "compare",
+     "title": "Read the phone record",
+     "ask": "Alma heard shouting at 6:30. Tap the call that set it off.",
+     "docs": [
+      {
+       "title": "Daniel's phone, Thursday 6 March",
+       "rows": [
+        ["c1","12:40 PM","Call to Pizza Roma, 1 min"],
+        ["c2","6:30 PM","Call from 0770-555-0148 (prepaid), 2 min"],
+        ["c3","7:10 PM","Call to Sara Cross, 1 min"],
+        ["c4","8:40 PM","Call to City Taxis, 1 min"]
+       ]
+      }
+     ],
+     "answer": ["c2"],
+     "done": "6:30 PM, two minutes, from a prepaid phone that can't be traced. Someone called Daniel about his files, and two hours later he was gone.",
+     "gives": ["phonelog"]
+    }
+   ],
+   "outro": "A prepaid phone called Daniel about 'the files' at 6:30. A man in a grey coat took his laptop bag at ten."
+  },
+  {
+   "title": "The First Connection",
+   "goal": "Prove who searched Daniel's flat, and why.",
+   "cast": ["silas","marcus"],
+   "brief": "A neighbor's dashcam caught a grey van, KL-2207, parked outside Daniel's building on Thursday night. It belongs to Kestrel Logistics on Dock Road, and their night manager hands over the van log. Marcus knows one of the names on it: 'Silas Crane. Head of security at Blackstone Holdings. Mean as a snake.'",
+   "steps": [
+    {
+     "type": "compare",
+     "title": "Read the van log",
+     "ask": "Tap the line for the van that was outside Daniel's building.",
+     "docs": [
+      {
+       "title": "Kestrel Logistics van log, Thursday 6 March",
+       "rows": [
+        ["k1","KL-2205","Out 6:00 PM, back 11:15 PM. Driver: T. Bale"],
+        ["k2","KL-2207","Out 9:00 PM, back 10:30 PM. Driver: S. Crane"],
+        ["k3","KL-2209","In the garage all night"],
+        ["k4","KL-2211","Out 7:30 PM, back 8:45 PM. Driver: J. Ortiz"]
+       ]
+      }
+     ],
+     "answer": ["k2"],
+     "done": "KL-2207: out at 9:00, back at 10:30, signed out by S. Crane.",
+     "gives": ["vanlog"]
+    },
+    {
+     "type": "talk",
+     "who": "silas",
+     "title": "Interview Silas Crane",
+     "ask": "Silas will lie to protect himself. Catch both lies with the evidence.",
+     "intro": "I've got nothing to hide. Ask your questions. Quickly.",
+     "qs": [
+      {
+       "id": "q1",
+       "q": "Where were you on Thursday night?",
+       "a": [["s1","At the Blackstone office, all night. Ask anyone."]]
+      },
+      {"id":"q2","q":"Do you drive Kestrel's vans?","a":[["s2","Kestrel? Never heard of them."]]},
+      {"id":"q3","q":"What size are your boots?","a":[["s3","Forty-four. Why, are you buying?"]]},
+      {
+       "id": "q4",
+       "q": "Have you been to Daniel Cross's building?",
+       "a": [["s4","Never. I don't even know where he lives."]]
+      }
+     ],
+     "breaks": [
+      {
+       "id": "b1",
+       "s": ["s2","s1"],
+       "ev": ["vanlog"],
+       "react": "So I borrowed a van. Blackstone is Kestrel's only customer, everyone borrows their vans. So what?"
+      },
+      {"id":"b2","s":["s4","s1"],"ev":["van"],"react":"...No comment. I want Blackstone's lawyer. Now."}
+     ],
+     "pool": ["vanlog","van","greycoat","doorcam"],
+     "wrong": "Silas smirks. 'Is that the best you've got?'",
+     "done": "Silas had the van, and the van sat outside Daniel's building while the flat was searched. His boots are size 44.",
+     "gives": ["silas"]
+    },
+    {
+     "type": "accuse",
+     "title": "Name the visitor",
+     "ask": "Who searched Daniel's flat on Thursday night?",
+     "who": ["silas","bale","alma","daniel"],
+     "notes": {
+      "silas": "Had van KL-2207 from 9:00 to 10:30 PM.",
+      "bale": "Drove van KL-2205 all evening.",
+      "alma": "Saw a man in grey at 9:55.",
+      "daniel": "Left the building at 8:52 PM."
+     },
+     "answer": "silas",
+     "proofAsk": "Prove it: pick the 2 pieces of evidence that put Silas at the flat.",
+     "pool": ["vanlog","van","greycoat","phonelog","packed","doorcam"],
+     "proof": ["vanlog","van"],
+     "need": 2,
+     "motive": {
+      "ask": "Why did Silas search the flat?",
+      "options": ["To steal Daniel's cash","To find the files Daniel had copied","To bring Daniel his post"],
+      "answer": 1
+     },
+     "done": "Silas Crane searched the flat for Daniel's files and walked off with his laptop. Blackstone's lawyer has him out within the hour."
+    }
+   ],
+   "gives": ["van"]
+  }
+ ],
+ "ending": {
+  "title": "Case closed",
+  "text": "Daniel Cross packed and left on Thursday night, scared after a 6:30 PM call about his files. An hour later Silas Crane, head of security at Blackstone Holdings, picked his lock and searched his desk for those files. He walked out at 9:55 with Daniel's laptop.\n\nSilas is charged with breaking in. Blackstone's lawyer is already at the front desk.",
+  "hook": "One question is left: who told Blackstone what Daniel had found?"
+ }
+}
+```
