@@ -720,10 +720,6 @@ body:not(.booting) .boot { opacity: 0; pointer-events: none; }
 .ad-demo-row { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-top: 0.3rem; }
 
 /* ---------- web leaderboard ---------- */
-.tabs { display: grid; grid-template-columns: repeat(5, 1fr); border: 2px solid var(--ink); border-radius: var(--r); overflow: hidden; }
-.tab { background: var(--surface); border: 0; padding: 0.5rem 0.1rem; cursor: pointer; font-family: var(--display); font-weight: 800; font-size: 1.05rem; min-width: 0; }
-.tab + .tab { border-left: 2px solid var(--ink); }
-.tab[aria-selected="true"] { background: var(--ink); color: var(--paper); }
 .board-note { color: var(--pencil); font-size: var(--s-1); }
 .demo-note { border: 2px dashed var(--needle); border-radius: var(--r); padding: 0.45rem 0.6rem; font-size: var(--s-1); }
 .board { list-style: none; margin: 0; padding: 0; display: grid; max-height: min(70vh, 640px); overflow-y: auto; border-top: 2px solid var(--ink); }
@@ -1546,8 +1542,8 @@ dialog[open] .dlg > .notice-icon { animation: badgein 0.55s cubic-bezier(0.2, 1.
 /* the case you're on breathes; small buttons and tabs give under your finger */
 .pips span.now { animation: nowbeat 1.6s ease-in-out infinite; }
 @keyframes nowbeat { 50% { transform: scale(1.1); } }
-.icon-btn, .tab, .seg button { transition: transform 0.12s var(--ease-out), background-color 0.18s ease, color 0.18s ease; }
-:is(.icon-btn, .tab, .seg button):active:not(:disabled) { transform: scale(0.94); }
+.icon-btn, .seg button { transition: transform 0.12s var(--ease-out), background-color 0.18s ease, color 0.18s ease; }
+:is(.icon-btn, .seg button):active:not(:disabled) { transform: scale(0.94); }
 
 /* dialogs: the dim backdrop fades in, and where the browser supports it the dialog fades out instead of vanishing */
 dialog[open]::backdrop { animation: fadein 0.2s ease-out backwards; }

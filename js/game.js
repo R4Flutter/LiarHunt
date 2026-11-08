@@ -2475,18 +2475,17 @@
   }
   function openBoard(tab) {
     if (!LB.enabled() || !$("dlg-board")) return;
-    boardTab = tab || "league";
+    boardTab = tab || "today"; // "league" only from the HQ season card
+    $("board-h").textContent = boardTab === "league" ? "Season league" : "Leaderboard";
     $("board-demo").hidden = !(LB.isDemo && LB.isDemo());
     openDialog("dlg-board");
     loadBoard();
   }
   function loadBoard() {
-    [].forEach.call(document.querySelectorAll("#dlg-board .tab"), function (t) { t.setAttribute("aria-selected", t.dataset.tab === boardTab ? "true" : "false"); });
     $("board-head").hidden = true;
     var tok = ++boardTok;
     if (boardTab === "league") { loadLadder(tok); return; }
-    if (boardTab === "friends") { loadFriends(tok); return; }
-    var list = $("board-list"), tab = boardTab;
+    var list = $("board-list");
     $("board-note").textContent = "Daily #" + TODAY + ". Ranks lock in once the day ends everywhere. The top 10 win a badge.";
     list.innerHTML = '<li class="board-empty">Loading...</li>';
     LB.topDaily(TODAY).then(function (rows) {
@@ -2553,7 +2552,6 @@
     openDialog("dlg-reward");
   }
   if ($("dlg-board")) {
-    [].forEach.call(document.querySelectorAll("#dlg-board .tab"), function (t) { t.addEventListener("click", function () { Snd.play("click"); boardTab = t.dataset.tab; loadBoard(); }); });
     $("name-form").addEventListener("submit", function (e) {
       e.preventDefault();
       var first = !S.settings.playerName;
@@ -2803,22 +2801,6 @@
           : '<li class="board-empty">No friends yet. Send your code to someone you play with.</li>';
       });
     }).catch(function (e) { if (tok === frTok) $("fr-list").innerHTML = '<li class="board-empty">' + esc(LB.friendlyError(e)) + "</li>"; });
-  }
-  // The leaderboard's Friends tab: the same cards, most LP first.
-  function loadFriends(tok) {
-    var list = $("board-list"), head = $("board-head");
-    head.hidden = false;
-    head.innerHTML = '<span class="league-emblem" aria-hidden="true">🤝</span><span><b>Friends</b><span class="muted small">Up to ' + LB.friends.MAX + " detectives</span></span>";
-    $("board-note").innerHTML = '<button class="btn ghost small" type="button" id="board-fr">Add friends</button>';
-    $("board-fr").addEventListener("click", function () { Snd.play("click"); closeDialog("dlg-board"); openFriends(); });
-    if (!S.settings.playerName) { list.innerHTML = '<li class="board-empty">Join the leaderboard to add friends.</li>'; renderBoardMe(null); return; }
-    list.innerHTML = '<li class="board-empty">Loading...</li>';
-    LB.friends.me(friendMe()).then(function (m) { return m.list.length ? LB.friends.cards(m.list, SEASON || 1, TODAY) : []; }).then(function (cards) {
-      if (tok !== boardTok) return;
-      list.innerHTML = cards.length ? cards.sort(byLp).map(function (f) { return friendCard(f, false); }).join("")
-        : '<li class="board-empty">No friends yet. Tap Add friends and send them your code.</li>';
-      renderBoardMe(null);
-    }).catch(function (e) { if (tok === boardTok) list.innerHTML = '<li class="board-empty">' + esc(LB.friendlyError(e)) + "</li>"; });
   }
   if ($("dlg-friends")) {
     $("fr-form").addEventListener("submit", function (e) {
@@ -3870,7 +3852,7 @@
   $("btn-ach").addEventListener("click", function () { Snd.play("click"); openAch(); });
   $("btn-stats").addEventListener("click", function () { Snd.play("click"); openProfile(); });
   $("btn-profile").addEventListener("click", function () { Snd.play("click"); openProfile(); });
-  $("btn-board").addEventListener("click", function () { Snd.play("click"); openBoard("league"); });
+  $("btn-board").addEventListener("click", function () { Snd.play("click"); openBoard(); });
   $("btn-accuse").addEventListener("click", confirmNow);
   $("btn-cancel").addEventListener("click", function () { Snd.play("click"); cancelPick(); });
   $("btn-next").addEventListener("click", next);
