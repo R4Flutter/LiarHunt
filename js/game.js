@@ -2221,7 +2221,7 @@
   // facesOnly: just change the face (from the profile).
   function openSetup(cb, facesOnly) {
     setupCb = cb || null;
-    setupFace = myFace() || "f" + String(Math.floor(Math.random() * 16)).padStart(2, "0");
+    setupFace = myFace(); // "" = the face drawn from the name, so nobody's face changes unless they pick one
     var askName = !facesOnly && web() && !S.settings.playerName;
     $("setup-h").textContent = facesOnly ? "Pick your face" : "Create your detective";
     $("setup-why").textContent = facesOnly ? "Other detectives see it next to your name." : askName ? "Pick a face and a name. Other detectives see them on the leaderboards." : "Pick the face other detectives will see.";
@@ -2234,7 +2234,8 @@
   }
   function renderFacePicks() {
     var nm = $("setup-name").value.trim() || myName() || "Detective";
-    $("setup-faces").innerHTML = WL.FACES.map(function (f, i) {
+    $("setup-faces").innerHTML = '<button class="face-pick keep" type="button" role="radio" data-face="" aria-checked="' + (setupFace === "") + '" aria-label="Keep the face drawn from your name">' +
+      WL.avatar(nm) + "</button>" + WL.FACES.map(function (f, i) {
       var code = "f" + String(i).padStart(2, "0");
       return '<button class="face-pick" type="button" role="radio" data-face="' + code + '" aria-checked="' + (code === setupFace) + '" aria-label="Face ' + (i + 1) + '">' + WL.avatar(nm, code) + "</button>";
     }).join("");
@@ -2258,8 +2259,13 @@
     var cb = setupCb; setupCb = null;
     if (cb) cb();
   });
-  // On the web a name is needed to carry on; Esc can't skip it.
-  $("dlg-setup").addEventListener("cancel", function (e) { if (!$("setup-name-box").hidden) e.preventDefault(); else setupCb = null; });
+  // On the web a name is needed to carry on; Esc can't skip it. Otherwise closing keeps the current face, shows once, and carries on.
+  $("dlg-setup").addEventListener("cancel", function (e) {
+    if (!$("setup-name-box").hidden) { e.preventDefault(); return; }
+    S.settings.setupDone = true; persist();
+    var cb = setupCb; setupCb = null;
+    if (cb) setTimeout(cb, 0);
+  });
   $("pf-mug").addEventListener("click", function () { Snd.play("click"); openSetup(null, true); });
 
   function openProfile() { renderProfile(); openDialog("dlg-stats"); }
@@ -2726,18 +2732,18 @@
   /* ---------- friends (web): up to 8, added with a friend code (LB.friends) ---------- */
   function friendMe() { return { name: S.settings.playerName || "", av: myFace() }; }
   function friendLink(code) { return (WL.siteUrl() || location.origin) + "/?f=" + code; }
-  function renderFriendsBadge() { var b = $("btn-friends"); if (b) b.dataset.badge = S.friends.asks ? String(S.friends.asks) : ""; }
+  function renderFriendsBadge() { var b = $("btn-friends"); if (b) b.dataset.badge = S.pals.asks ? String(S.pals.asks) : ""; }
   // At start-up: apply answers to your requests and count the requests waiting for you.
   function friendsBoot() {
     if (!lbOn() || !S.settings.playerName) return;
     LB.friends.inbox().then(function (list) {
-      return LB.friends.settle(list, S.friends.asked, friendMe()).then(function (r) {
+      return LB.friends.settle(list, S.pals.asked, friendMe()).then(function (r) {
         r.added.forEach(function (id) {
           var who = list.filter(function (x) { return x.from === id; })[0];
-          delete S.friends.asked[id];
+          delete S.pals.asked[id];
           toast(esc((who && who.name) || "A detective") + " accepted your friend request.", "gold", 3600);
         });
-        S.friends.asks = list.filter(function (x) { return x.kind === "ask"; }).length;
+        S.pals.asks = list.filter(function (x) { return x.kind === "ask"; }).length;
         persist(); renderFriendsBadge();
       });
     }).catch(function () { /* next visit */ });
@@ -2766,13 +2772,13 @@
     $("fr-list").innerHTML = '<li class="board-empty">Loading...</li>';
     LB.friends.me(friendMe()).then(function (m) {
       if (tok !== frTok) return;
-      S.friends.code = m.code; persist();
+      S.pals.code = m.code; persist();
       $("fr-code").textContent = m.code;
       $("fr-count").textContent = m.list.length + " of " + LB.friends.MAX + " friends";
       return Promise.all([LB.friends.inbox(), m.list.length ? LB.friends.cards(m.list, SEASON || 1, TODAY) : []]).then(function (x) {
         if (tok !== frTok) return;
         var asks = x[0].filter(function (e) { return e.kind === "ask"; });
-        S.friends.asks = asks.length; persist(); renderFriendsBadge();
+        S.pals.asks = asks.length; persist(); renderFriendsBadge();
         $("fr-inbox-h").hidden = !asks.length;
         $("fr-inbox").innerHTML = asks.map(function (e) {
           return '<li class="fr-card"><span class="mug">' + WL.avatar(e.name || "Detective", e.av) + '</span><span class="fr-who"><b>' + esc(e.name || "A detective") +
@@ -2807,12 +2813,12 @@
       $("fr-error").hidden = true;
       var code = LB.friends.clean($("fr-add-input").value);
       if (!code) { err("A friend code has 6 letters and numbers, like ABC234."); return; }
-      if (code === S.friends.code) { err("That's your own code."); return; }
+      if (code === S.pals.code) { err("That's your own code."); return; }
       $("fr-add").disabled = true;
       LB.friends.lookup(code).then(function (who) {
         if (!who) { err("No detective has that code. Check it and try again."); return; }
         return LB.friends.ask(who.uid, friendMe()).then(function () {
-          S.friends.asked[who.uid] = Date.now(); persist();
+          S.pals.asked[who.uid] = Date.now(); persist();
           $("fr-add-input").value = "";
           Snd.play("stamp");
           toast("Request sent to " + esc(who.name || "your friend") + ". You'll be friends once they accept.", "gold", 3800);
@@ -2821,10 +2827,10 @@
       }).catch(function (e) { err(LB.friendlyError(e)); }).then(function () { $("fr-add").disabled = false; });
     });
     $("fr-add-input").addEventListener("input", function () { this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6); });
-    $("fr-copy").addEventListener("click", function () { Snd.play("click"); copyText(S.friends.code, "Friend code copied."); });
+    $("fr-copy").addEventListener("click", function () { Snd.play("click"); copyText(S.pals.code, "Friend code copied."); });
     $("fr-share").addEventListener("click", function () {
       Snd.play("click");
-      shareOut("Add me on LiarHunt, the daily detective game. My friend code is " + S.friends.code + ": " + friendLink(S.friends.code), "Invite copied. Paste it to a friend.");
+      shareOut("Add me on LiarHunt, the daily detective game. My friend code is " + S.pals.code + ": " + friendLink(S.pals.code), "Invite copied. Paste it to a friend.");
       WL.track("friend_share", {});
     });
     $("dlg-friends").addEventListener("click", function (e) {
@@ -3629,7 +3635,7 @@
     var url = WL.siteUrl() || location.origin, android = /Android/i.test(navigator.userAgent);
     closeDialog("dlg-stats");
     showNotice({ icon: "🔒", title: "Open in your browser to sign in",
-      text: "Google doesn't allow sign-in inside this app's browser. Open LiarHunt in Chrome or Safari, then sign in there. Your progress comes with you.",
+      text: "Google doesn't allow sign-in inside this app's browser. Open LiarHunt in Chrome or Safari and sign in there, and your game follows you from then on. (A game played only inside this app's browser stays here.)",
       html: android ? '<a class="btn ghost wide" href="intent://' + esc(url.replace(/^https?:\/\//, "")) + '#Intent;scheme=https;package=com.android.chrome;end">Open in Chrome</a>' : "",
       yes: "Copy link", no: "Not now",
       onYes: function () {
@@ -3940,7 +3946,8 @@
     delete S.arc; delete S.night; // the Case of the Week and the Night Shift are gone
     S.ladder = Object.assign({ season: 0, lp: 0, tier: 0, days: 0, rate: 0, failRate: 0, rank: 0, total: 0, at: 0, paid: {} }, S.ladder || {});
     delete S.league; // the old weekly league
-    S.friends = Object.assign({ code: "", asked: {}, asks: 0 }, S.friends || {});
+    // Friends list state. (S.friends is the store of friends' written cases you played: a different thing.)
+    S.pals = Object.assign({ code: "", asked: {}, asks: 0 }, S.pals || {});
     delete S.groups; delete S.groupSel; // Friend groups are retired
     S.pwa = S.pwa || {};
     S.sync = Object.assign({ code: "", dirty: false, stamp: 0 }, S.sync || {});

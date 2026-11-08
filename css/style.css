@@ -416,6 +416,7 @@ button.clue:not(:disabled):hover { filter: brightness(0.96); }
 .face-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.45rem; margin: 0.4rem 0 0.8rem; }
 .face-pick { border: 2px solid var(--grid-strong); border-radius: var(--r); background: var(--paper); padding: 0.15rem; aspect-ratio: 1; cursor: pointer; min-width: 0; }
 .face-pick:hover { border-color: var(--ink); }
+.face-pick.keep { border-style: dashed; }
 .face-pick[aria-checked="true"] { border-color: var(--needle); box-shadow: 0 0 0 2px var(--needle); background: var(--surface); }
 .face-pick:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 button.id-mug { cursor: pointer; padding: 0; font: inherit; }
