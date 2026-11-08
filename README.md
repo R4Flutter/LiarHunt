@@ -69,7 +69,7 @@ js/audio.js, js/fx.js      sound and visual effects
 js/leaderboard.js          web leaderboard, top-10 rewards, the season ladder, friends, rooms (Firebase)
 js/ads.js                  web ads (none / demo / AdSense)
 assets/                    sounds, music, fonts, icons
-sw.js                      offline play + app install (web only)
+sw.js                      offline cache (web only)
 firebase.json, firebase/   database settings, rules and indexes for the web leaderboard
 tools/build-crazygames.mjs builds the CrazyGames zip
 tools/check-cases.mjs      checks every case for mistakes

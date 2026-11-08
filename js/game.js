@@ -8,7 +8,7 @@
   Also: headquarters (HQ), the Book map, shop,
   achievements, missions, login rewards, streak shields, comeback gifts, friend
   challenges, level-ups, tutorial, and (web only) the Firebase leaderboard,
-  weekly leagues, friend groups, reminders and app install.
+  weekly leagues, friend groups and reminders.
 */
 (function () {
   "use strict";
@@ -443,15 +443,12 @@
       }
     }
   }
-  // One banner at a time: install the app, then the daily reminder.
+  // One banner at a time: Google sign-in, then the daily reminder.
   function renderBanner() {
     var b = $("hq-banner"), html = "";
     if (cloudOn() && !google() && S.tot.solved <= 2 && !S.stats.played && !S.pwa.noRestore) {
       html = '<span class="hb-ico" aria-hidden="true">☁️</span><span class="hb-txt"><b>Played before?</b><span>Sign in with Google to bring back your progress.</span></span>' +
         '<button class="btn small primary" type="button" data-banner="google">Sign in</button><button class="icon-btn" type="button" data-banner="x-restore" aria-label="Not now"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>';
-    } else if (web() && S.tot.dailyDone >= 1 && !S.pwa.noInstall && canInstall()) {
-      html = '<span class="hb-ico" aria-hidden="true">📲</span><span class="hb-txt"><b>Play from your home screen</b><span>One tap to open, like an app.</span></span>' +
-        '<button class="btn small primary" type="button" data-banner="install">Install</button><button class="icon-btn" type="button" data-banner="x-install" aria-label="Not now"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>';
     } else if (web() && S.tot.dailyDone >= 2 && !S.pwa.reminder && !S.pwa.noReminder) {
       html = '<span class="hb-ico" aria-hidden="true">⏰</span><span class="hb-txt"><b>Never miss a case</b><span>Add a daily reminder to your calendar.</span></span>' +
         '<button class="btn small primary" type="button" data-banner="reminder">Remind me</button><button class="icon-btn" type="button" data-banner="x-reminder" aria-label="Not now"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>';
@@ -3753,32 +3750,10 @@
     $("rem-google").addEventListener("click", function () { updateRemLink(); reminderSet("google"); });
     $("rem-ics").addEventListener("click", downloadIcs);
     $("btn-reminder").addEventListener("click", function () { closeDialog("dlg-settings"); openReminder(); });
-    $("btn-install").addEventListener("click", function () { closeDialog("dlg-settings"); install(); });
   }
 
-  /* ---------- install as an app + offline (web) ---------- */
-  var installEvt = null;
-  function standalone() { return (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true; }
-  function isIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); }
-  function canInstall() { return web() && !standalone() && (!!installEvt || isIOS()); }
-  function install() {
-    if (installEvt) {
-      installEvt.prompt();
-      installEvt.userChoice.then(function (c) { WL.track("install_prompt", { outcome: c && c.outcome }); installEvt = null; if (screen === "hq") renderBanner(); });
-      return;
-    }
-    if (isIOS()) {
-      showNotice({ icon: "📲", title: "Add it to your Home Screen",
-        text: "In Safari, tap the <b>Share</b> button at the bottom of the screen, then <b>Add to Home Screen</b>." +
-          (cloudOn() ? "<br><br>On iPhone the app starts as a new player. " + (google() ? "Sign in with Google in the app and your progress comes with you."
-            : "Sign in with Google here first, then again in the app, and your progress comes with you.") : ""),
-        yes: "Got it" });
-    }
-  }
-  if ($("btn-install") && isIOS() && !standalone()) $("btn-install").hidden = false;
+  /* ---------- offline cache (web) ---------- */
   if (web()) {
-    window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); installEvt = e; if ($("btn-install")) $("btn-install").hidden = false; if (screen === "hq") renderBanner(); });
-    window.addEventListener("appinstalled", function () { installEvt = null; WL.track("app_installed", {}); if (screen === "hq") renderBanner(); });
     if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
       window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () { /* offline play is a bonus */ }); });
     }
@@ -3788,12 +3763,10 @@
     if (!b) return;
     Snd.play("click");
     var k = b.dataset.banner;
-    if (k === "install") install();
-    else if (k === "reminder") openReminder();
+    if (k === "reminder") openReminder();
     else if (k === "restore") openRestore();
     else if (k === "google") signInGoogle();
     else if (k === "x-restore") { S.pwa.noRestore = true; persist(); renderBanner(); }
-    else if (k === "x-install") { S.pwa.noInstall = true; persist(); renderBanner(); }
     else if (k === "x-reminder") { S.pwa.noReminder = true; persist(); renderBanner(); }
   });
 
