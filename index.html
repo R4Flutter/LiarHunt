@@ -23,8 +23,12 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="favicon.ico" sizes="48x48">
 <link rel="manifest" href="manifest.webmanifest">
-<!-- GOOGLE ADSENSE: proves to AdSense that this site is yours. js/ads.js loads the ad code itself. -->
+<!-- GOOGLE ADSENSE: proves to AdSense that this site is yours, and loads the AdSense code on every visit so Google
+     checks the site (and ads.txt) regularly. The game itself shows no ads while ads.provider is "none" in js/config.js;
+     js/ads.js reuses this tag once ads are switched on. In AdSense, turn Auto ads off for liarhunt.com unless you want
+     Google to place extra ads in the game by itself. -->
 <meta name="google-adsense-account" content="ca-pub-5463912491137261">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5463912491137261" data-ad-frequency-hint="45s" crossorigin="anonymous"></script>
 <meta name="msvalidate.01" content="3F257D5771038F5E3291F29C6F86359F">
 <script type="application/ld+json">
 [{"@context":"https://schema.org","@type":"WebSite","name":"LiarHunt","alternateName":"Liar Hunt","url":"https://liarhunt.com/","sameAs":["https://www.instagram.com/liarhuntgame/"]},
