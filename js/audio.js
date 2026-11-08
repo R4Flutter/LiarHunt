@@ -123,16 +123,16 @@
     g.linearRampToValueAtTime(MUSIC_VOL, t + sec + 0.4);
   }
 
-  /* ---------- music: one track per mood, plus quiet layers (rain under the cases, the precinct at HQ) ----------
+  /* ---------- music: one track per mood, plus a quiet precinct layer at HQ ----------
      Each track is a looping <audio> element, streamed and decoded a little at a time (a few hundred KB of memory, not
      the ~16 MB a decoded buffer takes). They run through musicGain, so mute, ads and ducking work as before, and a mood
      change crossfades. Royalty-free (CC0) tracks; where they came from is in tools/audio-sources.md.
      ponytail: a plain loop can leave a tiny gap at the seam; crossfade two copies if that ever bothers anyone. */
   var MOODS = {
     hq: { track: "music-hq", layers: { precinct: 0.3 } },
-    "case": { track: "music-case", layers: { rain: 0.35 } },
+    "case": { track: "music-case" },
     rush: { track: "music-rush" },
-    verdict: { track: "music-rush", layers: { rain: 0.25 } }
+    verdict: { track: "music-rush" }
   };
   var FADE = 1.5; // seconds
   function track(name) {
@@ -151,7 +151,7 @@
       g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); g.linearRampToValueAtTime(v, now + secs);
     } else t.el.volume = Math.min(1, v * MUSIC_VOL);
   }
-  // Plays the mood's track (and rain), fades every other track out and pauses it once it's silent.
+  // Plays the mood's track (and its layers), fades every other track out and pauses it once it's silent.
   function applyMood() {
     var m = A.music, md = MOODS[m.mood] || MOODS.hq, want = {};
     want[md.track] = 1;

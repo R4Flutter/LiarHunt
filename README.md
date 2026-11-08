@@ -257,7 +257,7 @@ Built-in sounds live in `assets/audio/`. Music and sound switches are in Setting
 | `tick`, `timeout` | the last seconds in Rush, time running out |
 | `fanfare`, `fail` | results screens |
 | `coin`, `star`, `combo`, `levelup`, `buy`, `achieve` | rewards |
-| `music-hq`, `music-case`, `music-rush`, `rain`, `precinct`, `harbor` | music by mood (HQ: Crime Piano with a faint precinct background and, in Season 1, a far-off foghorn; cases: True Crime with rain; Rush and the last Daily 5 case: Grey Colors). A mood change crossfades. From Pixabay; sources and processing are in `tools/audio-sources.md` |
+| `music-hq`, `music-case`, `music-rush`, `precinct`, `harbor` | music by mood (HQ: Crime Piano with a faint precinct background and, in Season 1, a far-off foghorn; cases: True Crime; Rush and the last Daily 5 case: Grey Colors). A mood change crossfades. From Pixabay; sources and processing are in `tools/audio-sources.md` |
 | `cuffs`, `camera`, `folder`, `pin`, `pen` | detective-desk sounds: the arrest after the LIAR stamp, new evidence, opening a case file, notes on the board, a finding written down |
 
 **Remake them with ElevenLabs** on your own computer (Node.js 18+):
