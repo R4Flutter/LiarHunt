@@ -154,7 +154,7 @@ Needs Node.js 18+:
 node tools/build-crazygames.mjs
 ```
 
-This makes `dist/liarhunt-crazygames.zip` (about 3.4 MB, 45 files). Upload that zip. The build:
+This makes `dist/liarhunt-crazygames.zip` (about 6.3 MB, 52 files). Upload that zip. The build:
 - adds the CrazyGames SDK v3
 - sends ads, saves, the mute setting, the username and invite links through the SDK
 - removes everything CrazyGames doesn't allow: AdSense, the Firebase leaderboard, WhatsApp/X buttons, links to other pages
@@ -245,7 +245,7 @@ Daily top-10 players get a badge (🥇 🥈 🥉 🎖️) and a prize hint once 
 
 ## 5. Sound and music
 
-Built-in sounds live in `assets/audio/`. Music and sound switches are in Settings (gear icon). To swap a track, drop a new MP3 with the same name into `assets/audio/`.
+Built-in sounds live in `assets/audio/`. Music and sound switches are in Settings (gear icon). To swap a track, drop a new MP3 with the same name into `assets/audio/` and bump `CACHE` in `sw.js`, or returning players keep the old file.
 
 | File | When it plays |
 |---|---|
@@ -257,7 +257,8 @@ Built-in sounds live in `assets/audio/`. Music and sound switches are in Setting
 | `tick`, `timeout` | the last seconds in Rush, time running out |
 | `fanfare`, `fail` | results screens |
 | `coin`, `star`, `combo`, `levelup`, `buy`, `achieve` | rewards |
-| `music-hq`, `music-case`, `music-rush`, `rain` | background music by mood: HQ and results, cases (with rain under them), Rush. A mood change crossfades. Royalty-free (CC0); sources and how each was processed are in `tools/audio-sources.md` |
+| `music-hq`, `music-case`, `music-rush`, `rain`, `precinct`, `harbor` | music by mood (HQ: Crime Piano with a faint precinct background and, in Season 1, a far-off foghorn; cases: True Crime with rain; Rush and the last Daily 5 case: Grey Colors). A mood change crossfades. From Pixabay; sources and processing are in `tools/audio-sources.md` |
+| `cuffs`, `camera`, `folder`, `pin`, `pen` | detective-desk sounds: the arrest after the LIAR stamp, new evidence, opening a case file, notes on the board, a finding written down |
 
 **Remake them with ElevenLabs** on your own computer (Node.js 18+):
 

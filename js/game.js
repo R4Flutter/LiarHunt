@@ -260,6 +260,7 @@
     $("hud-title").hidden = onHQ;
     if (name !== "case") { Plat.gameplayStop(); hideCoach(); $("stage-card").hidden = true; }
     Snd.mood(name === "case" ? (run && run.kind === "rush" ? "rush" : run && run.d5 && run.c && run.c.n === 5 ? "verdict" : "case") : name === "book" ? "case" : "hq");
+    if (onHQ) harborSoon();
     if (onHQ) { gameTrace.stop(); hqTrace.start(); } else if (name === "case") { hqTrace.stop(); gameTrace.start(); } else { hqTrace.stop(); gameTrace.stop(); }
     if (name === "hq" || name === "results") setTimeout(cloudFlush, 0);
     var el = $("scr-" + name);
@@ -279,6 +280,16 @@
     shop: '<svg viewBox="0 0 24 24"><path d="M5 8h14l-1.2 12H6.2z"/><path d="M9 10V6a3 3 0 0 1 6 0v4"/></svg>',
     ach: '<svg viewBox="0 0 24 24"><circle cx="12" cy="15" r="5"/><path d="M8.6 10.7L6 3h4l2 4 2-4h4l-2.6 7.7"/></svg>',
   };
+  // Season 1 is a foggy harbor town: a far-off foghorn when you come back to HQ, at most every 3 minutes.
+  var harborAt = 0, harborWait = 0;
+  function harborSoon() {
+    var pk = WL.packFor(Math.max(1, SEASON));
+    if (!pk || pk.town !== "Port Ellery" || harborWait || Date.now() - harborAt < 180000) return;
+    harborWait = setTimeout(function () {
+      harborWait = 0;
+      if (screen === "hq" && Snd.ambient("harbor", 0.5)) harborAt = Date.now(); // only counts when it really played
+    }, 2500);
+  }
   function setHud(main, sub) {
     $("hud-main").textContent = main || ""; $("hud-sub").textContent = sub || "";
     var k = screen === "case" && run ? run.kind : screen;
@@ -897,7 +908,8 @@
     $("actionbar").hidden = true;
     gameTrace.spike(!correct);
     Snd.play("stamp");
-    setTimeout(function () { Snd.play(correct ? "correct" : "wrong"); }, 170);
+    if (correct) Snd.play("cuffs", { delay: 0.3 });
+    setTimeout(function () { Snd.play(correct ? "correct" : "wrong"); }, correct ? 700 : 170);
     if (!correct) FX.shake($("case-grid"));
     if (run.kind === "room") verdictRoom(correct, how || "verdict"); else verdictDaily(correct, "verdict");
   }
@@ -928,6 +940,7 @@
     var res = run.prog.results;
     if (res.length >= 5) { finishDaily(); return; }
     persist();
+    Snd.play("pen"); // the finding is written into the notebook
     $("verdict").hidden = true;
     d5Busy(true);
     d5Open(res.length + 1);
@@ -1032,7 +1045,7 @@
     });
   });
   $("nb-body").addEventListener("toggle", function (e) { if (e.target.open) WL.track("d5_evidence_open", {}); }, true);
-  $("btn-notebook").addEventListener("click", function () { Snd.play("click"); openNotebook(); });
+  $("btn-notebook").addEventListener("click", function () { Snd.play("folder"); openNotebook(); });
   var RUSH_START = 60000;
   /* Rush stages: every 5 cases a new stage starts with one new rule, so a long run keeps changing.
      Stage 1 has no rule; then the rules take turns. */
@@ -1127,7 +1140,7 @@
     $("case-grid").scrollTop = 0;
     [].forEach.call(document.querySelectorAll(".pane"), function (p) { p.scrollTop = 0; });
     if (c.mode !== "liar") Snd.play("twist");
-    else if (run.kind === "rush" ? run.n > 1 : run.kind === "train" ? false : run.idx > 0) Snd.play("whoosh");
+    else if (run.kind === "rush" ? run.n > 1 : run.kind === "train" ? false : run.idx > 0) Snd.play(c.d5 ? "camera" : "whoosh"); // a Daily 5 case brings new evidence
     Plat.gameplayStart();
     startClock();
     if (run.kind === "train" && !S.settings.tutorialDone) startCoach();
@@ -1203,7 +1216,7 @@
     if (!run || run.revealed) return;
     run.notes[i] = { "": "ok", ok: "sus", sus: "" }[run.notes[i] || ""];
     if (run.c.d5) { run.d5.st.notes[run.c.pids[i]] = run.notes[i]; persist(); }
-    Snd.play("tap");
+    Snd.play("pin");
     renderNotes();
   }
   function renderNotes() {
@@ -1263,7 +1276,7 @@
     if (run.phase === "pick" && kind === "clue" && run.c.mode !== "planted") {
       var f = els("clue")[i], on = f.classList.toggle("ticked");
       f.setAttribute("aria-pressed", on ? "true" : "false");
-      Snd.play("tap");
+      Snd.play("pin");
       return;
     }
     if (run.phase === "proof") { if (kind === proofKind()) toggleProof(i); }
@@ -1573,7 +1586,8 @@
     $("actionbar").hidden = true;
     gameTrace.spike(!correct);
     Snd.play("stamp");
-    setTimeout(function () { Snd.play(how === "timeout" ? "timeout" : correct ? "correct" : "wrong"); }, 170);
+    if (correct && c.mode !== "planted") Snd.play("cuffs", { delay: 0.3 });
+    setTimeout(function () { Snd.play(how === "timeout" ? "timeout" : correct ? "correct" : "wrong"); }, correct ? 700 : 170);
     if (!correct) { FX.shake($("case-grid")); if (navigator.vibrate) { try { navigator.vibrate(120); } catch (e) { /* ignore */ } } }
 
     if (run.kind === "train") verdictTrain(ansEl);
@@ -2969,7 +2983,7 @@
   });
   $("write-form").addEventListener("submit", function (e) {
     e.preventDefault();
-    Snd.play("click");
+    Snd.play("pen");
     var w = readyWritten();
     if (!w) return;
     WL.packWritten(w).then(function (code) {
@@ -3847,7 +3861,7 @@
   $("btn-play").addEventListener("click", function () { Snd.play("click"); Book.start(); });
   $("btn-map").addEventListener("click", function () { Snd.play("click"); openMap(); });
   $("btn-dossier").addEventListener("click", function () { Snd.play("click"); Book.openDossier(); });
-  $("btn-daily").addEventListener("click", function () { Snd.play("click"); startDaily(TODAY); });
+  $("btn-daily").addEventListener("click", function () { Snd.play("folder"); startDaily(TODAY); });
   $("streak-chip").addEventListener("click", function () { Snd.play("click"); streakInfo(); });
   $("btn-friends").addEventListener("click", function () { Snd.play("click"); openFriends(); });
   $("season-card").addEventListener("click", function () { if (lbOn() && SEASON) { Snd.play("click"); openBoard("league"); } });
@@ -3905,7 +3919,7 @@
     if (screen === "hq" && paintSeasonClock().left <= 0) renderSeason();
     if (screen === "hq" && !run) {
       if (WL.dayNumber() !== TODAY) location.reload();
-      else if (new Date().getSeconds() === 0) { renderHQ(); refreshLadder(false); }
+      else if (new Date().getSeconds() === 0) { renderHQ(); refreshLadder(false); harborSoon(); }
     }
     if (screen === "shop" && P.coolLeft("coinsAd", 240) === 0 && $("btn-free-coins") && $("btn-free-coins").disabled) renderShop();
   }, 1000);

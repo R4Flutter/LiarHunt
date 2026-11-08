@@ -12,9 +12,11 @@
   var SFX_VOL = ACFG.sfxVolume == null ? 0.9 : ACFG.sfxVolume;
   var SFX = {
     tap: 0.5, stamp: 0.85, correct: 0.42, wrong: 0.45, tick: 0.55, timeout: 0.42, twist: 0.6,
-    fanfare: 0.6, fail: 0.55, whoosh: 0.6, coin: 0.5, star: 0.55, levelup: 0.6, combo: 0.5, click: 0.45, buy: 0.55, achieve: 0.55
+    fanfare: 0.6, fail: 0.55, whoosh: 0.6, coin: 0.5, star: 0.55, levelup: 0.6, combo: 0.5, click: 0.45, buy: 0.55, achieve: 0.55,
+    cuffs: 0.6, camera: 0.45, folder: 0.5, pin: 0.5, pen: 0.45
   };
-  var BIG = { fanfare: 1, fail: 1, twist: 1, levelup: 1, achieve: 1 };
+  // Long stings: the music dips under them.
+  var BIG = { fanfare: 1, fail: 1, twist: 1, levelup: 1, achieve: 1, correct: 1, wrong: 1 };
 
   var A = {
     ctx: null, master: null, sfxGain: null, musicGain: null, buffers: {}, loaded: false,
@@ -57,7 +59,7 @@
     }).then(decode);
   }
   // The first tap only fetches the small sounds every case uses; the rest follow once the game is running.
-  var CORE = ["tap", "click", "stamp", "whoosh", "correct", "wrong"], asked = {};
+  var CORE = ["tap", "click", "stamp", "whoosh", "correct", "wrong", "cuffs", "pin"], asked = {};
   function want(n) {
     if (asked[n]) return;
     asked[n] = 1;
@@ -121,16 +123,16 @@
     g.linearRampToValueAtTime(MUSIC_VOL, t + sec + 0.4);
   }
 
-  /* ---------- music: one track per mood, plus rain under the cases ----------
+  /* ---------- music: one track per mood, plus quiet layers (rain under the cases, the precinct at HQ) ----------
      Each track is a looping <audio> element, streamed and decoded a little at a time (a few hundred KB of memory, not
      the ~16 MB a decoded buffer takes). They run through musicGain, so mute, ads and ducking work as before, and a mood
      change crossfades. Royalty-free (CC0) tracks; where they came from is in tools/audio-sources.md.
      ponytail: a plain loop can leave a tiny gap at the seam; crossfade two copies if that ever bothers anyone. */
   var MOODS = {
-    hq: { track: "music-hq", rain: 0 },
-    "case": { track: "music-case", rain: 0.35 },
-    rush: { track: "music-rush", rain: 0 },
-    verdict: { track: "music-case", rain: 0.6 }
+    hq: { track: "music-hq", layers: { precinct: 0.3 } },
+    "case": { track: "music-case", layers: { rain: 0.35 } },
+    rush: { track: "music-rush" },
+    verdict: { track: "music-rush", layers: { rain: 0.25 } }
   };
   var FADE = 1.5; // seconds
   function track(name) {
@@ -153,7 +155,7 @@
   function applyMood() {
     var m = A.music, md = MOODS[m.mood] || MOODS.hq, want = {};
     want[md.track] = 1;
-    if (md.rain) want.rain = md.rain;
+    Object.keys(md.layers || {}).forEach(function (n) { want[n] = md.layers[n]; });
     Object.keys(want).forEach(function (n) {
       var t = track(n);
       t.on = true; clearTimeout(t.stop);
@@ -180,6 +182,20 @@
     m.playing = false;
     if (!keepWanted) m.wanted = false;
     Object.keys(A.tracks).forEach(function (n) { var t = A.tracks[n]; t.on = false; clearTimeout(t.stop); t.el.pause(); level(t, 0, 0); });
+  }
+  // A one-off atmosphere sound through the music volume (the Season 1 foghorn at HQ). Only while music plays;
+  // it fades out with the mood like any other track.
+  function ambient(name, v) {
+    var m = A.music;
+    if (!m.playing || !A.ctx) return false;
+    var t = track(name);
+    t.el.loop = false; t.on = true; clearTimeout(t.stop);
+    try { t.el.currentTime = 0; } catch (e) { /* not loaded yet */ }
+    level(t, v || 0.5, 0.05);
+    var p = t.el.play();
+    if (p && p.catch) p.catch(function () { /* needs a tap */ });
+    t.el.onended = function () { t.on = false; };
+    return true;
   }
   // hq | case | rush | verdict: which music fits the screen.
   function mood(name) {
@@ -224,7 +240,7 @@
 
   window.WLAudio = {
     init: function (o) { A.soundOn = o.sound !== false; A.musicOn = o.music !== false; A.music.wanted = A.musicOn; },
-    play: play, startMusic: startMusic, stopMusic: stopMusic, mood: mood,
+    play: play, startMusic: startMusic, stopMusic: stopMusic, mood: mood, ambient: ambient,
     setSound: setSound, setMusic: setMusic, setForced: setForced, adPause: adPause, adResume: adResume,
     unlocked: function () { return !!A.ctx && A.ctx.state === "running"; }
   };

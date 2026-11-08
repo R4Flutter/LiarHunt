@@ -477,7 +477,7 @@
     if (!t.ready(k, R.st).ok) return;
     var res = t.check(k, R.st);
     if (res.ok === true) solved(res);
-    else if (res.more) { api.Snd.play(res.stamp ? "stamp" : "correct"); render(false, res.scroll); }
+    else if (res.more) { api.Snd.play(res.stamp ? "stamp" : "pin"); render(false, res.scroll); }
     else mistake(res.msg, res.scroll);
   }
   function solved(res) {
@@ -488,7 +488,9 @@
     if (R.k === R.m.steps.length - 1) { finish(k.done); return; }
     R.phase = "solved";
     saveWip(R.k + 1);
-    api.Snd.play("correct");
+    // An accusation that lands is an arrest; any other step is a note in the file (and a photo if it found evidence).
+    if (k.type === "accuse") { api.Snd.play("stamp"); api.Snd.play("cuffs", { delay: 0.3 }); api.Snd.play("correct", { delay: 0.7 }); }
+    else { api.Snd.play("pen"); if (stepGains(k).length) api.Snd.play("camera", { delay: 0.35 }); }
     render(false, res && res.scroll);
     var d = document.querySelector(".bk-done");
     if (d) setTimeout(function () { d.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, 60);
@@ -769,7 +771,7 @@
     $("bk-body").addEventListener("click", onBody);
     $("bk-go").addEventListener("click", go);
     $("bk-hint").addEventListener("click", useHint);
-    $("bk-dossier").addEventListener("click", function () { api.Snd.play("click"); openDossier(); });
+    $("bk-dossier").addEventListener("click", function () { api.Snd.play("folder"); openDossier(); });
     $("dos-tabs").addEventListener("click", function (e) { var t = e.target.closest("[data-tab]"); if (t) { api.Snd.play("tap"); dosTab = t.dataset.tab; renderDossier(); } });
   }
 
