@@ -33,7 +33,7 @@ writeFileSync(join(out, "index.html"), html);
 // 2. files the game needs
 cpSync(join(root, "css"), join(out, "css"), { recursive: true });
 mkdirSync(join(out, "js"));
-for (const f of ["config.js", "cases.js", "seasons.js", "book1.js", "engine.js", "platform.js", "progress.js", "audio.js", "fx.js", "book.js", "storycheck.js", "game.js"]) {
+for (const f of ["config.js", "cases.js", "seasons.js", "book1.js", "engine.js", "platform.js", "progress.js", "audio.js", "fx.js", "book.js", "art.js", "storycheck.js", "game.js"]) {
   cpSync(join(root, "js", f), join(out, "js", f));
 }
 mkdirSync(join(out, "assets"));

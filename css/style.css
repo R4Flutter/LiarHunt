@@ -101,6 +101,34 @@
   color-scheme: dark;
 }
 
+/* ---------- scene art (js/art.js): its own light and dark palette, following the theme ---------- */
+:root { --sa-wall: #e8dfc6; --sa-wall2: #dfe8dc; --sa-floor: #c9b48a; --sa-floor2: #b9c2bb; --sa-wood: #8e6a45; --sa-wood2: #b98e5c; --sa-glass: #a9bcc4; --sa-cork: #c99e62; --sa-metal: #8b979a; --sa-metal2: #53636b; --sa-water: #5f8a99; --sa-night: #1d2b36; --sa-sky: #cfe0e6; --sa-sand: #e0cfa4; --sa-ice: #e3f0f3; --sa-fish: #9fb3bf; --sa-glow: #f6e7a6; --sa-fog: #ffffff; --sa-trim: #142029; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --sa-wall: #26332c; --sa-wall2: #1f2c26; --sa-floor: #3d3426; --sa-floor2: #2c3631; --sa-wood: #5b4430; --sa-wood2: #6e5638; --sa-glass: #2f4a52; --sa-cork: #6b5434; --sa-metal: #4c5a5e; --sa-metal2: #3a474b; --sa-water: #24414c; --sa-night: #0a1014; --sa-sky: #22343b; --sa-sand: #4a4030; --sa-ice: #34474d; --sa-fish: #6f8590; --sa-glow: #b49a3e; --sa-fog: #c9d3cf; --sa-trim: #070b0e; } }
+:root[data-theme="dark"], :root[data-skin="night"], :root[data-skin="blueprint"], :root[data-skin="neon"], :root[data-skin="gold"] { --sa-wall: #26332c; --sa-wall2: #1f2c26; --sa-floor: #3d3426; --sa-floor2: #2c3631; --sa-wood: #5b4430; --sa-wood2: #6e5638; --sa-glass: #2f4a52; --sa-cork: #6b5434; --sa-metal: #4c5a5e; --sa-metal2: #3a474b; --sa-water: #24414c; --sa-night: #0a1014; --sa-sky: #22343b; --sa-sand: #4a4030; --sa-ice: #34474d; --sa-fish: #6f8590; --sa-glow: #b49a3e; --sa-fog: #c9d3cf; --sa-trim: #070b0e; }
+:root[data-skin="precinct"], :root[data-skin="sepia"] { --sa-wall: #e8dfc6; --sa-wall2: #dfe8dc; --sa-floor: #c9b48a; --sa-floor2: #b9c2bb; --sa-wood: #8e6a45; --sa-wood2: #b98e5c; --sa-glass: #a9bcc4; --sa-cork: #c99e62; --sa-metal: #8b979a; --sa-metal2: #53636b; --sa-water: #5f8a99; --sa-night: #1d2b36; --sa-sky: #cfe0e6; --sa-sand: #e0cfa4; --sa-ice: #e3f0f3; --sa-fish: #9fb3bf; --sa-glow: #f6e7a6; --sa-fog: #ffffff; --sa-trim: #142029; }
+.scene-art { display: block; width: 100%; height: auto; }
+.scene-art .o { stroke: var(--ink); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
+.scene-art .l { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.scene-art .l.t { stroke-width: 1.2; opacity: 0.4; }
+.scene-art .l.w3 { stroke-width: 3; }
+.scene-art .l.chalk { stroke: var(--sa-fog); stroke-width: 1.6; opacity: 0.8; }
+.scene-art .l.frost { stroke: var(--sa-fog); stroke-width: 2; }
+.scene-art .l.rope { stroke: var(--needle); stroke-width: 4; }
+.scene-art .l.string { stroke: var(--needle); stroke-width: 1.5; }
+.scene-art .sa-wall { fill: var(--sa-wall); } .scene-art .sa-wall2 { fill: var(--sa-wall2); }
+.scene-art .sa-floor { fill: var(--sa-floor); } .scene-art .sa-floor2 { fill: var(--sa-floor2); }
+.scene-art .sa-wood { fill: var(--sa-wood); } .scene-art .sa-wood2 { fill: var(--sa-wood2); }
+.scene-art .sa-glass { fill: var(--sa-glass); } .scene-art .sa-cork { fill: var(--sa-cork); }
+.scene-art .sa-metal { fill: var(--sa-metal); } .scene-art .sa-metal2 { fill: var(--sa-metal2); }
+.scene-art .sa-water { fill: var(--sa-water); } .scene-art .sa-night { fill: var(--sa-night); }
+.scene-art .sa-sky { fill: var(--sa-sky); } .scene-art .sa-sand { fill: var(--sa-sand); }
+.scene-art .sa-ice { fill: var(--sa-ice); } .scene-art .sa-fish { fill: var(--sa-fish); }
+.scene-art .sa-glow { fill: var(--sa-glow); opacity: 0.55; } .scene-art .sa-fog { fill: var(--sa-fog); opacity: 0.72; }
+.scene-art .sa-trim { fill: var(--sa-trim); } .scene-art .sa-ink { fill: var(--ink); } .scene-art .sa-none { fill: none; }
+.scene-art .sa-paper { fill: var(--face); } .scene-art .sa-red { fill: var(--needle); }
+.scene-art .sa-green { fill: var(--ok); } .scene-art .sa-tag { fill: var(--tag); }
+.ic { display: inline-block; width: 1.25em; height: 1.25em; flex: none; vertical-align: -0.25em; }
+
 /* ---------- base ---------- */
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }

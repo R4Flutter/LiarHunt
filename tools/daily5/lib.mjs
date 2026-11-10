@@ -40,8 +40,11 @@ export function importDraft(story, id) {
    It lives in js/storycheck.js, which the game loads too: the desk and the players' "Write a case" check the same way. */
 const box = { window: {} };
 vm.createContext(box);
+// the art kit first: the checker reads its scene and icon ids
+if (existsSync(join(ROOT, "js", "art.js"))) vm.runInContext(readFileSync(join(ROOT, "js", "art.js"), "utf8"), box, { filename: "js/art.js" });
 vm.runInContext(readFileSync(join(ROOT, "js", "storycheck.js"), "utf8"), box, { filename: "js/storycheck.js" });
 const W = box.window.WLStory;
+export const art = box.window.WLArt;
 // copied out of the checker's sandbox, so callers get plain objects of this realm
 const plain = (x) => JSON.parse(JSON.stringify(x));
 export function check(story) { return plain(W.check(story)); }

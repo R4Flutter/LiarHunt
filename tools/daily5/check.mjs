@@ -3,7 +3,7 @@
 //   node tools/daily5/check.mjs --self-test            the Crown Job must pass, and broken copies of it must fail
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { check, split, ROOT, proofKey, importDraft } from "./lib.mjs";
+import { check, split, ROOT, proofKey, importDraft, art } from "./lib.mjs";
 
 const arg = process.argv[2];
 if (!arg) { console.log("Usage: node tools/daily5/check.mjs <story.json> | --self-test"); process.exit(2); }
@@ -67,6 +67,20 @@ const imp = importDraft(clone(), "imp-1");
 expect("an imported story that passes is ready", imp.meta.status === "ready" && imp.meta.source === "import" && imp.meta.for === "daily" && imp.meta.day === 0 && imp.story.title === good.title);
 const bad = importDraft(Object.assign(clone(), { cases: clone().cases.slice(0, 4) }), "imp-2"); // the fixture has 5 cases
 expect("an imported story that fails the check is marked failed, with the reasons", bad.meta.status === "failed" && bad.meta.report.errors.length > 0);
+
+// the art kit (js/art.js): the scenes and icons a v2 story may name
+if (!art) expect("the art kit loads", false, "js/art.js is missing or sets no WLArt");
+else {
+  expect("12 scenes", Object.keys(art.SCENES).length === 12, Object.keys(art.SCENES).join());
+  expect("every scene has 8-12 anchors inside the frame", Object.values(art.SCENES).every((s) => { const a = Object.values(s.anchors); return a.length >= 8 && a.length <= 12 && a.every(([x, y]) => x >= 4 && x <= 96 && y >= 4 && y <= 96); }));
+  const tight = []; Object.entries(art.SCENES).forEach(([id, s]) => { const a = Object.entries(s.anchors); a.forEach(([n1, p1], i) => a.slice(i + 1).forEach(([n2, p2]) => { if (Math.hypot(p1[0] - p2[0], p1[1] - p2[1]) < 8) tight.push(id + ": " + n1 + "/" + n2); })); });
+  expect("pins in a scene are at least 8% apart", !tight.length, tight.join(", "));
+  expect("every scene draws", Object.keys(art.SCENES).every((id) => art.scene(id).startsWith("<svg") && art.scene(id).includes('viewBox="0 0 320 210"')));
+  expect("scenes use no hard-coded colours", Object.keys(art.SCENES).every((id) => !/fill="#|stroke="#/.test(art.scene(id))));
+  expect("at least 30 icons, all draw", art.ICONS.length >= 30 && art.ICONS.every((i) => art.icon(i).includes("<svg")), art.ICONS.length + " icons");
+  expect("six lie kinds", Object.keys(art.LIES).join() === "time,place,travel,seen,holder,count");
+  expect("lie icons exist", Object.values(art.LIES).every((l) => art.ICONS.includes(l.icon)));
+}
 
 console.log(failed ? `\n${failed} check(s) failed.` : "\nAll Daily 5 checks passed.");
 process.exit(failed ? 1 : 0);

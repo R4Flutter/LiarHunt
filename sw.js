@@ -1,11 +1,11 @@
 /* LIARHUNT — service worker: lets the game play offline in the browser.
    Pages, scripts and styles: network first, so a new version shows up straight away.
    Fonts, sounds and images: cache first, they never change. Other sites are left alone. */
-var CACHE = "wl-v12";
+var CACHE = "wl-v13";
 var CORE = [
   "./", "index.html", "css/style.css",
   "js/config.js", "js/cases.js", "js/seasons.js", "js/book1.js", "js/engine.js", "js/ads.js", "js/leaderboard.js",
-  "js/platform.js", "js/progress.js", "js/audio.js", "js/fx.js", "js/book.js", "js/storycheck.js", "js/game.js",
+  "js/platform.js", "js/progress.js", "js/audio.js", "js/fx.js", "js/book.js", "js/art.js", "js/storycheck.js", "js/game.js",
   "assets/favicon.svg", "assets/icon-192.png",
   "assets/fonts/big-shoulders-display-latin-900-normal.woff2", "assets/fonts/atkinson-hyperlegible-latin-400-normal.woff2"
 ];
