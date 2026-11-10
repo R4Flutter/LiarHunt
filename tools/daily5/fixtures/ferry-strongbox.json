@@ -1,0 +1,2240 @@
+{
+  "v": 2,
+  "id": "ferry-strongbox",
+  "title": "The Ferry Strongbox",
+  "summary": "Harbor treasurer Nadia Voss planned it: relief captain Hugo Brandt emptied the ferry ticket money into fish crates and hid them in the cannery she leases.",
+  "setting": {
+    "place": "Port Ellery harbor",
+    "intro": "Monday night in Port Ellery. The day's ferry ticket money, $8,400, left the booth at 9 PM in a sealed strongbox. At 11:40 PM the night guard found that box empty on the harbor office desk."
+  },
+  "strikes": 2,
+  "travel": [
+    {
+      "a": "l2",
+      "b": "l4",
+      "mins": 15
+    }
+  ],
+  "people": [
+    {
+      "id": "p1",
+      "name": "Nadia Voss",
+      "role": "Harbor treasurer",
+      "face": "f05",
+      "background": "Runs the harbor's money. Calm, careful, never late.",
+      "part": "mastermind",
+      "motive": "Her storage company is drowning in debt.",
+      "secret": ""
+    },
+    {
+      "id": "p2",
+      "name": "Hugo Brandt",
+      "role": "Relief ferry captain",
+      "face": "f03",
+      "background": "Covers the night runs. Owes Nadia a favour.",
+      "part": "accomplice",
+      "motive": "Nadia promised him a share and a full-time boat.",
+      "secret": ""
+    },
+    {
+      "id": "p3",
+      "name": "Ivo Petrov",
+      "role": "Ticket clerk",
+      "face": "f08",
+      "background": "Sells the ferry tickets. Twenty-two and in love.",
+      "part": "innocent",
+      "motive": "",
+      "secret": "He left the booth early to meet someone at the café."
+    },
+    {
+      "id": "p4",
+      "name": "Lena Kerr",
+      "role": "Night guard",
+      "face": "f11",
+      "background": "Guards the harbor office at night. New in the job.",
+      "part": "innocent",
+      "motive": "",
+      "secret": "Nadia told her to lend Hugo the key and keep quiet, and she was scared for her job."
+    },
+    {
+      "id": "p5",
+      "name": "Sam Okoro",
+      "role": "Café cook",
+      "face": "f01",
+      "background": "Cooks at Sadie's Café. Remembers every order.",
+      "part": "innocent",
+      "motive": "",
+      "secret": ""
+    }
+  ],
+  "places": [
+    {
+      "id": "l1",
+      "name": "the ferry terminal"
+    },
+    {
+      "id": "l2",
+      "name": "the harbor office"
+    },
+    {
+      "id": "l3",
+      "name": "Sadie's Café"
+    },
+    {
+      "id": "l4",
+      "name": "the old cannery"
+    },
+    {
+      "id": "l5",
+      "name": "Pier 2"
+    },
+    {
+      "id": "l6",
+      "name": "the cannery cold room"
+    },
+    {
+      "id": "l7",
+      "name": "Nadia's flat"
+    }
+  ],
+  "items": [
+    {
+      "id": "i1",
+      "name": "the strongbox"
+    },
+    {
+      "id": "i2",
+      "name": "the strongbox key"
+    },
+    {
+      "id": "i3",
+      "name": "the booth window"
+    },
+    {
+      "id": "i4",
+      "name": "the ticket money"
+    },
+    {
+      "id": "i5",
+      "name": "two fish crates"
+    },
+    {
+      "id": "i6",
+      "name": "the walking-times card"
+    },
+    {
+      "id": "i8",
+      "name": "the cannery lease"
+    }
+  ],
+  "acts": [
+    {
+      "id": "a1",
+      "name": "emptied the strongbox"
+    }
+  ],
+  "truth": [
+    {
+      "slot": "at:i1",
+      "value": "l1",
+      "from": "18:00",
+      "to": "21:00"
+    },
+    {
+      "slot": "holder:i1",
+      "value": "p3",
+      "from": "18:00",
+      "to": "20:59"
+    },
+    {
+      "slot": "holder:i1",
+      "value": "p1",
+      "from": "21:00",
+      "to": "21:10"
+    },
+    {
+      "slot": "at:i1",
+      "value": "l2",
+      "from": "21:10",
+      "to": "23:59"
+    },
+    {
+      "slot": "state:i3",
+      "value": "fogged",
+      "from": "20:45",
+      "to": "22:00"
+    },
+    {
+      "slot": "at:p3",
+      "value": "l1",
+      "from": "18:00",
+      "to": "21:05"
+    },
+    {
+      "slot": "at:p3",
+      "value": "l3",
+      "from": "21:15",
+      "to": "22:00"
+    },
+    {
+      "slot": "at:p1",
+      "value": "l1",
+      "from": "20:55",
+      "to": "21:02"
+    },
+    {
+      "slot": "at:p1",
+      "value": "l2",
+      "from": "21:10",
+      "to": "21:40"
+    },
+    {
+      "slot": "at:p1",
+      "value": "l7",
+      "from": "22:00",
+      "to": "23:59"
+    },
+    {
+      "slot": "at:p4",
+      "value": "l2",
+      "from": "21:00",
+      "to": "23:59"
+    },
+    {
+      "slot": "holder:i2",
+      "value": "p4",
+      "from": "21:00",
+      "to": "21:44"
+    },
+    {
+      "slot": "holder:i2",
+      "value": "p2",
+      "from": "21:45",
+      "to": "21:52"
+    },
+    {
+      "slot": "holder:i2",
+      "value": "p4",
+      "from": "21:53",
+      "to": "23:59"
+    },
+    {
+      "slot": "state:i2",
+      "value": "out",
+      "from": "21:45",
+      "to": "21:52"
+    },
+    {
+      "slot": "at:p2",
+      "value": "l5",
+      "from": "20:40",
+      "to": "21:20"
+    },
+    {
+      "slot": "at:p2",
+      "value": "l3",
+      "from": "21:25",
+      "to": "21:40"
+    },
+    {
+      "slot": "at:p2",
+      "value": "l2",
+      "from": "21:45",
+      "to": "21:52"
+    },
+    {
+      "slot": "at:p2",
+      "value": "l4",
+      "from": "22:08",
+      "to": "22:50"
+    },
+    {
+      "slot": "state:i1",
+      "value": "full",
+      "from": "18:00",
+      "to": "21:49"
+    },
+    {
+      "slot": "state:i1",
+      "value": "empty",
+      "from": "21:50",
+      "to": "23:59"
+    },
+    {
+      "slot": "holder:i4",
+      "value": "i1",
+      "from": "18:00",
+      "to": "21:49"
+    },
+    {
+      "slot": "holder:i4",
+      "value": "i5",
+      "from": "21:50",
+      "to": "23:59"
+    },
+    {
+      "slot": "at:i5",
+      "value": "l2",
+      "from": "21:45",
+      "to": "21:52"
+    },
+    {
+      "slot": "at:i5",
+      "value": "l4",
+      "from": "22:08",
+      "to": "22:14"
+    },
+    {
+      "slot": "at:i5",
+      "value": "l6",
+      "from": "22:15",
+      "to": "23:59"
+    },
+    {
+      "slot": "at:p5",
+      "value": "l3",
+      "from": "18:00",
+      "to": "23:00"
+    },
+    {
+      "slot": "state:l4",
+      "value": "lit",
+      "from": "22:05",
+      "to": "22:50"
+    },
+    {
+      "slot": "at:i6",
+      "value": "l3",
+      "from": "18:00",
+      "to": "23:59"
+    },
+    {
+      "slot": "holder:i8",
+      "value": "p1",
+      "from": "18:00",
+      "to": "23:59"
+    },
+    {
+      "slot": "doer:a1",
+      "value": "p2",
+      "from": "21:50",
+      "to": "21:50"
+    }
+  ],
+  "cases": [
+    {
+      "n": 1,
+      "title": "The Fogged Booth",
+      "scene": "ferry",
+      "time": "23:50",
+      "mode": "liar",
+      "lie": "seen",
+      "intro": "Start where the money started. Ivo sold the tickets all day and closed the booth at nine. From his booth you can see Pier 2, where the night ferry ties up.",
+      "previously": "",
+      "ask": "Who is lying about the ticket booth?",
+      "suspects": [
+        "p3",
+        "p1",
+        "p2"
+      ],
+      "spots": [
+        {
+          "id": "x1",
+          "anchor": "booth",
+          "icon": "window",
+          "label": "Booth window",
+          "text": "The glass is misted on the inside. A fault card hangs on the heater.",
+          "finds": "e1"
+        },
+        {
+          "id": "x2",
+          "anchor": "bin",
+          "icon": "bin",
+          "label": "Bin",
+          "text": "Ticket rolls, and a café napkin with pencil on it.",
+          "finds": "e5"
+        },
+        {
+          "id": "x3",
+          "anchor": "departures",
+          "icon": "clock",
+          "label": "Departures board",
+          "text": "The Gull's last run docked at 8:40 PM.",
+          "finds": ""
+        },
+        {
+          "id": "x4",
+          "anchor": "lostproperty",
+          "icon": "crate",
+          "label": "Lost property box",
+          "text": "Umbrellas and one glove. Nothing that matters.",
+          "finds": ""
+        },
+        {
+          "id": "x5",
+          "anchor": "window",
+          "icon": "camera",
+          "label": "Pier camera screen",
+          "text": "The terminal shows the Pier 2 camera.",
+          "finds": "e3"
+        },
+        {
+          "id": "x6",
+          "anchor": "luggage",
+          "icon": "bag",
+          "label": "Red suitcase",
+          "text": "A passenger's case, tagged for the morning ferry.",
+          "finds": ""
+        },
+        {
+          "id": "x7",
+          "anchor": "gate",
+          "icon": "ticket",
+          "label": "Turnstile",
+          "text": "It counts every ticket that goes through.",
+          "finds": "e4"
+        },
+        {
+          "id": "x8",
+          "anchor": "bench",
+          "icon": "letter",
+          "label": "Clipboard on the bench",
+          "text": "The night handover slip, signed.",
+          "finds": "e2"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "e1",
+          "kind": "record",
+          "title": "Heater fault card",
+          "source": "Ticket booth",
+          "time": "20:40",
+          "text": "Heater fault at 8:40 PM. Without heat, the booth glass mists over within minutes.",
+          "shows": [
+            {
+              "slot": "state:i3",
+              "value": "fogged",
+              "from": "20:45",
+              "to": "22:00"
+            }
+          ]
+        },
+        {
+          "id": "e2",
+          "kind": "document",
+          "title": "Handover slip",
+          "source": "Ticket booth",
+          "time": "21:00",
+          "text": "Strongbox handed over at 9:00 PM, sealed. Received: N. Voss.",
+          "shows": [
+            {
+              "slot": "holder:i1",
+              "value": "p1",
+              "from": "21:00",
+              "to": "21:00"
+            }
+          ]
+        },
+        {
+          "id": "e3",
+          "kind": "cctv",
+          "title": "Pier 2 camera",
+          "source": "Pier 2",
+          "time": "21:20",
+          "text": "9:20 PM: Captain Hugo Brandt steps off the Gull onto Pier 2.",
+          "shows": [
+            {
+              "slot": "at:p2",
+              "value": "l5",
+              "from": "21:20",
+              "to": "21:20"
+            }
+          ]
+        },
+        {
+          "id": "e4",
+          "kind": "log",
+          "title": "Turnstile count",
+          "source": "Turnstile counter",
+          "time": "21:00",
+          "text": "210 passengers today at $40 a ticket. That is $8,400 in the box.",
+          "shows": [
+            {
+              "slot": "state:i1",
+              "value": "full",
+              "from": "21:00",
+              "to": "21:00"
+            }
+          ]
+        },
+        {
+          "id": "e5",
+          "kind": "object",
+          "title": "Café napkin",
+          "source": "Booth bin",
+          "time": "",
+          "text": "A Sadie's Café napkin. In pencil: 'see you at 9:15'.",
+          "shows": [
+            {
+              "slot": "at:p3",
+              "value": "l3",
+              "from": "21:15",
+              "to": "21:15"
+            }
+          ]
+        }
+      ],
+      "questions": [
+        {
+          "id": "k1",
+          "by": "p3",
+          "ask": "When did you close the booth?",
+          "needs": [],
+          "says": "s1"
+        },
+        {
+          "id": "k2",
+          "by": "p3",
+          "ask": "Did you see the captain come off the boat?",
+          "needs": [
+            "e3"
+          ],
+          "says": "s2"
+        },
+        {
+          "id": "k3",
+          "by": "p3",
+          "ask": "Who came to the booth tonight?",
+          "needs": [],
+          "says": "s3"
+        },
+        {
+          "id": "k4",
+          "by": "p1",
+          "ask": "Did you collect the strongbox?",
+          "needs": [],
+          "says": "s4"
+        },
+        {
+          "id": "k5",
+          "by": "p1",
+          "ask": "Was the money all there?",
+          "needs": [],
+          "says": "s5"
+        },
+        {
+          "id": "k6",
+          "by": "p1",
+          "ask": "Who was Ivo meeting at 9:15?",
+          "needs": [
+            "e5"
+          ],
+          "says": "s6"
+        },
+        {
+          "id": "k7",
+          "by": "p2",
+          "ask": "Where were you at nine?",
+          "needs": [],
+          "says": "s7"
+        },
+        {
+          "id": "k8",
+          "by": "p2",
+          "ask": "When did you leave the boat?",
+          "needs": [
+            "e3"
+          ],
+          "says": "s8"
+        }
+      ],
+      "presses": [
+        {
+          "by": "p2",
+          "shown": "e1",
+          "says": "s9"
+        },
+        {
+          "by": "p1",
+          "shown": "e2",
+          "says": "s10"
+        }
+      ],
+      "statements": [
+        {
+          "id": "s1",
+          "by": "p3",
+          "text": "At nine. I handed the strongbox to Ms Voss myself.",
+          "claims": [
+            {
+              "slot": "holder:i1",
+              "value": "p1",
+              "from": "21:00",
+              "to": "21:00"
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "by": "p3",
+          "text": "I watched the pier through the booth glass until half past nine. It was clear, and the pier was quiet.",
+          "claims": [
+            {
+              "slot": "state:i3",
+              "value": "clear",
+              "from": "21:00",
+              "to": "21:30"
+            }
+          ]
+        },
+        {
+          "id": "s3",
+          "by": "p3",
+          "text": "Only Ms Voss, for the box. Then the Gull came in, that's all.",
+          "claims": [
+            {
+              "slot": "at:p1",
+              "value": "l1",
+              "from": "21:00",
+              "to": "21:00"
+            }
+          ]
+        },
+        {
+          "id": "s4",
+          "by": "p1",
+          "text": "Yes. I signed for it at nine and carried it off myself.",
+          "claims": [
+            {
+              "slot": "holder:i1",
+              "value": "p1",
+              "from": "21:00",
+              "to": "21:05"
+            }
+          ]
+        },
+        {
+          "id": "s5",
+          "by": "p1",
+          "text": "Ivo said 210 tickets. I didn't open it. It was sealed.",
+          "claims": [
+            {
+              "slot": "state:i1",
+              "value": "full",
+              "from": "21:00",
+              "to": "21:00"
+            }
+          ]
+        },
+        {
+          "id": "s6",
+          "by": "p1",
+          "text": "Ivo? He is sweet on someone at Sadie's. Ask Sam.",
+          "claims": [
+            {
+              "slot": "at:p3",
+              "value": "l3",
+              "from": "21:15",
+              "to": "21:15"
+            }
+          ]
+        },
+        {
+          "id": "s7",
+          "by": "p2",
+          "text": "On the Gull at Pier 2, tying up and writing the log.",
+          "claims": [
+            {
+              "slot": "at:p2",
+              "value": "l5",
+              "from": "20:40",
+              "to": "21:15"
+            }
+          ]
+        },
+        {
+          "id": "s8",
+          "by": "p2",
+          "text": "About twenty past nine. Then I went for tea.",
+          "claims": [
+            {
+              "slot": "at:p2",
+              "value": "l5",
+              "from": "21:20",
+              "to": "21:20"
+            }
+          ]
+        },
+        {
+          "id": "s9",
+          "by": "p2",
+          "text": "The heater broke again? Then that glass goes white. Ivo saw nothing.",
+          "claims": [
+            {
+              "slot": "state:i3",
+              "value": "fogged",
+              "from": "21:00",
+              "to": "21:00"
+            }
+          ]
+        },
+        {
+          "id": "s10",
+          "by": "p1",
+          "text": "That's my signature. Nine exactly. The seal was whole.",
+          "claims": [
+            {
+              "slot": "holder:i1",
+              "value": "p1",
+              "from": "21:00",
+              "to": "21:00"
+            }
+          ]
+        }
+      ],
+      "uses": [],
+      "answer": "s2",
+      "why": "Ivo says he watched the pier through clear glass until 9:30. But the booth heater failed at 8:40 PM, and the glass was misted from 8:45. He couldn't see the pier at all.",
+      "finding": {
+        "id": "f1",
+        "text": "From 8:45 PM the booth glass was fogged, so nobody watched Pier 2. At 9:00 PM Ivo handed the sealed strongbox to Nadia Voss, and she held it until 9:10.",
+        "facts": [
+          {
+            "slot": "state:i3",
+            "value": "fogged",
+            "from": "20:45",
+            "to": "22:00"
+          },
+          {
+            "slot": "holder:i1",
+            "value": "p1",
+            "from": "21:00",
+            "to": "21:10"
+          }
+        ]
+      },
+      "timeline": [
+        {
+          "at": "20:45",
+          "text": "The booth glass fogs over"
+        },
+        {
+          "at": "21:00",
+          "text": "Ivo hands the strongbox to Nadia"
+        }
+      ]
+    },
+    {
+      "n": 2,
+      "title": "The Office Door",
+      "scene": "office",
+      "time": "23:45",
+      "mode": "liar",
+      "lie": "place",
+      "intro": "The strongbox spent the night in the harbor office. Lena guarded the front desk from nine. The door camera caught a hooded figure, and the visitor book has one late name.",
+      "previously": "Nobody was watching the pier. Nadia took the box at nine.",
+      "ask": "Who is lying about the harbor office?",
+      "suspects": [
+        "p4",
+        "p1",
+        "p2",
+        "p3"
+      ],
+      "spots": [
+        {
+          "id": "x9",
+          "anchor": "window",
+          "icon": "window",
+          "label": "Office window",
+          "text": "Fogged too. You can't see the pier from here.",
+          "finds": ""
+        },
+        {
+          "id": "x10",
+          "anchor": "clock",
+          "icon": "clock",
+          "label": "Wall clock",
+          "text": "It runs two minutes fast. Nothing else.",
+          "finds": ""
+        },
+        {
+          "id": "x11",
+          "anchor": "board",
+          "icon": "photo",
+          "label": "Notice board",
+          "text": "A still from the door camera, pinned up by the guard.",
+          "finds": "e6"
+        },
+        {
+          "id": "x12",
+          "anchor": "logbook",
+          "icon": "logbook",
+          "label": "Visitor book",
+          "text": "Open on the desk at tonight's page.",
+          "finds": "e8"
+        },
+        {
+          "id": "x13",
+          "anchor": "drawer",
+          "icon": "key",
+          "label": "Key drawer",
+          "text": "The key log lies on top.",
+          "finds": "e7"
+        },
+        {
+          "id": "x14",
+          "anchor": "coat",
+          "icon": "coat",
+          "label": "Coat rack",
+          "text": "A wet oilskin drips onto the floor.",
+          "finds": "e9"
+        },
+        {
+          "id": "x15",
+          "anchor": "mug",
+          "icon": "cup",
+          "label": "Two mugs",
+          "text": "Both cold. Both empty.",
+          "finds": ""
+        },
+        {
+          "id": "x16",
+          "anchor": "lamp",
+          "icon": "safe",
+          "label": "The strongbox",
+          "text": "Found on the desk under the lamp at 11:40 PM.",
+          "finds": "e10"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "e6",
+          "kind": "cctv",
+          "title": "Office door camera",
+          "source": "Harbor office",
+          "time": "21:10",
+          "text": "9:10 PM: someone carries the strongbox through the door. A hood hides the face.",
+          "shows": [
+            {
+              "slot": "at:i1",
+              "value": "l2",
+              "from": "21:10",
+              "to": "21:10"
+            }
+          ]
+        },
+        {
+          "id": "e7",
+          "kind": "log",
+          "title": "Key log",
+          "source": "Key drawer",
+          "time": "21:45",
+          "text": "Strongbox key out at 9:45 PM, back at 9:53 PM. The initials are smudged.",
+          "shows": [
+            {
+              "slot": "state:i2",
+              "value": "out",
+              "from": "21:45",
+              "to": "21:52"
+            }
+          ]
+        },
+        {
+          "id": "e8",
+          "kind": "document",
+          "title": "Visitor book",
+          "source": "Front desk",
+          "time": "21:45",
+          "text": "9:45 PM: 'H. Brandt, purser's papers.' Let in by L. Kerr.",
+          "shows": [
+            {
+              "slot": "at:p2",
+              "value": "l2",
+              "from": "21:45",
+              "to": "21:45"
+            }
+          ]
+        },
+        {
+          "id": "e9",
+          "kind": "object",
+          "title": "Wet bootprints",
+          "source": "Back door",
+          "time": "21:50",
+          "text": "Wet bootprints and fish scales lead out of the back door.",
+          "shows": [
+            {
+              "slot": "at:i5",
+              "value": "l2",
+              "from": "21:50",
+              "to": "21:50"
+            }
+          ]
+        },
+        {
+          "id": "e10",
+          "kind": "record",
+          "title": "Strongbox seal",
+          "source": "Office desk",
+          "time": "23:40",
+          "text": "The wax seal is broken. Inside there is nothing but a spare ticket roll.",
+          "shows": [
+            {
+              "slot": "state:i1",
+              "value": "empty",
+              "from": "23:40",
+              "to": "23:40"
+            }
+          ]
+        }
+      ],
+      "questions": [
+        {
+          "id": "k9",
+          "by": "p4",
+          "ask": "Were you here all evening?",
+          "needs": [],
+          "says": "s11"
+        },
+        {
+          "id": "k10",
+          "by": "p4",
+          "ask": "Who carried the strongbox in at 9:10?",
+          "needs": [
+            "e6"
+          ],
+          "says": "s12"
+        },
+        {
+          "id": "k11",
+          "by": "p4",
+          "ask": "Who took the key out at 9:45?",
+          "needs": [
+            "e7"
+          ],
+          "says": "s13"
+        },
+        {
+          "id": "k12",
+          "by": "p1",
+          "ask": "What did you do with the box?",
+          "needs": [],
+          "says": "s14"
+        },
+        {
+          "id": "k13",
+          "by": "p1",
+          "ask": "When did you go home?",
+          "needs": [],
+          "says": "s15"
+        },
+        {
+          "id": "k14",
+          "by": "p2",
+          "ask": "Why did you sign in at 9:45?",
+          "needs": [
+            "e8"
+          ],
+          "says": "s16"
+        },
+        {
+          "id": "k15",
+          "by": "p2",
+          "ask": "How did you leave?",
+          "needs": [],
+          "says": "s17"
+        },
+        {
+          "id": "k16",
+          "by": "p3",
+          "ask": "Where were you after nine?",
+          "needs": [],
+          "says": "s18"
+        },
+        {
+          "id": "k17",
+          "by": "p3",
+          "ask": "Did you see anyone on the way?",
+          "needs": [],
+          "says": "s19"
+        }
+      ],
+      "presses": [
+        {
+          "by": "p1",
+          "shown": "e9",
+          "says": "s20"
+        },
+        {
+          "by": "p2",
+          "shown": "e7",
+          "says": "s21"
+        }
+      ],
+      "statements": [
+        {
+          "id": "s11",
+          "by": "p4",
+          "text": "From nine until I found it empty. At the front desk the whole time.",
+          "claims": [
+            {
+              "slot": "at:p4",
+              "value": "l2",
+              "from": "21:00",
+              "to": "23:40"
+            }
+          ]
+        },
+        {
+          "id": "s12",
+          "by": "p4",
+          "text": "Not Ms Voss. She never came back into the office after nine.",
+          "claims": [
+            {
+              "slot": "at:p1",
+              "value": "l2",
+              "from": "21:00",
+              "to": "23:30",
+              "not": true
+            }
+          ]
+        },
+        {
+          "id": "s13",
+          "by": "p4",
+          "text": "The captain needed the purser's papers. I lent him the key for a few minutes.",
+          "claims": [
+            {
+              "slot": "holder:i2",
+              "value": "p2",
+              "from": "21:45",
+              "to": "21:52"
+            }
+          ]
+        },
+        {
+          "id": "s14",
+          "by": "p1",
+          "text": "It went into the harbor office, as it does every night.",
+          "claims": [
+            {
+              "slot": "at:i1",
+              "value": "l2",
+              "from": "21:10",
+              "to": "21:10"
+            }
+          ]
+        },
+        {
+          "id": "s15",
+          "by": "p1",
+          "text": "By ten I was home, and in bed by eleven.",
+          "claims": [
+            {
+              "slot": "at:p1",
+              "value": "l7",
+              "from": "22:00",
+              "to": "23:00"
+            }
+          ]
+        },
+        {
+          "id": "s16",
+          "by": "p2",
+          "text": "The purser's papers. I was in and out in five minutes.",
+          "claims": [
+            {
+              "slot": "at:p2",
+              "value": "l2",
+              "from": "21:45",
+              "to": "21:50"
+            }
+          ]
+        },
+        {
+          "id": "s17",
+          "by": "p2",
+          "text": "Out the back. It's quicker to the road.",
+          "claims": [
+            {
+              "slot": "at:p2",
+              "value": "l2",
+              "from": "21:52",
+              "to": "21:52"
+            }
+          ]
+        },
+        {
+          "id": "s18",
+          "by": "p3",
+          "text": "At Sadie's Café with a friend. Ask Sam.",
+          "claims": [
+            {
+              "slot": "at:p3",
+              "value": "l3",
+              "from": "21:15",
+              "to": "22:00"
+            }
+          ]
+        },
+        {
+          "id": "s19",
+          "by": "p3",
+          "text": "I left the booth just after nine. Rain and fog, so I kept my head down.",
+          "claims": [
+            {
+              "slot": "at:p3",
+              "value": "l1",
+              "from": "21:00",
+              "to": "21:05"
+            }
+          ]
+        },
+        {
+          "id": "s20",
+          "by": "p1",
+          "text": "Fish scales? The captain tracks them everywhere. Not me.",
+          "claims": [
+            {
+              "slot": "at:p2",
+              "value": "l2",
+              "from": "21:45",
+              "to": "21:45"
+            }
+          ]
+        },
+        {
+          "id": "s21",
+          "by": "p2",
+          "text": "Lena gave me the key for the papers drawer. I gave it straight back.",
+          "claims": [
+            {
+              "slot": "holder:i2",
+              "value": "p2",
+              "from": "21:45",
+              "to": "21:52"
+            }
+          ]
+        }
+      ],
+      "uses": [
+        "f1"
+      ],
+      "answer": "s12",
+      "why": "Lena says Nadia never came back into the office after nine. But Nadia held the strongbox from 9:00 to 9:10, and the camera shows the box going through the office door at 9:10. Nadia carried it in herself.",
+      "finding": {
+        "id": "f2",
+        "text": "Nadia carried the strongbox into the harbor office at 9:10 PM and stayed until 9:40. At 9:45 Lena let Hugo in with the key, and he was inside until 9:52.",
+        "facts": [
+          {
+            "slot": "at:p1",
+            "value": "l2",
+            "from": "21:10",
+            "to": "21:40"
+          },
+          {
+            "slot": "at:p2",
+            "value": "l2",
+            "from": "21:45",
+            "to": "21:52"
+          }
+        ]
+      },
+      "timeline": [
+        {
+          "at": "21:10",
+          "text": "Nadia brings the box into the office"
+        },
+        {
+          "at": "21:45",
+          "text": "Hugo signs in and gets the key"
+        },
+        {
+          "at": "21:52",
+          "text": "Hugo leaves by the back door"
+        }
+      ]
+    },
+    {
+      "n": 3,
+      "title": "Two Teas at Sadie's",
+      "scene": "cafe",
+      "time": "23:55",
+      "mode": "liar",
+      "lie": "travel",
+      "intro": "Sadie's Café sits between the pier and the office. Sam keeps a pad of every order, and the regulars notice who comes and goes.",
+      "previously": "Nadia carried the box in herself. Hugo had the key from 9:45 to 9:52.",
+      "ask": "Who is lying about where they were?",
+      "suspects": [
+        "p2",
+        "p5",
+        "p3",
+        "p1"
+      ],
+      "spots": [
+        {
+          "id": "x17",
+          "anchor": "till",
+          "icon": "receipt",
+          "label": "Till",
+          "text": "Tonight's till roll is still in it.",
+          "finds": "e11"
+        },
+        {
+          "id": "x18",
+          "anchor": "counter",
+          "icon": "logbook",
+          "label": "Order pad",
+          "text": "Sam writes the time on every order.",
+          "finds": "e12"
+        },
+        {
+          "id": "x19",
+          "anchor": "menu",
+          "icon": "map",
+          "label": "Menu board",
+          "text": "A card for tourists is tucked into the frame.",
+          "finds": "e13"
+        },
+        {
+          "id": "x20",
+          "anchor": "door",
+          "icon": "door",
+          "label": "Back door",
+          "text": "A torn label lies on the step.",
+          "finds": "e14"
+        },
+        {
+          "id": "x21",
+          "anchor": "window",
+          "icon": "photo",
+          "label": "Window seat",
+          "text": "A regular took a photo across the bay.",
+          "finds": "e15"
+        },
+        {
+          "id": "x22",
+          "anchor": "cups",
+          "icon": "cup",
+          "label": "Two cups",
+          "text": "Cold tea, two cups, one table.",
+          "finds": ""
+        },
+        {
+          "id": "x23",
+          "anchor": "jars",
+          "icon": "bottle",
+          "label": "Jars",
+          "text": "Sugar and spoons.",
+          "finds": ""
+        },
+        {
+          "id": "x24",
+          "anchor": "bin",
+          "icon": "bin",
+          "label": "Bin",
+          "text": "Napkins and crusts.",
+          "finds": ""
+        }
+      ],
+      "evidence": [
+        {
+          "id": "e11",
+          "kind": "record",
+          "title": "Till receipt",
+          "source": "Sadie's Café till",
+          "time": "21:38",
+          "text": "9:38 PM: two teas and a fish pie, paid by card. Cardholder: H. Brandt.",
+          "shows": [
+            {
+              "slot": "at:p2",
+              "value": "l3",
+              "from": "21:38",
+              "to": "21:38"
+            }
+          ]
+        },
+        {
+          "id": "e12",
+          "kind": "witness",
+          "title": "Sam's order pad",
+          "source": "Café kitchen",
+          "time": "21:15",
+          "text": "Ivo came in at 9:15 and sat by the window until ten.",
+          "shows": [
+            {
+              "slot": "at:p3",
+              "value": "l3",
+              "from": "21:15",
+              "to": "22:00"
+            }
+          ]
+        },
+        {
+          "id": "e13",
+          "kind": "document",
+          "title": "Walking-times card",
+          "source": "Café menu board",
+          "time": "",
+          "text": "For visitors: harbor office to the old cannery, 15 minutes on foot.",
+          "shows": [
+            {
+              "slot": "at:i6",
+              "value": "l3",
+              "from": "21:00",
+              "to": "21:00"
+            }
+          ]
+        },
+        {
+          "id": "e14",
+          "kind": "object",
+          "title": "Torn crate label",
+          "source": "Café back step",
+          "time": "22:10",
+          "text": "A Gull fish-crate label, torn off: 'cannery cold room'.",
+          "shows": [
+            {
+              "slot": "at:i5",
+              "value": "l4",
+              "from": "22:10",
+              "to": "22:10"
+            }
+          ]
+        },
+        {
+          "id": "e15",
+          "kind": "photo",
+          "title": "Photo across the bay",
+          "source": "A regular's phone",
+          "time": "22:20",
+          "text": "10:20 PM: the old cannery's lights are on across the bay.",
+          "shows": [
+            {
+              "slot": "state:l4",
+              "value": "lit",
+              "from": "22:20",
+              "to": "22:20"
+            }
+          ]
+        }
+      ],
+      "questions": [
+        {
+          "id": "k18",
+          "by": "p2",
+          "ask": "What did you order here?",
+          "needs": [],
+          "says": "s22"
+        },
+        {
+          "id": "k19",
+          "by": "p2",
+          "ask": "What were you doing at the cannery?",
+          "needs": [
+            "e14"
+          ],
+          "says": "s23"
+        },
+        {
+          "id": "k20",
+          "by": "p2",
+          "ask": "Who was the second tea for?",
+          "needs": [],
+          "says": "s24"
+        },
+        {
+          "id": "k21",
+          "by": "p5",
+          "ask": "Who came in tonight?",
+          "needs": [],
+          "says": "s25"
+        },
+        {
+          "id": "k22",
+          "by": "p5",
+          "ask": "When did the captain leave?",
+          "needs": [],
+          "says": "s26"
+        },
+        {
+          "id": "k23",
+          "by": "p5",
+          "ask": "Did you see the cannery lights?",
+          "needs": [
+            "e15"
+          ],
+          "says": "s27"
+        },
+        {
+          "id": "k24",
+          "by": "p3",
+          "ask": "How long did you stay?",
+          "needs": [],
+          "says": "s28"
+        },
+        {
+          "id": "k25",
+          "by": "p3",
+          "ask": "Did you see the captain?",
+          "needs": [],
+          "says": "s29"
+        },
+        {
+          "id": "k26",
+          "by": "p1",
+          "ask": "Where were you at ten?",
+          "needs": [],
+          "says": "s30"
+        },
+        {
+          "id": "k27",
+          "by": "p1",
+          "ask": "Did Hugo call you tonight?",
+          "needs": [],
+          "says": "s31"
+        }
+      ],
+      "presses": [
+        {
+          "by": "p5",
+          "shown": "e11",
+          "says": "s32"
+        },
+        {
+          "by": "p2",
+          "shown": "f2",
+          "says": "s33"
+        }
+      ],
+      "statements": [
+        {
+          "id": "s22",
+          "by": "p2",
+          "text": "Two teas and a pie. I was starving after the run.",
+          "claims": [
+            {
+              "slot": "at:p2",
+              "value": "l3",
+              "from": "21:30",
+              "to": "21:30"
+            }
+          ]
+        },
+        {
+          "id": "s23",
+          "by": "p2",
+          "text": "Checking the ice for the morning fish. I got there at two minutes to ten and stayed until twenty to eleven.",
+          "claims": [
+            {
+              "slot": "at:p2",
+              "value": "l4",
+              "from": "21:58",
+              "to": "22:40"
+            }
+          ]
+        },
+        {
+          "id": "s24",
+          "by": "p2",
+          "text": "For Sam. He never drinks it.",
+          "claims": [
+            {
+              "slot": "at:p5",
+              "value": "l3",
+              "from": "21:30",
+              "to": "21:30"
+            }
+          ]
+        },
+        {
+          "id": "s25",
+          "by": "p5",
+          "text": "Ivo at a quarter past nine. The captain about half past.",
+          "claims": [
+            {
+              "slot": "at:p3",
+              "value": "l3",
+              "from": "21:15",
+              "to": "21:15"
+            },
+            {
+              "slot": "at:p2",
+              "value": "l3",
+              "from": "21:30",
+              "to": "21:30"
+            }
+          ]
+        },
+        {
+          "id": "s26",
+          "by": "p5",
+          "text": "At twenty to ten. He took a pie with him.",
+          "claims": [
+            {
+              "slot": "at:p2",
+              "value": "l3",
+              "from": "21:40",
+              "to": "21:40"
+            }
+          ]
+        },
+        {
+          "id": "s27",
+          "by": "p5",
+          "text": "From ten past ten or so. Nobody works there at night.",
+          "claims": [
+            {
+              "slot": "state:l4",
+              "value": "lit",
+              "from": "22:10",
+              "to": "22:20"
+            }
+          ]
+        },
+        {
+          "id": "s28",
+          "by": "p3",
+          "text": "Until ten. Then I walked home.",
+          "claims": [
+            {
+              "slot": "at:p3",
+              "value": "l3",
+              "from": "21:15",
+              "to": "22:00"
+            }
+          ]
+        },
+        {
+          "id": "s29",
+          "by": "p3",
+          "text": "He sat at the counter, then left in a hurry.",
+          "claims": [
+            {
+              "slot": "at:p2",
+              "value": "l3",
+              "from": "21:35",
+              "to": "21:35"
+            }
+          ]
+        },
+        {
+          "id": "s30",
+          "by": "p1",
+          "text": "At home. I'd had a long day.",
+          "claims": [
+            {
+              "slot": "at:p1",
+              "value": "l7",
+              "from": "22:00",
+              "to": "22:00"
+            }
+          ]
+        },
+        {
+          "id": "s31",
+          "by": "p1",
+          "text": "No. I was home from ten with my phone off.",
+          "claims": [
+            {
+              "slot": "at:p1",
+              "value": "l7",
+              "from": "22:00",
+              "to": "23:00"
+            }
+          ]
+        },
+        {
+          "id": "s32",
+          "by": "p5",
+          "text": "That's his card. He always pays with that one.",
+          "claims": [
+            {
+              "slot": "at:p2",
+              "value": "l3",
+              "from": "21:38",
+              "to": "21:38"
+            }
+          ]
+        },
+        {
+          "id": "s33",
+          "by": "p2",
+          "text": "All right, I went to the office for the papers first. Then the cannery.",
+          "claims": [
+            {
+              "slot": "at:p2",
+              "value": "l2",
+              "from": "21:45",
+              "to": "21:52"
+            }
+          ]
+        }
+      ],
+      "uses": [
+        "f2"
+      ],
+      "answer": "s23",
+      "why": "Hugo says he reached the cannery at 9:58. But he was in the harbor office until 9:52, and that walk takes 15 minutes. He can't have been there before 10:07.",
+      "finding": {
+        "id": "f3",
+        "text": "The strongbox was emptied at 9:50 PM while Hugo had the key. He carried two fish crates out of the back door and reached the cannery at 10:08.",
+        "facts": [
+          {
+            "slot": "state:i1",
+            "value": "empty",
+            "from": "21:50",
+            "to": "23:59"
+          },
+          {
+            "slot": "holder:i4",
+            "value": "i5",
+            "from": "21:50",
+            "to": "23:59"
+          },
+          {
+            "slot": "at:p2",
+            "value": "l4",
+            "from": "22:08",
+            "to": "22:50"
+          }
+        ]
+      },
+      "timeline": [
+        {
+          "at": "21:50",
+          "text": "The strongbox is emptied into two fish crates"
+        },
+        {
+          "at": "22:08",
+          "text": "Hugo reaches the cannery"
+        }
+      ]
+    },
+    {
+      "n": 4,
+      "title": "The Cold Room",
+      "scene": "cannery",
+      "time": "00:10",
+      "mode": "liar",
+      "lie": "count",
+      "intro": "The old cannery has been shut for years, yet its lights were on tonight. The torn label pointed to its cold room.",
+      "previously": "Hugo carried two fish crates to the cannery.",
+      "ask": "Who is lying about the money?",
+      "suspects": [
+        "p1",
+        "p2",
+        "p4",
+        "p3"
+      ],
+      "spots": [
+        {
+          "id": "x25",
+          "anchor": "coldroom",
+          "icon": "crate",
+          "label": "Cold room",
+          "text": "Ice to the ceiling, and something square under it.",
+          "finds": "e16"
+        },
+        {
+          "id": "x26",
+          "anchor": "clipboard",
+          "icon": "logbook",
+          "label": "Clipboard",
+          "text": "Tonight's ice order.",
+          "finds": "e19"
+        },
+        {
+          "id": "x27",
+          "anchor": "trolley",
+          "icon": "tool",
+          "label": "Trolley",
+          "text": "Its wheels are still wet.",
+          "finds": "e20"
+        },
+        {
+          "id": "x28",
+          "anchor": "clockin",
+          "icon": "phone",
+          "label": "Fax machine",
+          "text": "A fax from the phone company: tonight's calls.",
+          "finds": "e17"
+        },
+        {
+          "id": "x29",
+          "anchor": "shelf",
+          "icon": "letter",
+          "label": "Foreman's shelf",
+          "text": "A lease in a plastic sleeve.",
+          "finds": "e18"
+        },
+        {
+          "id": "x30",
+          "anchor": "crates",
+          "icon": "crate",
+          "label": "Old crates",
+          "text": "Dusty. Nobody has moved these in years.",
+          "finds": ""
+        },
+        {
+          "id": "x31",
+          "anchor": "hooks",
+          "icon": "rope",
+          "label": "Hooks",
+          "text": "Rusty hooks. Nothing here.",
+          "finds": ""
+        },
+        {
+          "id": "x32",
+          "anchor": "drain",
+          "icon": "bin",
+          "label": "Floor drain",
+          "text": "Melted ice running away.",
+          "finds": ""
+        }
+      ],
+      "evidence": [
+        {
+          "id": "e16",
+          "kind": "object",
+          "title": "Two fish crates",
+          "source": "Cannery cold room",
+          "time": "23:50",
+          "text": "Under the ice: two Gull fish crates packed with banded notes.",
+          "shows": [
+            {
+              "slot": "holder:i4",
+              "value": "i5",
+              "from": "23:50",
+              "to": "23:50"
+            },
+            {
+              "slot": "at:i5",
+              "value": "l6",
+              "from": "23:50",
+              "to": "23:50"
+            }
+          ]
+        },
+        {
+          "id": "e17",
+          "kind": "phone",
+          "title": "Call record",
+          "source": "Phone company",
+          "time": "22:31",
+          "text": "10:31 PM: Nadia Voss's phone calls Hugo Brandt for four minutes. Her phone was at home.",
+          "shows": [
+            {
+              "slot": "at:p1",
+              "value": "l7",
+              "from": "22:31",
+              "to": "22:31"
+            }
+          ]
+        },
+        {
+          "id": "e18",
+          "kind": "document",
+          "title": "Cannery lease",
+          "source": "Foreman's shelf",
+          "time": "",
+          "text": "The old cannery is leased to Voss Storage Ltd, director N. Voss.",
+          "shows": [
+            {
+              "slot": "holder:i8",
+              "value": "p1",
+              "from": "20:00",
+              "to": "23:59"
+            }
+          ]
+        },
+        {
+          "id": "e19",
+          "kind": "record",
+          "title": "Ice order",
+          "source": "Cannery clipboard",
+          "time": "22:20",
+          "text": "Ice delivered at 10:20 PM. Signed: H. Brandt.",
+          "shows": [
+            {
+              "slot": "at:p2",
+              "value": "l4",
+              "from": "22:20",
+              "to": "22:20"
+            }
+          ]
+        },
+        {
+          "id": "e20",
+          "kind": "photo",
+          "title": "Trolley tracks",
+          "source": "Cannery floor",
+          "time": "22:15",
+          "text": "Wet trolley tracks run from the loading door to the cold room.",
+          "shows": [
+            {
+              "slot": "at:i5",
+              "value": "l6",
+              "from": "22:15",
+              "to": "22:15"
+            }
+          ]
+        }
+      ],
+      "questions": [
+        {
+          "id": "k28",
+          "by": "p1",
+          "ask": "Why does your company lease this cannery?",
+          "needs": [
+            "e18"
+          ],
+          "says": "s34"
+        },
+        {
+          "id": "k29",
+          "by": "p1",
+          "ask": "Why did you call Hugo at 10:31?",
+          "needs": [
+            "e17"
+          ],
+          "says": "s35"
+        },
+        {
+          "id": "k30",
+          "by": "p1",
+          "ask": "Where were you at half past ten?",
+          "needs": [],
+          "says": "s36"
+        },
+        {
+          "id": "k31",
+          "by": "p2",
+          "ask": "What's in the cold room?",
+          "needs": [],
+          "says": "s37"
+        },
+        {
+          "id": "k32",
+          "by": "p2",
+          "ask": "When did the ice come?",
+          "needs": [
+            "e19"
+          ],
+          "says": "s38"
+        },
+        {
+          "id": "k33",
+          "by": "p4",
+          "ask": "Did you count the money tonight?",
+          "needs": [],
+          "says": "s39"
+        },
+        {
+          "id": "k34",
+          "by": "p4",
+          "ask": "Did Ms Voss phone you?",
+          "needs": [],
+          "says": "s40"
+        },
+        {
+          "id": "k35",
+          "by": "p3",
+          "ask": "Have you been here before?",
+          "needs": [],
+          "says": "s41"
+        },
+        {
+          "id": "k36",
+          "by": "p3",
+          "ask": "Who works here at night?",
+          "needs": [],
+          "says": "s42"
+        }
+      ],
+      "presses": [
+        {
+          "by": "p4",
+          "shown": "e17",
+          "says": "s43"
+        },
+        {
+          "by": "p2",
+          "shown": "e16",
+          "says": "s44"
+        }
+      ],
+      "statements": [
+        {
+          "id": "s34",
+          "by": "p1",
+          "text": "For storage. It's no secret. The council knows.",
+          "claims": [
+            {
+              "slot": "holder:i8",
+              "value": "p1",
+              "from": "20:00",
+              "to": "20:00"
+            }
+          ]
+        },
+        {
+          "id": "s35",
+          "by": "p1",
+          "text": "To check on the money. Lena counted it for me at half past ten: $8,400, every note.",
+          "claims": [
+            {
+              "slot": "state:i1",
+              "value": "full",
+              "from": "22:30",
+              "to": "22:30"
+            }
+          ]
+        },
+        {
+          "id": "s36",
+          "by": "p1",
+          "text": "At home, as I told you.",
+          "claims": [
+            {
+              "slot": "at:p1",
+              "value": "l7",
+              "from": "22:30",
+              "to": "22:30"
+            }
+          ]
+        },
+        {
+          "id": "s37",
+          "by": "p2",
+          "text": "Fish for the morning boat. I brought the crates myself.",
+          "claims": [
+            {
+              "slot": "at:i5",
+              "value": "l6",
+              "from": "22:15",
+              "to": "22:15"
+            }
+          ]
+        },
+        {
+          "id": "s38",
+          "by": "p2",
+          "text": "At twenty past ten. I signed for it.",
+          "claims": [
+            {
+              "slot": "at:p2",
+              "value": "l4",
+              "from": "22:20",
+              "to": "22:20"
+            }
+          ]
+        },
+        {
+          "id": "s39",
+          "by": "p4",
+          "text": "No. I never opened it. It was on the desk when I found it empty at 11:40.",
+          "claims": [
+            {
+              "slot": "at:i1",
+              "value": "l2",
+              "from": "23:40",
+              "to": "23:40"
+            },
+            {
+              "slot": "state:i1",
+              "value": "empty",
+              "from": "23:40",
+              "to": "23:40"
+            }
+          ]
+        },
+        {
+          "id": "s40",
+          "by": "p4",
+          "text": "Not once. The office phone was quiet all night.",
+          "claims": [
+            {
+              "slot": "at:p4",
+              "value": "l2",
+              "from": "22:30",
+              "to": "22:30"
+            }
+          ]
+        },
+        {
+          "id": "s41",
+          "by": "p3",
+          "text": "Never. I was at Sadie's until ten.",
+          "claims": [
+            {
+              "slot": "at:p3",
+              "value": "l3",
+              "from": "22:00",
+              "to": "22:00"
+            }
+          ]
+        },
+        {
+          "id": "s42",
+          "by": "p3",
+          "text": "Nobody. From Sadie's I only saw the lights come on.",
+          "claims": [
+            {
+              "slot": "at:p3",
+              "value": "l3",
+              "from": "21:50",
+              "to": "22:00"
+            }
+          ]
+        },
+        {
+          "id": "s43",
+          "by": "p4",
+          "text": "She called the captain, not me. I'd have heard the office phone.",
+          "claims": [
+            {
+              "slot": "at:p4",
+              "value": "l2",
+              "from": "22:31",
+              "to": "22:31"
+            }
+          ]
+        },
+        {
+          "id": "s44",
+          "by": "p2",
+          "text": "Fine. Ms Voss told me to bring the crates here. I didn't ask what was in them.",
+          "claims": [
+            {
+              "slot": "at:i5",
+              "value": "l6",
+              "from": "22:15",
+              "to": "22:15"
+            }
+          ]
+        }
+      ],
+      "uses": [
+        "f3"
+      ],
+      "answer": "s35",
+      "why": "Nadia says Lena counted $8,400 in the box at 10:30. But the box was empty from 9:50, and Lena never opened it. Nadia made up the count to hide the theft.",
+      "finding": {
+        "id": "f4",
+        "text": "Nadia planned it. Her company leases the cannery, Hugo moved the money there, and she called him once it was hidden. The money is in the cannery cold room.",
+        "facts": [
+          {
+            "slot": "holder:i8",
+            "value": "p1",
+            "from": "20:00",
+            "to": "23:59"
+          },
+          {
+            "slot": "at:i5",
+            "value": "l6",
+            "from": "22:15",
+            "to": "23:59"
+          },
+          {
+            "slot": "holder:i4",
+            "value": "i5",
+            "from": "21:50",
+            "to": "23:59"
+          }
+        ]
+      },
+      "timeline": [
+        {
+          "at": "22:15",
+          "text": "The crates go into the cold room"
+        },
+        {
+          "at": "22:31",
+          "text": "Nadia calls Hugo"
+        }
+      ]
+    },
+    {
+      "n": 5,
+      "title": "The Verdict",
+      "mode": "verdict",
+      "intro": "Four findings, one empty strongbox. Put them together and name everyone behind it.",
+      "previously": "The money never left Port Ellery.",
+      "ask": "What does your notebook prove?",
+      "uses": [
+        "f1",
+        "f2",
+        "f3",
+        "f4"
+      ],
+      "parts": [
+        {
+          "id": "q1",
+          "about": "mastermind",
+          "ask": "Who planned it?",
+          "options": [
+            {
+              "id": "p1",
+              "label": "Nadia Voss"
+            },
+            {
+              "id": "p2",
+              "label": "Hugo Brandt"
+            },
+            {
+              "id": "p3",
+              "label": "Ivo Petrov"
+            },
+            {
+              "id": "p4",
+              "label": "Lena Kerr"
+            },
+            {
+              "id": "p5",
+              "label": "Sam Okoro"
+            }
+          ],
+          "answer": "p1",
+          "because": [
+            "f1",
+            "f2",
+            "f4"
+          ]
+        },
+        {
+          "id": "q2",
+          "about": "accomplice",
+          "ask": "Who helped?",
+          "options": [
+            {
+              "id": "p2",
+              "label": "Hugo Brandt"
+            },
+            {
+              "id": "p3",
+              "label": "Ivo Petrov"
+            },
+            {
+              "id": "p4",
+              "label": "Lena Kerr"
+            },
+            {
+              "id": "none",
+              "label": "Nobody"
+            }
+          ],
+          "answer": "p2",
+          "because": [
+            "f2",
+            "f3"
+          ]
+        },
+        {
+          "id": "q3",
+          "about": "route",
+          "ask": "How did the money leave the office?",
+          "options": [
+            {
+              "id": "i5",
+              "label": "In two fish crates",
+              "icon": "crate"
+            },
+            {
+              "id": "m1",
+              "label": "In the night mail sack",
+              "icon": "letter"
+            },
+            {
+              "id": "m2",
+              "label": "In Nadia's handbag",
+              "icon": "bag"
+            }
+          ],
+          "answer": "i5",
+          "because": [
+            "f3"
+          ]
+        },
+        {
+          "id": "q4",
+          "about": "item",
+          "ask": "Where is the money now?",
+          "options": [
+            {
+              "id": "l6",
+              "label": "The cannery cold room",
+              "icon": "crate"
+            },
+            {
+              "id": "l2",
+              "label": "The harbor office",
+              "icon": "door"
+            },
+            {
+              "id": "l5",
+              "label": "Aboard the Gull",
+              "icon": "boat"
+            }
+          ],
+          "answer": "l6",
+          "because": [
+            "f4"
+          ]
+        }
+      ],
+      "why": "Nadia signed for the box and carried it into the office. Hugo emptied it with the key Lena lent him and walked the crates to the cannery Nadia leases."
+    }
+  ],
+  "finale": {
+    "text": "Nadia Voss planned it. Her storage company leased the empty cannery and needed money fast. At 9:00 PM she signed for the strongbox and carried it into the harbor office herself. She told Lena to lend Hugo the key and keep quiet. At 9:50 Hugo emptied the box into two fish crates and walked them to the cannery cold room. Nadia called him at 10:31 to check. Ivo saw none of it: the booth glass had fogged at 8:45.",
+    "chronology": [
+      {
+        "at": "20:45",
+        "text": "The booth glass fogs over",
+        "case": 1
+      },
+      {
+        "at": "21:00",
+        "text": "Ivo hands the strongbox to Nadia",
+        "case": 1
+      },
+      {
+        "at": "21:10",
+        "text": "Nadia brings the box into the office",
+        "case": 2
+      },
+      {
+        "at": "21:45",
+        "text": "Hugo signs in and Lena lends him the key",
+        "case": 2
+      },
+      {
+        "at": "21:50",
+        "text": "Hugo empties the box into fish crates",
+        "case": 3
+      },
+      {
+        "at": "22:08",
+        "text": "Hugo reaches the cannery",
+        "case": 3
+      },
+      {
+        "at": "22:15",
+        "text": "The crates go into the cold room",
+        "case": 4
+      },
+      {
+        "at": "22:31",
+        "text": "Nadia calls Hugo",
+        "case": 4
+      },
+      {
+        "at": "23:40",
+        "text": "Lena finds the box empty",
+        "case": 0
+      }
+    ]
+  }
+}

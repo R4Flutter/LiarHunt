@@ -32,7 +32,8 @@ export function hashOf(story) { return createHash("sha256").update(JSON.stringif
 // passes the checker; the blind solvers and the critic can still be run on it from the desk ("Run AI review").
 export function importDraft(story, id) {
   const r = check(story), now = new Date().toISOString();
-  return { meta: { id, job: "import", slot: 0, brief: {}, createdAt: now, updatedAt: now, status: r.ok ? "ready" : "failed", source: "import", for: "daily", remixOf: "",
+  return { meta: { id, job: "import", slot: 0, brief: {}, createdAt: now, updatedAt: now, status: r.ok ? "ready" : "failed", source: "import",
+    for: story.remixOf ? "night" : "daily", remixOf: story.remixOf || "",
     report: { stage: "checked", gate: r.ok, errors: r.errors, warnings: r.warnings }, cost: { usd: 0, input: 0, output: 0, calls: 0 }, hash: hashOf(story), day: 0, notes: [] }, story };
 }
 
@@ -71,8 +72,26 @@ export function split(story, day) {
       out.keys["c" + n] = { s: verdictKey(picks), proofs: [""] };
       return;
     }
-    out.hunch[n] = { out: pickBy(c.statements.filter((s) => s.id !== c.answer), "h" + n).id };
+    if (story.v === 2) { // v2: rule out one suspect who tells no lie in this chapter
+      const liar = c.statements.find((s) => s.id === c.answer).by;
+      out.hunch[n] = { who: pickBy(c.suspects.filter((p) => p !== liar), "h" + n) };
+    } else out.hunch[n] = { out: pickBy(c.statements.filter((s) => s.id !== c.answer), "h" + n).id };
     out.keys["c" + n] = { s: c.answer, proofs: res.proofs[n].map(proofKey) };
   });
+  return out;
+}
+
+// A Story Night remix of a past Daily 5 story: the same people (names, roles, faces), someone else behind it.
+// -> a list of problems (empty when it's a proper remix)
+export function checkRemix(story, original) {
+  const out = [];
+  if (!original) return ["the original story isn't in the drafts, so the remix can't be compared"];
+  if (story.remixOf !== original.id) out.push(`remixOf is "${story.remixOf}", but the original's id is "${original.id}"`);
+  const key = (p) => [p.id, p.name, p.role, p.face].join("|");
+  const a = new Set((original.people || []).map(key)), b = new Set((story.people || []).map(key));
+  (original.people || []).forEach((p) => { if (!b.has(key(p))) out.push(`${p.name} (${p.id}) must keep the same id, name, role and face as in the original`); });
+  (story.people || []).forEach((p) => { if (!a.has(key(p))) out.push(`${p.name} (${p.id}) isn't one of the original's people`); });
+  const boss = (s) => ((s.people || []).find((p) => p.part === "mastermind") || {}).id;
+  if (boss(story) && boss(story) === boss(original)) out.push(`the mastermind is still ${boss(story)}: in a remix someone else did it`);
   return out;
 }

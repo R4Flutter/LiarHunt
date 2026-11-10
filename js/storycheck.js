@@ -25,8 +25,17 @@
   function mins(t) { const [h, m] = t.split(":").map(Number); return h * 60 + m; }
   function norm(f, src) { return { slot: f.slot, value: f.value, from: mins(f.from), to: mins(f.to || f.from), not: !!f.not, src }; }
   const overlap = (a, b) => a.from <= b.to && b.from <= a.to;
-  function clash(a, b) {
-    if (a.slot !== b.slot || !overlap(a, b)) return false;
+  // v2 stories may list walking times between places (tr: "l1|l2" -> minutes, ids sorted). Being at one place and
+  // then another, too soon to have walked between them, is a clash too.
+  function tooFast(a, b, tr) {
+    if (!tr || a.not || b.not || a.value === b.value || !a.slot.startsWith("at:")) return false;
+    const m = tr.get([a.value, b.value].sort().join("|"));
+    if (!m) return false;
+    return (a.from > b.to ? a.from - b.to : b.from - a.to) < m;
+  }
+  function clash(a, b, tr) {
+    if (a.slot !== b.slot) return false;
+    if (!overlap(a, b)) return tooFast(a, b, tr);
     if (a.not && b.not) return false;
     if (a.not || b.not) return a.value === b.value;
     return a.value !== b.value;
@@ -62,7 +71,9 @@
 
   const KINDS = ["cctv", "log", "document", "witness", "photo", "record", "phone", "object"];
   const ABOUT = ["mastermind", "accomplice", "route", "item", "motive", "other"];
-  const LIMIT = { title: 44, intro: 460, previously: 280, ask: 90, says: 230, evTitle: 50, evSource: 50, evText: 220, why: 380, finding: 260, line: 140, finale: 1400, label: 48, background: 220 };
+  const LIMIT = { title: 44, intro: 460, previously: 280, ask: 90, says: 230, evTitle: 50, evSource: 50, evText: 220, why: 380, finding: 260, line: 140, finale: 1400, label: 48, background: 220, spotLabel: 28, spotText: 160 };
+  // the six kinds of lie a v2 chapter names (WLArt.LIES draws them)
+  const LIE_KINDS = ["time", "place", "travel", "seen", "holder", "count"];
 
   function check(story) {
     const errors = [], warnings = [];
@@ -87,10 +98,17 @@
     str(s.summary, 600, "story", "summary");
     if (!s.setting) err("story", "setting is missing");
     else { str(s.setting.place, 80, "setting", "place"); str(s.setting.intro, LIMIT.intro, "setting", "intro"); }
-    if (!Number.isInteger(s.strikes) || s.strikes < 1 || s.strikes > 5) err("story", "strikes must be 1 to 5");
+    const v2 = s.v === 2, art = (typeof window !== "undefined" && window.WLArt) || null;
+    if (v2 && !art) err("story", "the art kit (js/art.js) isn't loaded, so scenes and icons can't be checked");
+    if (v2 ? s.strikes !== 2 : !Number.isInteger(s.strikes) || s.strikes < 1 || s.strikes > 5) err("story", v2 ? "strikes must be 2 in a v2 story (one miss, then the Revive)" : "strikes must be 1 to 5");
 
     const people = (Array.isArray(s.people) ? s.people : []).map(obj);
-    if (people.length < 4 || people.length > 8) err("story", "needs 4 to 8 people");
+    if (v2 ? people.length < 5 || people.length > 6 : people.length < 4 || people.length > 8) err("story", v2 ? "needs 5 or 6 people" : "needs 4 to 8 people");
+    if (v2) {
+      const faces = people.map((p) => p.face);
+      faces.forEach((f, i) => { if (typeof f !== "string" || !/^f(0\d|1[0-5])$/.test(f)) err(`person ${people[i].id || i}`, `face must be f00 to f15 (has "${f}")`); });
+      if (new Set(faces).size !== faces.length) err("story", "two people share a face");
+    }
     people.forEach((p, i) => {
       const w = `person ${p.id || i}`;
       addId(p.id, "person", w, /^p\d{1,2}$/);
@@ -110,6 +128,19 @@
     }
     const kindOf = (id) => ids.get(id);
     const isPerson = (id) => kindOf(id) === "person";
+    // walking times between places (v2): { a, b, mins }
+    const tr = new Map();
+    if (v2 && s.travel != null) {
+      if (!Array.isArray(s.travel)) err("story", "travel must be a list of { a, b, mins }");
+      else s.travel.map(obj).forEach((t, i) => {
+        const w = `travel ${i + 1}`, key = [t.a, t.b].sort().join("|");
+        if (kindOf(t.a) !== "place" || kindOf(t.b) !== "place" || t.a === t.b) err(w, "a and b must be two different place ids");
+        else if (!Number.isInteger(t.mins) || t.mins < 1 || t.mins > 180) err(w, "mins must be 1 to 180");
+        else if (tr.has(key)) err(w, "lists the same two places twice");
+        else tr.set(key, t.mins);
+      });
+    }
+    const cl = (a, b) => clash(a, b, tr);
 
     // a fact must use real ids, a known slot shape and real times
     const okFact = (f, where) => {
@@ -137,12 +168,12 @@
     const truth = facts(s.truth, "truth", "truth", 6, 60);
     const truthAll = closure(truth, isPerson);
     for (let i = 0; i < truthAll.length; i++) for (let j = i + 1; j < truthAll.length; j++) {
-      if (clash(truthAll[i], truthAll[j])) err("truth", `contradicts itself: ${show(truthAll[i])} vs ${show(truthAll[j])}`);
+      if (cl(truthAll[i], truthAll[j])) err("truth", `contradicts itself: ${show(truthAll[i])} vs ${show(truthAll[j])}`);
     }
 
     const cases = (Array.isArray(s.cases) ? s.cases : []).map(obj);
     if (cases.length !== 5) err("story", `needs exactly 5 cases (has ${cases.length})`);
-    const findingOf = {}, evidenceOf = {}, proofs = {}, need = {};
+    const findingOf = {}, evidenceOf = {}, proofs = {}, need = {}, kinds = {};
     const knownBefore = [];   // everything a player has seen before case n: earlier evidence and findings
     const liars = [];
 
@@ -165,6 +196,8 @@
         if (uses.length < 2) err(w, "the verdict needs at least 2 earlier findings");
         const parts = (Array.isArray(c.parts) ? c.parts : []).map(obj);
         if (parts.length < 2 || parts.length > 4) err(w, "needs 2 to 4 verdict questions");
+        if (v2 && (parts.length !== 4 || parts.map((q) => q.about).sort().join() !== "accomplice,item,mastermind,route")) err(w, "needs exactly 4 questions: mastermind, accomplice, route and item");
+        const hasAccomplice = people.some((p) => p.part === "accomplice");
         const usedF = new Set();
         parts.forEach((q, j) => {
           const qw = `${w} question ${q.id || j + 1}`;
@@ -174,12 +207,15 @@
           const opts = Array.isArray(q.options) ? q.options : [];
           if (opts.length < 3 || opts.length > 5) err(qw, "needs 3 to 5 options");
           const oids = new Set();
-          opts.forEach((o) => { if (!o || typeof o.id !== "string" || !/^[a-z]\d{1,2}$/.test(o.id) || oids.has(o.id)) err(qw, `bad or repeated option id "${o && o.id}"`); oids.add(o && o.id); str(o && o.label, LIMIT.label, qw, "option label"); });
+          const nobody = (o) => v2 && q.about === "accomplice" && !!o && o.id === "none";
+          opts.forEach((o) => { if (!o || typeof o.id !== "string" || (!/^[a-z]\d{1,2}$/.test(o.id) && !nobody(o)) || oids.has(o.id)) err(qw, `bad or repeated option id "${o && o.id}"`); oids.add(o && o.id); str(o && o.label, LIMIT.label, qw, "option label"); });
+          if (v2 && (q.about === "route" || q.about === "item")) opts.forEach((o) => { if (!o || !art || !art.ICONS.includes(o.icon)) err(qw, `option ${o && o.id} needs an icon from the icon set`); });
           if (!oids.has(q.answer)) err(qw, `answer "${q.answer}" isn't one of the options`);
           if (q.about === "mastermind" && masterminds[0] && q.answer !== masterminds[0].id) err(qw, "the answer isn't the story's mastermind");
-          if (q.about === "accomplice" && kindOf(q.answer) !== "person") err(qw, "the answer must be a person");
+          if (q.about === "accomplice" && q.answer === "none" && v2) { if (hasAccomplice) err(qw, 'the answer is "none", but the story has an accomplice'); }
+          else if (q.about === "accomplice" && kindOf(q.answer) !== "person") err(qw, "the answer must be a person");
           if (q.about === "accomplice" && isPerson(q.answer) && people.find((p) => p.id === q.answer).part !== "accomplice") err(qw, "the answer isn't an accomplice");
-          if ((q.about === "mastermind" || q.about === "accomplice") && opts.some((o) => !isPerson(o && o.id))) err(qw, "every option must be a person id");
+          if ((q.about === "mastermind" || q.about === "accomplice") && opts.some((o) => !isPerson(o && o.id) && !nobody(o))) err(qw, "every option must be a person id");
           const because = Array.isArray(q.because) ? q.because : [];
           if (!because.length || because.length > 4) err(qw, "needs 1 to 4 findings that prove it (because)");
           because.forEach((f) => { if (!Object.prototype.hasOwnProperty.call(findingOf, f)) err(qw, `because "${f}" isn't a finding from cases 1-4`); usedF.add(f); });
@@ -194,17 +230,17 @@
       if (new Set(sus).size !== sus.length) err(w, "a suspect is listed twice");
       sus.forEach((p) => { if (!isPerson(p)) err(w, `suspect "${p}" isn't a person`); });
       const sts = (Array.isArray(c.statements) ? c.statements : []).map(obj);
-      if (sts.length !== sus.length) err(w, "needs one statement per suspect, in the same order");
+      if (v2 ? sts.length < 8 || sts.length > 14 : sts.length !== sus.length) err(w, v2 ? "needs 8 to 14 statements" : "needs one statement per suspect, in the same order");
       const claimsOf = {};
       sts.forEach((st, j) => {
         const sw = `${w} statement ${st.id || j + 1}`;
         addId(st.id, "statement", sw, /^s\d{1,2}$/);
-        if (st.by !== sus[j]) err(sw, `is by "${st.by}" but suspect ${j + 1} is "${sus[j]}"`);
+        if (v2 ? !sus.includes(st.by) : st.by !== sus[j]) err(sw, v2 ? `is by "${st.by}", who isn't a suspect in this case` : `is by "${st.by}" but suspect ${j + 1} is "${sus[j]}"`);
         str(st.text, LIMIT.says, sw, "text");
         claimsOf[st.id] = facts(st.claims, sw, st.id, 1);
       });
       const ev = (Array.isArray(c.evidence) ? c.evidence : []).map(obj);
-      if (ev.length < 2 || ev.length > 6) err(w, "needs 2 to 6 pieces of evidence");
+      if (v2 ? ev.length < 5 || ev.length > 8 : ev.length < 2 || ev.length > 6) err(w, v2 ? "needs 5 to 8 pieces of evidence" : "needs 2 to 6 pieces of evidence");
       const pane = [];
       ev.forEach((e, j) => {
         const ew = `${w} evidence ${e.id || j + 1}`;
@@ -218,10 +254,11 @@
         pane.push({ id: e.id, facts: sh });
       });
       uses.forEach((f) => { if (findingOf[f]) pane.push({ id: f, facts: findingOf[f] }); });
+      if (v2) v2Chapter(c, w, sus, sts, ev, uses);
 
       if (!Object.prototype.hasOwnProperty.call(claimsOf, c.answer)) err(w, `answer "${c.answer}" isn't one of this case's statements`);
       else {
-        if (!claimsOf[c.answer].some((f) => truthAll.some((t) => clash(f, t)))) err(w, `the answer ${c.answer} doesn't lie: none of its claims goes against the truth`);
+        if (!claimsOf[c.answer].some((f) => truthAll.some((t) => cl(f, t)))) err(w, `the answer ${c.answer} doesn't lie: none of its claims goes against the truth`);
         liars.push(sts.find((x) => x.id === c.answer).by);
       }
       sts.forEach((st) => {
@@ -231,7 +268,7 @@
 
       // exactly one statement is caught by what the player knows
       const known = closure(knownBefore.concat(...ev.map((e) => evidenceOf[e.id] || [])), isPerson);
-      const caught = sts.filter((st) => (claimsOf[st.id] || []).some((f) => known.some((a) => clash(f, a)))).map((st) => st.id);
+      const caught = sts.filter((st) => (claimsOf[st.id] || []).some((f) => known.some((a) => cl(f, a)))).map((st) => st.id);
       if (caught.length === 0) err(w, "nothing the player knows catches the liar");
       else if (caught.length > 1 || caught[0] !== c.answer) err(w, `the facts catch ${caught.join(" and ")}, but the answer is ${c.answer}. Exactly the liar must be caught.`);
 
@@ -241,13 +278,22 @@
       for (const set of subsets(pane, 3)) {
         if (found.some((f) => f.every((id) => set.some((x) => x.id === id)))) continue; // has a smaller proof inside
         const all = closure([].concat(...set.map((x) => x.facts)), isPerson);
-        if (lie.some((f) => all.some((a) => clash(f, a)))) found.push(set.map((x) => x.id).sort());
+        if (lie.some((f) => all.some((a) => cl(f, a)))) found.push(set.map((x) => x.id).sort());
       }
       if (!found.length && caught[0] === c.answer) err(w, "the liar can be caught, but not with the facts on this case's screen (add the evidence, or carry the finding in uses)");
       if (found.length && new Set(found.map((f) => f.length)).size > 1) err(w, `proofs of different sizes (${found.map((f) => f.join("+")).join(", ")}). Every proof must need the same number of facts.`);
       if (n > 1 && found.some((f) => !f.some((id) => findingOf[id]))) err(w, `can be proven without any earlier finding (${found.filter((f) => !f.some((id) => findingOf[id])).map((f) => f.join("+")).join(", ")}). Each case must build on the one before.`);
       if (found.length > 3) warn(w, `${found.length} different proofs work; fewer is clearer`);
       proofs[n] = found; need[n] = found.length ? found[0].length : 0;
+      if (v2 && LIE_KINDS.includes(c.lie) && lie.length) {
+        // what catches it: a plain clash (same slot, same time), or only a walking time
+        const plain = lie.some((f) => known.some((a) => clash(f, a)));
+        const fast = lie.some((f) => known.some((a) => !clash(f, a) && cl(f, a)));
+        if (c.lie === "travel" && !(fast && !plain)) err(w, `lie is "travel", but ${c.answer} is caught without a walking time`);
+        if (c.lie !== "travel" && !plain && fast) err(w, `${c.answer} is only caught by a walking time, so its lie is "travel"`);
+        if (c.lie === "holder" && !lie.some((f) => f.slot.startsWith("holder:") && known.some((a) => clash(f, a)))) err(w, `lie is "holder", but ${c.answer} isn't caught on who had something`);
+        kinds[n] = c.lie;
+      }
 
       // the finding this case adds to the notebook
       const fd = obj(c.finding);
@@ -303,7 +349,65 @@
         }
       });
     }
-    return { ok: errors.length === 0, errors, warnings, proofs, need };
+    if (v2 && Object.keys(kinds).length === 4 && new Set(Object.values(kinds)).size < 4) warn("story", `uses ${new Set(Object.values(kinds)).size} kinds of lie; use at least 4 across the four cases`);
+    return { ok: errors.length === 0, errors, warnings, proofs, need, kinds };
+
+    // A v2 chapter: a drawn scene with spots to search, questions per suspect, presses (showing someone evidence),
+    // and the rule that the lie is only heard after finding evidence, so the player has to investigate.
+    function v2Chapter(c, w, sus, sts, ev, uses) {
+      const scene = art && art.SCENES[c.scene];
+      if (!scene) err(w, `scene "${c.scene}" isn't one of the drawn scenes${art ? " (" + Object.keys(art.SCENES).join(", ") + ")" : ""}`);
+      if (!TIME.test(c.time || "")) err(w, "time must be HH:MM (when the scene is searched)");
+      const evIds = new Set(ev.map((e) => e.id));
+      const spots = (Array.isArray(c.spots) ? c.spots : []).map(obj);
+      if (spots.length < 7 || spots.length > 10) err(w, "needs 7 to 10 spots to search");
+      const anchors = new Set(), findsOf = {};
+      spots.forEach((x, j) => {
+        const xw = `${w} spot ${x.id || j + 1}`;
+        addId(x.id, "spot", xw, /^x\d{1,2}$/);
+        if (scene && !Object.prototype.hasOwnProperty.call(scene.anchors, x.anchor)) err(xw, `anchor "${x.anchor}" isn't in the ${c.scene} scene (${Object.keys(scene.anchors).join(", ")})`);
+        if (anchors.has(x.anchor)) err(xw, `anchor "${x.anchor}" is used twice`);
+        anchors.add(x.anchor);
+        if (art && !art.ICONS.includes(x.icon)) err(xw, `icon "${x.icon}" isn't in the icon set`);
+        str(x.label, LIMIT.spotLabel, xw, "label"); str(x.text, LIMIT.spotText, xw, "text");
+        if (x.finds) { if (!evIds.has(x.finds)) err(xw, `finds "${x.finds}", which isn't this case's evidence`); else findsOf[x.finds] = (findsOf[x.finds] || 0) + 1; }
+      });
+      ev.forEach((e) => { if (findsOf[e.id] !== 1) err(w, `evidence ${e.id} must be found by exactly one spot`); });
+      if (spots.filter((x) => !x.finds).length < 2) err(w, "at least 2 spots must find nothing");
+
+      const stBy = {}, heard = {};
+      sts.forEach((st) => { stBy[st.id] = st.by; heard[st.id] = 0; });
+      const qs = (Array.isArray(c.questions) ? c.questions : []).map(obj), per = {};
+      qs.forEach((q, j) => {
+        const qw = `${w} question ${q.id || j + 1}`;
+        addId(q.id, "ask", qw, /^k\d{1,2}$/);
+        if (!sus.includes(q.by)) err(qw, `is asked of "${q.by}", who isn't a suspect here`);
+        per[q.by] = (per[q.by] || 0) + 1;
+        str(q.ask, LIMIT.ask, qw, "ask");
+        if (!Array.isArray(q.needs)) err(qw, "needs must be a list of evidence ids (empty when it's open from the start)");
+        else q.needs.forEach((id) => { if (!evIds.has(id)) err(qw, `needs "${id}", which isn't this case's evidence`); });
+        if (!Object.prototype.hasOwnProperty.call(stBy, q.says)) err(qw, `says "${q.says}", which isn't one of this case's statements`);
+        else { heard[q.says]++; if (stBy[q.says] !== q.by) err(qw, `says ${q.says}, which is by ${stBy[q.says]}, not ${q.by}`); }
+      });
+      sus.forEach((p) => { const k = per[p] || 0; if (k < 2 || k > 3) err(w, `${p} needs 2 or 3 questions (has ${k})`); });
+      const prs = (Array.isArray(c.presses) ? c.presses : []).map(obj), shownOk = new Set([...evIds, ...uses]), pairs = new Set();
+      if (prs.length < 1 || prs.length > 4) err(w, "needs 1 to 4 presses (showing a suspect a piece of evidence)");
+      prs.forEach((pr, j) => {
+        const pw = `${w} press ${j + 1}`;
+        if (!sus.includes(pr.by)) err(pw, `press of "${pr.by}", who isn't a suspect here`);
+        if (!shownOk.has(pr.shown)) err(pw, `press shows "${pr.shown}", which isn't this case's evidence or a finding it uses`);
+        if (pairs.has(pr.by + ">" + pr.shown)) err(pw, "the same press is listed twice");
+        pairs.add(pr.by + ">" + pr.shown);
+        if (!Object.prototype.hasOwnProperty.call(stBy, pr.says)) err(pw, `press says "${pr.says}", which isn't one of this case's statements`);
+        else { heard[pr.says]++; if (stBy[pr.says] !== pr.by) err(pw, `press says ${pr.says}, which is by ${stBy[pr.says]}, not ${pr.by}`); }
+      });
+      sts.forEach((st) => { if (heard[st.id] !== 1) err(w, `${st.id} must be heard through exactly one question or press (it is heard ${heard[st.id]} times)`); });
+      const liar = stBy[c.answer];
+      if (liar && prs.length && !prs.some((pr) => pr.by !== liar)) err(w, "at least one press must be of a suspect who isn't the liar (innocent people react too)");
+      const viaQ = qs.find((q) => q.says === c.answer);
+      if (viaQ && !(Array.isArray(viaQ.needs) && viaQ.needs.length)) err(w, `the lie (${c.answer}) must be heard only after finding evidence, but its question needs nothing`);
+      if (!LIE_KINDS.includes(c.lie)) err(w, `lie must be one of ${LIE_KINDS.join(", ")}`);
+    }
   }
   function show(f) { const t = (m) => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"); return `${f.slot} ${f.not ? "≠" : "="} ${f.value} @ ${t(f.from)}${f.to !== f.from ? "-" + t(f.to) : ""}`; }
   const text = (x) => (typeof x === "string" ? x : "");
@@ -313,10 +417,15 @@
     if (setting) out.push(setting.intro);
     list(c.statements).forEach((s) => out.push(s.text));
     list(c.evidence).forEach((e) => out.push(e.title, e.source, e.text));
+    list(c.spots).forEach((x) => out.push(x.label, x.text));
+    list(c.questions).forEach((q) => out.push(q.ask));
     list(c.parts).forEach((q) => { out.push(q.ask); list(q.options).forEach((o) => out.push(o.label)); });
     return out.map(text).filter(Boolean).join(" \n ");
   }
-  function factText(c) { return [].concat(list(c.statements).map((s) => text(s.text)), list(c.evidence).map((e) => text(e.title) + " \n " + text(e.text))).join(" \n "); }
+  function factText(c) {
+    return [].concat(list(c.statements).map((s) => text(s.text)), list(c.evidence).map((e) => text(e.title) + " \n " + text(e.text)),
+      list(c.spots).map((x) => text(x.label) + " \n " + text(x.text)), list(c.questions).map((q) => text(q.ask))).join(" \n ");
+  }
   const words = (t) => t.toLowerCase().replace(/[^a-z0-9:' \n]+/g, " ").split(/\s+/).filter(Boolean);
   const grams = (t, n) => { const w = words(t), set = new Set(); for (let i = 0; i + n <= w.length; i++) set.add(w.slice(i, i + n).join(" ")); return set; };
   // a 6-word phrase found in both a and b, and not already public (in "known")
@@ -340,24 +449,45 @@
     const caseOfFinding = {};
     story.cases.forEach((c) => { if (c.finding) caseOfFinding[c.finding.id] = c; });
     const carried = (fid) => { const c = caseOfFinding[fid]; return { id: fid, kind: "finding", title: "From Case " + c.n, source: "Your notebook", time: "", text: c.finding.text, from: c.n }; };
+    const v2 = story.v === 2;
     const out = {
       edition: {
         title: story.title, place: story.setting.place, intro: story.setting.intro, strikes: story.strikes,
-        cast: story.people.map((p) => ({ id: p.id, name: p.name, role: p.role, background: p.background })),
-        cases: story.cases.map((c) => ({ n: c.n, title: c.title }))
+        cast: story.people.map((p) => Object.assign({ id: p.id, name: p.name, role: p.role, background: p.background }, v2 ? { face: p.face } : {})),
+        cases: story.cases.map((c) => Object.assign({ n: c.n, title: c.title }, v2 && c.scene ? { scene: c.scene } : {}))
       },
       cases: {}, reveals: {},
       finale: { text: story.finale.text, chronology: story.finale.chronology }
     };
+    if (v2) out.edition.fmt = 2;
     story.cases.forEach((c) => {
       const n = c.n;
       if (c.mode === "verdict") {
         out.cases[n] = { n, mode: "verdict", title: c.title, intro: c.intro, previously: c.previously, ask: c.ask,
           facts: c.uses.map(carried),
-          parts: c.parts.map((q) => ({ id: q.id, ask: q.ask, options: q.options.map((o) => ({ id: o.id, label: o.label })) })) };
+          parts: c.parts.map((q) => ({ id: q.id, ask: q.ask, options: q.options.map((o) => {
+            const x = { id: o.id, label: o.label };
+            if (v2 && person(o.id)) x.face = person(o.id).face;
+            if (v2 && o.icon) x.icon = o.icon;
+            return x;
+          }) })) };
+        if (v2) out.cases[n].fmt = 2;
         const picks = {}; c.parts.forEach((q) => { picks[q.id] = q.answer; });
         out.reveals[n] = { n, answer: { s: verdictKey(picks), parts: picks, p: [] }, why: c.why,
           because: Object.fromEntries(c.parts.map((q) => [q.id, q.because])), timeline: [] };
+        return;
+      }
+      if (v2) {
+        // everything a player can find, ask and hear in this chapter; the answer and the proofs stay in the reveal and the keys
+        out.cases[n] = { n, fmt: 2, mode: "liar", title: c.title, intro: c.intro, previously: c.previously || "", ask: c.ask, need: res.need[n],
+          scene: c.scene, time: c.time, suspects: c.suspects.slice(),
+          spots: c.spots.map((x) => ({ id: x.id, anchor: x.anchor, icon: x.icon, label: x.label, text: x.text, finds: x.finds || "" })),
+          evidence: c.evidence.map((e) => ({ id: e.id, kind: e.kind, title: e.title, source: e.source, time: e.time || "", text: e.text })),
+          carried: c.uses.map(carried),
+          questions: c.questions.map((q) => ({ id: q.id, by: q.by, ask: q.ask, needs: q.needs.slice(), says: q.says })),
+          presses: c.presses.map((x) => ({ by: x.by, shown: x.shown, says: x.says })),
+          statements: c.statements.map((x) => ({ id: x.id, by: x.by, text: x.text })) };
+        out.reveals[n] = { n, answer: { s: c.answer, p: res.proofs[n].map(proofKey) }, why: c.why, lie: c.lie, finding: { id: c.finding.id, text: c.finding.text }, timeline: c.timeline };
         return;
       }
       out.cases[n] = { n, mode: "liar", title: c.title, intro: c.intro, previously: c.previously || "", ask: c.ask, need: res.need[n],
@@ -597,5 +727,5 @@
     return { ok: r.ok, kind, story: s, errors: r.errors, warnings: r.warnings || [], res: r };
   }
 
-  window.WLStory = { check, docs, checkBook, parse, checkStory, proofKey, verdictKey, MAX_IN };
+  window.WLStory = { check, docs, checkBook, parse, checkStory, proofKey, verdictKey, MAX_IN, LIE_KINDS };
 })();
