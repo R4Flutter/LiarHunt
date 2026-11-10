@@ -329,8 +329,10 @@ service cloud.firestore {
     function hasRun(d) { return signedIn() && exists(runPath(d)); }
     function myRun(d) { return get(runPath(d)).data; }
     function reds(g) { return g.size() - g.replace('r', '').size(); }
-    // Case n opens when it's the player's next case and they haven't run out of tries, or once they've played it.
-    function canSee(r, n) { return n <= r.grid.size() || (n == r.grid.size() + 1 && reds(r.grid) < r.strikes); }
+    // A player who stopped for the day after a miss (v2 stories) has over: true.
+    function isOver(r) { return r.get('over', false) == true; }
+    // Case n opens when it's the player's next case and they haven't run out of tries or stopped, or once they've played it.
+    function canSee(r, n) { return n <= r.grid.size() || (n == r.grid.size() + 1 && reds(r.grid) < r.strikes && !isOver(r)); }
 
     match /d5/{day} {
       allow get: if request.time >= istStart(int(day));
@@ -351,7 +353,7 @@ service cloud.firestore {
       // the full story: at once for players who played all five, at the next midnight for those who ran out of tries
       match /end/{doc} {
         allow get: if request.time >= istStart(int(day)) && (!d5Open(int(day)) || (hasRun(int(day))
-          && (myRun(int(day)).grid.size() == 5 || (reds(myRun(int(day)).grid) >= myRun(int(day)).strikes && request.time >= istStart(int(day) + 1)))));
+          && (myRun(int(day)).grid.size() == 5 || ((reds(myRun(int(day)).grid) >= myRun(int(day)).strikes || isOver(myRun(int(day)))) && request.time >= istStart(int(day) + 1)))));
         allow list, write: if false;
       }
     }
@@ -370,7 +372,7 @@ service cloud.firestore {
       let c = 'c' + string(r.grid.size() + 1);
       let p = q.picks.get(c, null);
       return q.diff(r).affectedKeys().hasOnly(['picks'])
-        && r.grid.size() < 5 && reds(r.grid) < r.strikes
+        && r.grid.size() < 5 && reds(r.grid) < r.strikes && !isOver(r)
         && !(c in r.picks)
         && q.picks.diff(r.picks).affectedKeys().hasOnly([c])
         && p is map && p.keys().hasOnly(['s', 'p', 'at'])
@@ -398,6 +400,14 @@ service cloud.firestore {
         && !(('c' + string(n)) in r.picks)
         && reds(r.grid) < r.strikes;
     }
+    // Stop for today: right after a miss, before the next answer, once, and never undone.
+    function d5Stop() {
+      let r = resource.data;
+      let q = request.resource.data;
+      return q.diff(r).affectedKeys().hasOnly(['over']) && q.over == true && !isOver(r)
+        && reds(r.grid) >= 1 && reds(r.grid) < r.strikes && r.grid.size() < 5
+        && !(('c' + string(r.grid.size() + 1)) in r.picks);
+    }
     match /d5runs/{id} {
       allow get: if signedIn() && id.split('_')[1] == request.auth.uid;
       allow list, delete: if false;
@@ -414,13 +424,13 @@ service cloud.firestore {
         && request.time < istStart(request.resource.data.day + 1)
         && request.resource.data.startedAt == request.time;
       allow update: if signedIn() && resource.data.uid == request.auth.uid && d5Open(resource.data.day)
-        && (d5Commit() || d5Resolve() || d5Hunch());
+        && (d5Commit() || d5Resolve() || d5Hunch() || d5Stop());
     }
     // On a day with a story, the Daily score must be the player's finished run (grid padded with - for locked cases).
     function d5ScoreOk(day, grid) {
       let rp = runPath(day);
       return !exists(/databases/$(database)/documents/d5keys/$(string(day)))
-        || (exists(rp) && (get(rp).data.grid.size() == 5 || reds(get(rp).data.grid) >= get(rp).data.strikes)
+        || (exists(rp) && (get(rp).data.grid.size() == 5 || reds(get(rp).data.grid) >= get(rp).data.strikes || get(rp).data.get('over', false) == true)
           && grid.matches(get(rp).data.grid + '-*'));
     }
 

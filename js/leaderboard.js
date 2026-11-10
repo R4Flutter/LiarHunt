@@ -690,6 +690,7 @@
     resolve: function (day, n, letter) { return d5local("resolve", n, { letter: letter }); },
     hunch: function (day, n) { return d5local("hunch", n, {}); },
     hunchDoc: function () { return Promise.reject(err("permission-denied", "preview")); },
+    over: function () { return d5local("over", 0, {}); },
     finale: function () { return d5local("finale").catch(deniedIsNull); }
   } : {
     mode: "firebase",
@@ -712,6 +713,8 @@
     },
     hunch: function (day, n) { return ready().then(function () { return runRef(day).update({ hunch: n }); }).then(function () { return d5.hunchDoc(day, n); }); },
     hunchDoc: function (day, n) { return ready().then(function () { return d5doc(day, "hunch", n).get(); }).then(dataOf); },
+    // Stop for today, after one miss in a story that allows a second chance (the rules allow it once, never undone)
+    over: function (day) { return ready().then(function () { return runRef(day).update({ over: true }); }).then(function () { return runRef(day).get(); }).then(dataOf); },
     finale: function (day) { return ready().then(function () { return d5doc(day, "end", "finale").get(); }).then(dataOf, deniedIsNull); }
   };
 

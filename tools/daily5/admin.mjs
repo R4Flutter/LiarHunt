@@ -158,14 +158,14 @@ const playErr = () => httpErr(403, "permission-denied");
 function play(id, action, n, body) {
   const d = loadDraft(id), out = split(d.story, 0), st = plays[id] = plays[id] || { run: null };
   const r = st.run, k = "c" + n, reds = (g) => (g.match(/r/g) || []).length;
-  const canSee = (m) => r && (m <= r.grid.length || (m === r.grid.length + 1 && reds(r.grid) < r.strikes));
+  const canSee = (m) => r && (m <= r.grid.length || (m === r.grid.length + 1 && reds(r.grid) < r.strikes && !r.over));
   switch (action) {
     case "edition": return out.edition;
     case "run": return r;
     case "start": if (!r) st.run = { uid: "preview", day: 0, picks: {}, grid: "", strikes: out.edition.strikes, hunch: 0, startedAt: Date.now() }; return st.run;
     case "case": if (!canSee(n)) throw playErr(); return out.cases[n];
     case "commit":
-      if (!r || n !== r.grid.length + 1 || n > 5 || reds(r.grid) >= r.strikes || r.picks[k]) throw playErr();
+      if (!r || n !== r.grid.length + 1 || n > 5 || reds(r.grid) >= r.strikes || r.over || r.picks[k]) throw playErr();
       if (typeof body.s !== "string" || typeof body.p !== "string") throw playErr();
       r.picks[k] = { s: body.s, p: body.p, at: Date.now() }; return r;
     case "reveal": if (!r || !r.picks[k]) throw playErr(); return out.reveals[n];
@@ -177,6 +177,10 @@ function play(id, action, n, body) {
       r.grid += letter; return r;
     }
     case "hunch": if (!r || r.hunch || n !== r.grid.length + 1 || r.picks[k] || reds(r.grid) >= r.strikes) throw playErr(); r.hunch = n; return out.hunch[n];
+    case "over": { // Stop for today: right after a miss, before the next answer, once
+      if (!r || r.over || !reds(r.grid) || reds(r.grid) >= r.strikes || r.grid.length >= 5 || r.picks["c" + (r.grid.length + 1)]) throw playErr();
+      r.over = true; return r;
+    }
     case "finale": if (!r || !(r.grid.length === 5)) throw playErr(); return out.finale; // failed players wait for the next reset, as in the game
     case "reset": st.run = null; return { ok: true };
   }

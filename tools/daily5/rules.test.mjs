@@ -143,6 +143,59 @@ await t("nobody can write stories, keys or other docs from the game", async () =
   await assertFails(setDoc(doc(ana, "d5keys", String(TODAY + 5)), { c1: {} }));
 });
 
+// v2 stories have strikes 2: after one miss the player may Revive (carry on) or Stop for today (over: true).
+const v2 = JSON.parse(readFileSync(join(ROOT, "tools/daily5/fixtures/ferry-strongbox.json"), "utf8"));
+await env.withSecurityRulesDisabled(async (ctx) => { // today's story is now the v2 one, for new players
+  const db = ctx.firestore(), out = split(v2, TODAY);
+  await setDoc(doc(db, "d5", String(TODAY)), out.edition);
+  await setDoc(doc(db, "d5keys", String(TODAY)), out.keys);
+  for (let n = 1; n <= 5; n++) { await setDoc(doc(db, `d5/${TODAY}/cases/${n}`), out.cases[n]); await setDoc(doc(db, `d5/${TODAY}/reveals/${n}`), out.reveals[n]); }
+});
+const R2 = [null, ["s2", "e1"], ["s12", "e6,f1"], ["s23", "f2"], ["s35", "f3"]];
+const two = { strikes: 2 }, over = (db, uid, v) => updateDoc(run(db, uid), { over: v });
+const eve = as("eve"), fin = as("fin"), gil = as("gil"), hal = as("hal");
+await t("v2: a miss at case 1 still opens case 2 (the Revive)", async () => {
+  await assertSucceeds(start(eve, "eve", TODAY, two));
+  await assertSucceeds(commit(eve, "eve", 1, "s1", "e2"));
+  await assertSucceeds(grid(eve, "eve", "r"));
+  await assertSucceeds(getDoc(doc(eve, `d5/${TODAY}/cases/2`)));
+  await assertSucceeds(commit(eve, "eve", 2, ...R2[2]));
+  await assertSucceeds(grid(eve, "eve", "rg"));
+});
+await t("v2: a second miss locks the rest", async () => {
+  await assertSucceeds(commit(eve, "eve", 3, "s22", "f2"));
+  await assertSucceeds(grid(eve, "eve", "rgr"));
+  await assertFails(getDoc(doc(eve, `d5/${TODAY}/cases/4`)));
+  await assertFails(commit(eve, "eve", 4, ...R2[4]));
+});
+await t("over: allowed right after a miss, then nothing more opens", async () => {
+  await assertSucceeds(start(fin, "fin", TODAY, two));
+  await assertSucceeds(commit(fin, "fin", 1, "s1", "e2"));
+  await assertSucceeds(grid(fin, "fin", "r"));
+  await assertSucceeds(over(fin, "fin", true));
+  await assertFails(getDoc(doc(fin, `d5/${TODAY}/cases/2`)));
+  await assertFails(commit(fin, "fin", 2, ...R2[2]));
+});
+await t("over: refused without a miss, after the next answer, twice, or to undo it", async () => {
+  await assertSucceeds(start(gil, "gil", TODAY, two));
+  await assertFails(over(gil, "gil", true));
+  await assertSucceeds(start(hal, "hal", TODAY, two));
+  await assertSucceeds(commit(hal, "hal", 1, "s1", "e2"));
+  await assertSucceeds(grid(hal, "hal", "r"));
+  await assertSucceeds(commit(hal, "hal", 2, ...R2[2]));
+  await assertFails(over(hal, "hal", true));
+  await assertFails(over(fin, "fin", true));
+  await assertFails(over(fin, "fin", false));
+});
+await t("over: the Daily score posts with the grid padded", async () => {
+  await assertFails(score(fin, "fin", "rg---", 1));
+  await assertSucceeds(score(fin, "fin", "r----", 0));
+  await assertFails(score(gil, "gil", "-----", 0));
+});
+await t("over: the full story waits for midnight", async () => {
+  await assertFails(getDoc(doc(fin, `d5/${TODAY}/end/finale`)));
+});
+
 // Friends' rooms: Race, Partners and Story Night
 const room = (db, code) => doc(db, "rooms", code);
 const newRoom = (db, uid, code, extra = {}) => setDoc(room(db, code), Object.assign({ host: uid, hostName: "Host", seed: "abcd1234", season: 1, state: "lobby", round: 0, rounds: 5, roundAt: serverTimestamp(), createdAt: serverTimestamp() }, extra));
