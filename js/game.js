@@ -759,7 +759,10 @@
     console.warn("[daily5]", e);
     toast(code === "permission-denied" ? (run && run.day !== TODAY ? "This story opens for replay at 6 AM the day after." : "The case file is locked. Reload to carry on.")
       : LB.friendlyError(e).replace("leaderboard", "case file"), "", 3800);
-    if (screen === "case" && !run.revealed) { $("btn-accuse").disabled = false; $("confirm").hidden = false; }
+    if (screen === "case" && !run.revealed) {
+      if (run.c && run.c.fmt === 2) { Chapter.unlock(); $("confirm").hidden = true; $("tools").hidden = false; }
+      else { $("btn-accuse").disabled = false; $("confirm").hidden = false; }
+    }
   }
   // While Firebase answers: the daily button and the accuse bar say so, and can't be pressed twice.
   function d5Busy(on, label) {
@@ -795,6 +798,7 @@
     }).catch(function (e) { d5Busy(false); d5Fail(e); });
   }
   function d5Case(doc, n) {
+    if (doc.fmt === 2 && doc.mode === "liar") return d5Chapter(doc, n);
     // Story files often list the liar, the proof and the right verdict first, so show them in a fixed shuffled order.
     var rng = WL.rngFrom((doc.title || "") + ":" + n), f = WL.shuffle(doc.facts || [], rng), sus = WL.shuffle(doc.suspects || [], rng);
     return { d5: true, n: n, title: doc.title, setup: doc.intro, prev: doc.previously || "", ask: doc.ask, mode: doc.mode, level: D5_LEVEL[n - 1],
@@ -803,6 +807,31 @@
       sids: sus.map(function (s) { return s.sid; }), pids: sus.map(function (s) { return s.id; }),
       parts: doc.parts ? doc.parts.map(function (q) { return Object.assign({}, q, { options: WL.shuffle(q.options || [], rng) }); }) : null, answer: -1, proof: new Array(doc.need || 0).fill(-1), alt: [], why: "" };
   }
+  // A v2 chapter (js/chapter.js draws it). The verdict card reads the statements as "suspects" and the evidence as "clues".
+  function d5Chapter(doc, n) {
+    var cast = {}, facts = (doc.evidence || []).concat(doc.carried || []);
+    (run.d5.ed.cast || []).forEach(function (p) { cast[p.id] = p; });
+    var name = function (pid) { return (cast[pid] || {}).name || pid; };
+    return { d5: true, fmt: 2, n: n, title: doc.title, setup: doc.intro, prev: doc.previously || "", ask: doc.ask, mode: "liar", level: D5_LEVEL[n - 1], need: doc.need || 1,
+      scene: doc.scene, time: doc.time, people: doc.suspects || [], spots: doc.spots || [], evidence: doc.evidence || [], carried: doc.carried || [],
+      questions: doc.questions || [], presses: doc.presses || [], statements: doc.statements || [], cast: cast,
+      facts: facts, clues: facts.map(function (f) { return f.text; }), factIds: facts.map(function (f) { return f.id; }),
+      sids: (doc.statements || []).map(function (x) { return x.id; }), pids: (doc.statements || []).map(function (x) { return x.by; }),
+      suspects: (doc.statements || []).map(function (x) { return { name: name(x.by), role: (cast[x.by] || {}).role || "", says: x.text }; }),
+      parts: null, answer: -1, proof: new Array(doc.need || 0).fill(-1), alt: [], why: "" };
+  }
+  // A chapter's progress (what was searched, asked, picked). The account saves at most every 20 s, so each tap is also
+  // kept on this device: a reload or a switch to another app comes back exactly where it was.
+  function chState(n) {
+    var st = run.d5.st, mine = !run.night && chLocal();
+    st.ch = st.ch || {};
+    if (mine && mine.day === run.day && mine.ch && mine.ch[n]) st.ch[n] = mine.ch[n];
+    return (st.ch[n] = st.ch[n] || {});
+  }
+  function chLocal(keep) {
+    try { if (keep) localStorage.setItem("wl-ch", JSON.stringify(keep)); else return JSON.parse(localStorage.getItem("wl-ch")); } catch (e) { return null; }
+  }
+  function chSave() { persist(); if (run && run.d5 && !run.night) chLocal({ day: run.day, ch: run.d5.st.ch }); }
   // Open case n: fetch it (the rules only allow the next one), show its intro card, and carry on an answer already on file.
   function d5Open(n) {
     var d5 = run.d5, st = d5.st, keep = run;
@@ -814,6 +843,7 @@
       run.idx = n - 1; run.c = run.cases[n - 1] = d5Case(doc, n); run.vpick = {};
       show("case");
       var fresh = !(run.prog.cur && run.prog.cur.idx === run.idx);
+      if (run.c.fmt === 2) { var cs = chState(n); fresh = !((cs.searched || []).length || (cs.heard || []).length); }
       loadCase();
       if (run.night) nightOpened();
       var pk = d5.r.picks && d5.r.picks["c" + n];
@@ -834,9 +864,10 @@
     el.onclick = function () { Snd.play("click"); done(); };
   }
   // Present the answer: commit it (it can't change after this), then judge it.
-  function d5Submit() {
+  function d5Submit(chPick) {
     var c = run.c, d5 = run.d5, n = c.n, keep = run, pick;
-    if (c.mode === "verdict") pick = { s: verdictKey(run.vpick), p: "" };
+    if (chPick) pick = { s: chPick.s, p: chPick.p };
+    else if (c.mode === "verdict") pick = { s: verdictKey(run.vpick), p: "" };
     else pick = { s: c.sids[run.pick], p: run.sel.map(function (i) { return c.factIds[i]; }).sort().join(",") };
     hideConfirm(); $("tools").hidden = true; $("confirm").hidden = false;
     $("accuse-q").textContent = c.mode === "verdict" ? "Your verdict is in." : "Your proof is in.";
@@ -869,6 +900,7 @@
         d5Merge(c, rev, pk);
         right = r.grid[n - 1] !== "r";
         if (c.mode === "verdict") revealVerdict(right, run.timedOut ? "timeout" : "verdict");
+        else if (c.fmt === 2) revealChapter(right, run.timedOut ? "timeout" : right ? "ok" : pk.s !== rev.answer.s ? "pick" : "proof", rev);
         else reveal(right, run.timedOut ? "timeout" : right ? "ok" : pk.s !== rev.answer.s ? "pick" : "proof");
         if (run.night) return;
         WL.track("d5_case", { day: run.day, n: n, ok: right, hunch: d5.r.hunch === n, ms: Math.round(run.caseElapsed) });
@@ -890,6 +922,18 @@
     c.finding = rev.finding; c.timeline = rev.timeline || [];
     if (run.pick == null) run.pick = c.sids.indexOf(pk.s);
     if (!run.sel || !run.sel.length) run.sel = pk.p ? pk.p.split(",").map(idx) : [];
+  }
+  function revealChapter(correct, how, rev) {
+    run.revealed = true;
+    stopClock(); Plat.gameplayStop();
+    Chapter.reveal(rev, correct);
+    $("actionbar").hidden = true;
+    gameTrace.spike(!correct);
+    Snd.play("stamp");
+    if (correct) Snd.play("cuffs", { delay: 0.3 });
+    setTimeout(function () { Snd.play(how === "timeout" ? "timeout" : correct ? "correct" : "wrong"); }, correct ? 700 : 170);
+    if (!correct) { FX.shake($("case-grid")); if (navigator.vibrate) { try { navigator.vibrate(120); } catch (e) { /* ignore */ } } }
+    if (run.kind === "room") verdictRoom(correct, how); else if (run.kind === "story") verdictStory(correct, how); else verdictDaily(correct, how);
   }
   function revealVerdict(correct, how) {
     var c = run.c;
@@ -978,9 +1022,15 @@
     for (var n = 1; n <= cur; n++) {
       var c = st.cases[n], rv = n < cur || run.revealed ? st.reveals[n] : null; // never the open case's answer
       if (!c) continue;
-      (c.facts || []).forEach(function (f) { if (f.kind !== "finding") ev.push({ n: n, f: f }); });
-      (c.suspects || []).forEach(function (s) { (says[s.id] = says[s.id] || []).push({ n: n, text: s.says, liar: !!(rv && rv.answer && rv.answer.s === s.sid) }); });
-      (c.facts || []).forEach(function (f) { if (f.time && f.kind !== "finding") tl.push({ at: f.time, text: f.title + ": " + f.text, n: n, sure: false }); });
+      if (c.fmt === 2 && c.mode === "liar") {
+        var ch = (st.ch && st.ch[n]) || {}, got = Chapter.found(c, ch), hd = Chapter.heard(c, ch);
+        (c.evidence || []).forEach(function (f) { if (got.indexOf(f.id) < 0) return; ev.push({ n: n, f: f }); if (f.time) tl.push({ at: f.time, text: f.title + ": " + f.text, n: n, sure: false }); });
+        (c.statements || []).forEach(function (x) { if (hd.indexOf(x.id) >= 0) (says[x.by] = says[x.by] || []).push({ n: n, text: x.text, liar: !!(rv && rv.answer && rv.answer.s === x.id) }); });
+      } else {
+        (c.facts || []).forEach(function (f) { if (f.kind !== "finding") ev.push({ n: n, f: f }); });
+        (c.suspects || []).forEach(function (s) { (says[s.id] = says[s.id] || []).push({ n: n, text: s.says, liar: !!(rv && rv.answer && rv.answer.s === s.sid) }); });
+        (c.facts || []).forEach(function (f) { if (f.time && f.kind !== "finding") tl.push({ at: f.time, text: f.title + ": " + f.text, n: n, sure: false }); });
+      }
       if (rv && rv.finding) fi.push({ n: n, f: rv.finding, why: rv.why });
       if (rv && rv.timeline) rv.timeline.forEach(function (t) { tl.push({ at: t.at, text: t.text, n: n, sure: true }); });
     }
@@ -1166,6 +1216,18 @@
       setHud("Daily #" + run.day + (run.kind === "replay" ? " practice" : ""), "Case " + (run.idx + 1) + " of 5" + (c.d5 ? " · " + run.d5.ed.title : ""));
       $("case-kicker").textContent = c.d5 ? "Case " + c.n + " of 5 · " + (c.n === 5 ? "The verdict" : "One wrong answer ends the day") : (LEVEL[c.level] || "Case") + " · One try";
     }
+    var chap = c.fmt === 2;
+    $("scr-case").classList.toggle("chapter-mode", chap);
+    $("chapter").hidden = !chap;
+    if (chap) {
+      $("case-kicker").textContent = "Chapter " + c.n + " of 5";
+      setHud(run.night ? run.label || "Story Night" : "Daily #" + run.day + (run.kind === "replay" ? " practice" : ""), "Chapter " + c.n + " of 5 · " + run.d5.ed.title);
+      run.notes = []; run.sel = []; run.phase = "pick";
+      Chapter.open(c, chState(c.n));
+      renderTools();
+      return;
+    }
+    Chapter.close();
     $("case-title").textContent = c.title;
     $("case-setup").textContent = c.setup;
     $("case-prev").hidden = !c.prev;
@@ -1369,8 +1431,8 @@
       $("hint-label").textContent = "Hunch"; n.textContent = m === "hunch" ? 1 : 0;
       hb.setAttribute("aria-label", m === "hunch" ? "Use your Hunch: rule out one innocent suspect. One free Hunch a day." : "Hunch used");
       $("btn-freeze").hidden = true;
-      $("tool-note").textContent = run.phase === "proof" ? "Tap the " + (need > 1 ? need + " facts that prove" : "fact that proves") + " it." :
-        m === "hunch" ? (run.c.mode === "verdict" ? "Your free Hunch rules out one wrong answer." : "Your free Hunch rules out one innocent suspect.") + " The case turns amber." :
+      $("tool-note").textContent = run.phase === "proof" && !run.c.fmt ? "Tap the " + (need > 1 ? need + " facts that prove" : "fact that proves") + " it." :
+        m === "hunch" ? (run.c.mode === "verdict" ? "Your free Hunch rules out one wrong answer." : run.c.fmt === 2 ? "Your free Hunch rules out one suspect who isn't lying here." : "Your free Hunch rules out one innocent suspect.") + " The case turns amber." :
         m === "used" ? "Your Hunch ruled one out." : m === "spent" ? "You've used today's Hunch." : m === "off" ? "No Hunch in " + (run.kind === "story" ? "a player's story" : "Story Night") + ". One try per case." : "";
       return;
     }
@@ -1430,7 +1492,8 @@
       if (run !== keep || !h) return;
       d5.r.hunch = n; if (d5.st.run) d5.st.run.hunch = n;
       run.hint = true;
-      if (c.mode === "verdict") {
+      if (c.fmt === 2) { chState(n).hunchOut = h.who; Chapter.hunch(h.who); }
+      else if (c.mode === "verdict") {
         var b = $("suspects").querySelector('.vopt[data-q="' + h.part + '"][data-o="' + h.out + '"]');
         if (b) { b.classList.add("is-out"); b.classList.remove("is-picked"); b.disabled = true; if (run.vpick[h.part] === h.out) { delete run.vpick[h.part]; hideConfirm(); } }
       } else {
@@ -1611,7 +1674,7 @@
   }
   function paintStrings() {
     var svg = $("strings"), pairs = [];
-    if (run && run.c && screen === "case" && (run.phase === "proof" || run.revealed)) {
+    if (run && run.c && !run.c.fmt && screen === "case" && (run.phase === "proof" || run.revealed)) {
       var c = run.c, g = svg.getBoundingClientRect(), from = els(pickKind())[c.d5 && !run.revealed ? run.pick : c.answer], pf = els(proofKind());
       (run.revealed ? c.proof || [] : run.sel).forEach(function (i) { if (from && pf[i]) pairs.push([pinAt(from, g), pinAt(pf[i], g), i]); });
     }
@@ -3151,7 +3214,7 @@
       share: function (got, of) { if (o.mine) sendStory(o); else shareStoryResult(o, got + " of " + of + " stars"); } });
   }
   // Story Night's rules: one try per case, no Hunch; a wrong answer scores 0, shows the answer and the story carries on.
-  function memNight(id, dx) { return { id: id, docs: dx, ed: dx.edition, finale: dx.finale, st: { cases: {}, reveals: {}, notes: {}, seen: 0 }, r: { picks: {}, grid: "", strikes: 99, hunch: 0 } }; }
+  function memNight(id, dx) { return { id: id, docs: dx, ed: dx.edition, finale: dx.finale, st: { cases: {}, reveals: {}, notes: {}, ch: {}, seen: 0 }, r: { picks: {}, grid: "", strikes: 99, hunch: 0 } }; }
   function startStoryD5(story, o) {
     var n = memNight(o.key, STORY.docs(story));
     run = { kind: "story", night: true, label: o.mine ? "Your story" : "A friend's story", story: o, day: 0, cases: [null, null, null, null, null], idx: 0, elapsed: 0,
@@ -4107,6 +4170,7 @@
       if ((e.key === "Enter" || e.key === " ") && e.target.tagName !== "BUTTON") { next(); e.preventDefault(); }
       return;
     }
+    if (run.c && run.c.fmt === 2) { if (Chapter.key(e)) e.preventDefault(); return; }
     if (/^[1-5]$/.test(e.key)) { tap(run.phase === "proof" ? proofKind() : pickKind(), parseInt(e.key, 10) - 1); e.preventDefault(); }
     else if (e.key === "Enter" && !$("confirm").hidden && e.target.tagName !== "BUTTON") { confirmNow(); e.preventDefault(); }
     else if (e.key === "Escape") cancelPick();
@@ -4141,6 +4205,12 @@
     P.coolStart("hintAd"); persist();
     Plat.rewarded("hint").then(function (ok) { if (ok) { toast("Hint unlocked"); give(); } else adFailed(); });
   }
+  // A Daily 5 chapter in a v2 story (js/chapter.js). Without it (an old cached page) v2 days fall back to nothing new.
+  var Chapter = window.WLChapter || { open: function () {}, close: function () {}, reveal: function () {}, hunch: function () {}, key: function () { return false; }, unlock: function () {}, found: function () { return []; }, heard: function () { return []; }, mount: function () {} };
+  Chapter.mount({
+    persist: function () { chSave(); }, toast: toast, Snd: Snd,
+    submit: function (pick) { if (run && run.c && run.c.fmt === 2 && !run.revealed) d5Submit(pick); }
+  });
   Book.mount({
     S: function () { return S; }, persist: persist, flush: cloudFlush, show: show, setHud: setHud, goHQ: goHQ, openMap: openMap,
     toast: toast, rw: rw, P: P, Snd: Snd, FX: FX, Plat: Plat, midgame: midgame, renderCoins: renderCoins, flushQueue: flushQueue,
