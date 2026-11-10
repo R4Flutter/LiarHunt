@@ -335,6 +335,21 @@
     renderBanner();
     renderCoins(false);
   }
+  // A v2 story on HQ: the scene in a photo, five chapter pins on a red thread, and the day's suspects.
+  function d5Folder(ed, res, done) {
+    var A = window.WLArt, cs = ed.cases || [], cur = Math.min(res.length, 4), sc = (cs[cur] && cs[cur].scene) || (cs[0] && cs[0].scene);
+    var pins = cs.map(function (c, i) {
+      var r = res[i], ok = r === "g" || r === "y", cls = ok ? "ok" : r === "r" ? "bad" : r === "-" ? "lock" : i === res.length && !done ? "now" : "";
+      var mark = ok ? "✓" : r === "r" ? "✗" : i === 4 && A ? A.icon("scales") : String(i + 1);
+      var lab = i === 4 ? "Verdict" : (A && A.SCENES[c.scene] || {}).name || c.title;
+      return '<li class="' + cls + '"><span>' + mark + "</span><em>" + esc(lab) + "</em></li>";
+    }).join("");
+    var faces = (ed.cast || []).map(function (p) { return '<span class="d5f-mug">' + WL.avatar(p.name, p.face) + "<b>" + esc(p.name.split(" ")[0]) + "</b></span>"; }).join("");
+    return (done ? "" : '<span class="d5f-stamp" aria-hidden="true">Confidential</span>') +
+      (sc && A ? '<figure class="d5f-photo">' + A.scene(sc) + "<figcaption>" + esc(ed.place || "") + "</figcaption></figure>" : "") +
+      '<ol class="d5f-thread" aria-label="Five chapters">' + pins + "</ol>" +
+      '<p class="d5f-h">Your suspects, all day</p><div class="d5f-faces">' + faces + "</div>";
+  }
   function renderToday() {
     var d = S.daily && S.daily.day === TODAY ? S.daily : null, streak = dailyStreak();
     var res = d ? d.results : [], done = !!(d && d.done);
@@ -343,19 +358,20 @@
     $("today-tab").textContent = "Daily #" + TODAY;
     $("today-cells").hidden = !res.length;
     $("today-cells").innerHTML = res.length ? cells(res, 5) : "";
-    var title, sub, btn;
+    var title, sub, btn, v2 = !!(ed && ed.fmt === 2);
     if (ed) {
       if (done) {
         title = scoreOf(res) === 5 ? "Solved: " + ed.title : ed.title + ": the trail went cold";
         sub = (scoreOf(res) === 5 ? "A new mystery" : "The ending, and a new mystery,") + ' in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) + "</strong>";
         btn = "See your result";
       } else if (res.length) {
-        title = "Case " + (res.length + 1) + " of 5 · " + ed.title;
-        sub = "Your notebook is waiting. One wrong answer ends the day.";
+        title = (v2 ? "Chapter " : "Case ") + (res.length + 1) + " of 5 · " + ed.title;
+        sub = v2 ? "Your notebook is waiting." : "Your notebook is waiting. One wrong answer ends the day.";
         btn = "Continue the investigation";
       } else {
         title = ed.title;
-        sub = "One mystery in five connected cases. " + (streak > 0 ? "Play to keep your <strong>" + streak + "-day streak</strong>." : "One wrong answer ends the day.");
+        sub = v2 ? "One crime in five chapters. Search the scenes, question the suspects, then accuse. About 20 minutes." + (streak > 0 ? " Play to keep your <strong>" + streak + "-day streak</strong>." : "")
+          : "One mystery in five connected cases. " + (streak > 0 ? "Play to keep your <strong>" + streak + "-day streak</strong>." : "One wrong answer ends the day.");
         btn = "Open the case file";
       }
     } else if (done) {
@@ -373,6 +389,9 @@
     }
     $("today-title").textContent = title;
     $("today-sub").innerHTML = sub;
+    $("today-d5").hidden = !v2;
+    if (v2) $("today-cells").hidden = true; // the chapter pins show the results
+    $("today-d5").innerHTML = v2 ? d5Folder(ed, res, done) : "";
     $("btn-daily").textContent = btn;
     // a finished day gets the precinct's rubber stamp (added once, so it doesn't re-stamp every minute)
     var tc = $("today-card"), st0 = tc.querySelector(".folder-stamp");
@@ -854,13 +873,20 @@
   // The card between cases: where the story stands, then the new case. The clock waits.
   function d5Intro(n) {
     var c = run.c, ed = run.d5.ed, el = $("stage-card"), keep = run;
-    $("stage-n").textContent = n === 1 ? (run.night ? (run.label || "Story Night") + " · " : "Daily 5 · ") + ed.title : "Case " + n + " of 5";
-    $("stage-name").textContent = n === 1 ? "Case 1 · " + c.title : c.title;
+    var v2 = ed.fmt === 2, art = $("stage-art"), A = window.WLArt;
+    $("stage-n").textContent = n === 1 ? (run.night ? (run.label || "Story Night") + " · " : "Daily 5 · ") + ed.title : (v2 ? (n === 5 ? "The verdict" : "Chapter " + n + " of 5") : "Case " + n + " of 5");
+    $("stage-name").textContent = n === 1 ? (v2 ? "Chapter 1 · " : "Case 1 · ") + c.title : c.title;
+    var who = c.fmt === 2 ? c.people : v2 ? (ed.cast || []).map(function (p) { return p.id; }) : [];
+    art.hidden = !v2 || !A;
+    art.innerHTML = v2 && A ? (c.scene ? '<span class="stage-photo">' + A.scene(c.scene) + "</span>" : "") + '<span class="stage-faces">' + who.map(function (pid) {
+      var p = (ed.cast || []).filter(function (x) { return x.id === pid; })[0] || { name: pid };
+      return "<span>" + WL.avatar(p.name, p.face) + "</span>";
+    }).join("") + "</span>" : "";
     $("stage-text").textContent = n === 1 ? ed.intro : c.prev;
-    el.querySelector(".stage-tap").textContent = "Tap to open the case";
+    el.querySelector(".stage-tap").textContent = v2 ? (n === 5 ? "Tap to give your verdict" : "Tap to open the chapter") : "Tap to open the case";
     el.classList.add("story"); el.hidden = false; run.hold = true;
     Snd.play(n === 5 ? "twist" : "whoosh");
-    var done = function () { el.hidden = true; el.classList.remove("story"); el.querySelector(".stage-tap").textContent = "Tap to start"; if (run === keep) run.hold = false; el.onclick = null; };
+    var done = function () { el.hidden = true; el.classList.remove("story"); art.hidden = true; art.innerHTML = ""; el.querySelector(".stage-tap").textContent = "Tap to start"; if (run === keep) run.hold = false; el.onclick = null; };
     el.onclick = function () { Snd.play("click"); done(); };
   }
   // Present the answer: commit it (it can't change after this), then judge it.
@@ -947,6 +973,7 @@
       else if (run.vpick[q] === o) b.classList.add("is-wrong");
     });
     $("actionbar").hidden = true;
+    if (correct && run.c.d5) $("suspects").insertAdjacentHTML("afterbegin", '<span class="stamp case-closed" aria-hidden="true">Case closed</span>');
     gameTrace.spike(!correct);
     Snd.play("stamp");
     if (correct) Snd.play("cuffs", { delay: 0.3 });
@@ -959,7 +986,8 @@
     var box = $("suspects");
     box.innerHTML = c.parts.map(function (q) {
       return '<fieldset class="vpart"><legend class="vq">' + esc(q.ask) + '</legend><div class="vopts">' + q.options.map(function (o) {
-        return '<button type="button" class="vopt" aria-pressed="false" data-q="' + esc(q.id) + '" data-o="' + esc(o.id) + '">' + esc(o.label) + "</button>";
+        var pic = o.face ? '<span class="vface">' + WL.avatar(o.label, o.face) + "</span>" : o.icon && window.WLArt ? window.WLArt.icon(o.icon) : "";
+        return '<button type="button" class="vopt' + (o.face ? " has-face" : o.icon ? " has-icon" : "") + '" aria-pressed="false" data-q="' + esc(q.id) + '" data-o="' + esc(o.id) + '">' + pic + "<span>" + esc(o.label) + "</span></button>";
       }).join("") + "</div></fieldset>";
     }).join("");
     [].forEach.call(box.querySelectorAll(".vopt"), function (b) { b.addEventListener("click", function () { pickVerdict(b); }); });
@@ -1213,8 +1241,9 @@
       setHud(run.preview ? "Your case" : "A friend's case", run.preview ? "Try it like your friends will" : "Written by " + c.by);
       $("case-kicker").textContent = "Written by " + c.by + " · One try";
     } else {
-      setHud("Daily #" + run.day + (run.kind === "replay" ? " practice" : ""), "Case " + (run.idx + 1) + " of 5" + (c.d5 ? " · " + run.d5.ed.title : ""));
-      $("case-kicker").textContent = c.d5 ? "Case " + c.n + " of 5 · " + (c.n === 5 ? "The verdict" : "One wrong answer ends the day") : (LEVEL[c.level] || "Case") + " · One try";
+      var unit = c.d5 && run.d5.ed.fmt === 2 ? "Chapter " : "Case ";
+      setHud("Daily #" + run.day + (run.kind === "replay" ? " practice" : ""), unit + (run.idx + 1) + " of 5" + (c.d5 ? " · " + run.d5.ed.title : ""));
+      $("case-kicker").textContent = c.d5 ? unit + c.n + " of 5 · " + (c.n === 5 ? "The verdict" : "One wrong answer ends the day") : (LEVEL[c.level] || "Case") + " · One try";
     }
     var chap = c.fmt === 2;
     $("scr-case").classList.toggle("chapter-mode", chap);
@@ -1408,7 +1437,7 @@
         return '<span class="' + (res[i] ? "cell-" + cellClass(res[i]) : i === run.idx ? "now" : "") + '">' + (res[i] === "r" ? "✗" : res[i] === "-" ? "" : res[i] ? "✓" : i + 1) + "</span>";
       }).join("");
       $("pips").setAttribute("aria-label", "Case " + (Math.min(run.idx, 4) + 1) + " of 5. " + scoreOf(res) + " caught so far.");
-      $("rec-left").textContent = "Case " + (Math.min(run.idx, 4) + 1) + " of 5";
+      $("rec-left").textContent = (run.d5 && run.d5.ed.fmt === 2 ? "Chapter " : "Case ") + (Math.min(run.idx, 4) + 1) + " of 5";
     }
   }
   function optionEls() { return els(run.phase === "proof" ? proofKind() : pickKind()); }

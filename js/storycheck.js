@@ -448,8 +448,8 @@
     const person = (id) => story.people.find((p) => p.id === id);
     const caseOfFinding = {};
     story.cases.forEach((c) => { if (c.finding) caseOfFinding[c.finding.id] = c; });
-    const carried = (fid) => { const c = caseOfFinding[fid]; return { id: fid, kind: "finding", title: "From Case " + c.n, source: "Your notebook", time: "", text: c.finding.text, from: c.n }; };
     const v2 = story.v === 2;
+    const carried = (fid) => { const c = caseOfFinding[fid]; return { id: fid, kind: "finding", title: v2 ? "Chapter " + c.n + " finding" : "From Case " + c.n, source: "Your notebook", time: "", text: c.finding.text, from: c.n }; };
     const out = {
       edition: {
         title: story.title, place: story.setting.place, intro: story.setting.intro, strikes: story.strikes,

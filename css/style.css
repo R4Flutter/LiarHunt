@@ -2062,3 +2062,36 @@ button.bk-ev:hover { filter: brightness(0.96); }
   .ch-intro { font-size: 0.9rem; }
   .ch-tab { min-height: 2.3rem; }
 }
+
+/* ---------- Daily 5 v2: the case folder on HQ, the chapter card, the picture verdict ---------- */
+.d5-folder { position: relative; display: grid; gap: 0.55rem; margin: 0.15rem 0 0.2rem; }
+.d5f-stamp { position: absolute; right: 0.1rem; top: -2.6rem; transform: rotate(8deg); border: 2.5px solid var(--needle); color: var(--needle); font-family: var(--display); font-weight: 900; font-size: 0.85rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.05rem 0.45rem; border-radius: 4px; opacity: 0.85; pointer-events: none; }
+.d5f-photo { margin: 0.2rem 0 0.1rem; background: #fff; padding: 0.4rem 0.4rem 1.5rem; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); transform: rotate(-1.5deg); position: relative; max-width: 22rem; }
+.d5f-photo figcaption { position: absolute; left: 0.6rem; bottom: 0.25rem; font-family: ui-monospace, "Courier New", monospace; font-size: 0.75rem; color: #142029; }
+.d5f-thread { list-style: none; margin: 0.2rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: relative; }
+.d5f-thread::before { content: ""; position: absolute; left: 10%; right: 10%; top: 0.85rem; border-top: 2px dashed var(--needle); }
+.d5f-thread li { position: relative; display: grid; justify-items: center; gap: 0.2rem; min-width: 0; }
+.d5f-thread span { display: grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 50%; border: 2px solid var(--ink); background: var(--surface); font-family: var(--display); font-weight: 900; font-size: 0.95rem; }
+.d5f-thread span .ic { width: 1rem; height: 1rem; }
+.d5f-thread em { font-style: normal; font-size: 0.62rem; font-weight: 700; color: var(--pencil); text-align: center; line-height: 1.1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.d5f-thread .now span { background: var(--needle); border-color: var(--needle); color: var(--needle-ink); box-shadow: 0 0 0 4px color-mix(in srgb, var(--needle) 22%, transparent); }
+.d5f-thread .ok span { background: var(--ok); border-color: var(--ok); color: var(--surface); }
+.d5f-thread .bad span { border-color: var(--needle); color: var(--needle); }
+.d5f-thread .lock span { opacity: 0.4; }
+.d5f-h { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--pencil); }
+.d5f-faces { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+.d5f-mug { display: grid; justify-items: center; width: 3.3rem; font-size: 0.7rem; }
+.d5f-mug .face { width: 3rem; height: 3rem; border: 2px solid var(--ink); border-radius: 9px; background: var(--paper); }
+.d5f-mug b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.stage-art { display: grid; gap: 0.5rem; justify-items: center; }
+.stage-photo { display: block; width: min(16rem, 100%); background: #fff; padding: 0.3rem 0.3rem 0.9rem; transform: rotate(1.5deg); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35); }
+.stage-faces { display: flex; gap: 0.3rem; justify-content: center; flex-wrap: wrap; }
+.stage-faces > span { width: 2.4rem; height: 2.4rem; border: 2px solid currentColor; border-radius: 8px; overflow: hidden; background: var(--paper); }
+.stage-faces .face { width: 100%; height: 100%; }
+.vopt.has-face { display: grid; justify-items: center; gap: 0.15rem; width: 4.7rem; padding: 0.3rem 0.2rem; border-radius: 12px; text-align: center; font-size: 0.78rem; }
+.vopt.has-face .vface { display: block; width: 3rem; height: 3rem; border-radius: 8px; overflow: hidden; background: var(--paper); }
+.vopt.has-face .face { width: 100%; height: 100%; }
+.vopt.has-icon { display: inline-flex; align-items: center; gap: 0.4rem; border-radius: 12px; }
+#suspects { position: relative; }
+.stamp.case-closed { right: 0.4rem; top: -0.4rem; font-size: 1.9rem; border-style: double; border-width: 5px; }
+@media (prefers-reduced-motion: reduce) { .stamp.case-closed { animation: none; } }
