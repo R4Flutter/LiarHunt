@@ -19,7 +19,7 @@ const score = (uid, day, grid) => ({ uid, name: "", badge: "", day, score: grid.
 const seeded = (uid, season, f) => Object.assign({ uid, name: uid.toUpperCase(), badge: "", season }, f, { updatedAt: new Date() });
 await env.withSecurityRulesDisabled(async (c) => { // posted Dailies, and ladder entries from earlier days
   const db = c.firestore();
-  for (const [u, d, g] of [["ana", 15, "ggggg"], ["ana", 16, "gyr--"], ["ana", 17, "ggggg"], ["dee", 16, "r----"], ["fay", 16, "r----"], ["eve", 43, "ggggg"], ["gus", 43, "ggggg"], ["hal", 43, "ggggg"]]) {
+  for (const [u, d, g] of [["ana", 15, "ggggg"], ["ana", 16, "gyr--"], ["ana", 17, "ggggg"], ["dee", 16, "r----"], ["fay", 16, "r----"], ["eve", 60, "ggggg"], ["gus", 60, "ggggg"], ["hal", 60, "ggggg"], ["ivy", 59, "ggggg"]]) {
     await setDoc(doc(db, "scores", d + "_" + u), score(u, d, g));
   }
   const base = { days: 1, solved: 5, cases: 5, fails: 0, rate: 1000, failRate: 0, last: 15 };
@@ -47,7 +47,7 @@ await t("an entry for a day with no posted Daily is refused", async () => {
   await assertFails(setDoc(lad(ben, "ben", 1), entry("ben", 1, WL.ladderApply(null, 16, "ggggg", 0))));
 });
 await t("an entry outside its season's days is refused", async () => {
-  await assertFails(setDoc(lad(as("hal"), "hal", 1), entry("hal", 1, WL.ladderApply(null, 43, "ggggg", 0))));
+  await assertFails(setDoc(lad(as("hal"), "hal", 1), entry("hal", 1, WL.ladderApply(null, 60, "ggggg", 0))));
 });
 const d16 = WL.ladderApply(d15, 16, "gyr--", 0);
 await t("the next day is added", async () => {
@@ -72,11 +72,14 @@ await t("Silver loses 50 LP for a wrong answer at case 1", async () => {
   await assertFails(updateDoc(lad(fay, "fay", 1), Object.assign({}, ok, { lp: 500, tier: 1, updatedAt: serverTimestamp() })));
   await assertSucceeds(updateDoc(lad(fay, "fay", 1), Object.assign({}, ok, { updatedAt: serverTimestamp() })));
 });
+await t("a 45-day season: day 59 still counts for Season 1", async () => {
+  await assertSucceeds(setDoc(lad(as("ivy"), "ivy", 1), entry("ivy", 1, WL.ladderApply(null, 59, "ggggg", 0))));
+});
 await t("a new season starts one league below last season's finish", async () => {
   const eve = as("eve");
-  await assertFails(setDoc(lad(eve, "eve", 2), entry("eve", 2, WL.ladderApply(null, 43, "ggggg", 0))));
-  await assertSucceeds(setDoc(lad(eve, "eve", 2), entry("eve", 2, WL.ladderApply(null, 43, "ggggg", WL.seasonStartLp(2)))));
-  await assertSucceeds(setDoc(lad(as("gus"), "gus", 2), entry("gus", 2, WL.ladderApply(null, 43, "ggggg", 0))));
+  await assertFails(setDoc(lad(eve, "eve", 2), entry("eve", 2, WL.ladderApply(null, 60, "ggggg", 0))));
+  await assertSucceeds(setDoc(lad(eve, "eve", 2), entry("eve", 2, WL.ladderApply(null, 60, "ggggg", WL.seasonStartLp(2)))));
+  await assertSucceeds(setDoc(lad(as("gus"), "gus", 2), entry("gus", 2, WL.ladderApply(null, 60, "ggggg", 0))));
 });
 await t("a name, face or badge can change on its own", async () => {
   await assertSucceeds(updateDoc(lad(ana, "ana", 1), { name: "Ana B", av: "f02", badge: "", updatedAt: serverTimestamp() }));

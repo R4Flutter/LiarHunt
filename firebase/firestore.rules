@@ -243,8 +243,8 @@ service cloud.firestore {
     // ---------- Season ladder: league points (LP) from each Daily ----------
     // One entry per player per season. Every write adds exactly one new day, scored from the player's own posted
     // Daily grid (g +30, y +20, a wrong answer at case 1-5 costs 50/40/30/20/10 except in Bronze), or only changes
-    // the name, face or badge. Keep the numbers in step with LADDER in js/engine.js. Season s = Dailies 15+28(s-1) to 42+28(s-1).
-    function sFirst(s) { return 15 + (s - 1) * 28; }
+    // the name, face or badge. Keep the numbers in step with LADDER in js/engine.js. Season s = Dailies 15+45(s-1) to 59+45(s-1).
+    function sFirst(s) { return 15 + (s - 1) * 45; }
     function tierOf(lp) { return lp >= 2800 ? 4 : lp >= 1800 ? 3 : lp >= 1000 ? 2 : lp >= 400 ? 1 : 0; }
     function cnt(g, re) { return g.size() - g.replace(re, '').size(); }
     function lost(g) {
@@ -263,7 +263,7 @@ service cloud.firestore {
         && d.season is int && d.season >= 1 && d.season <= 2000
         && id == string(d.season) + '_' + request.auth.uid
         && okName(d.name) && okBadge(d.badge) && avOk(d)
-        && d.last is int && d.last >= sFirst(d.season) && d.last <= sFirst(d.season) + 27
+        && d.last is int && d.last >= sFirst(d.season) && d.last <= sFirst(d.season) + 44
         && d.updatedAt == request.time;
     }
     // n: the new entry. base*: the entry before this day (all 0 and the season's start LP for a first entry).

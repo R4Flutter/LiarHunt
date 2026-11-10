@@ -618,7 +618,7 @@
      Some lies only break against two facts together. Each season brings its own facts, story openers
      with motives, and a cast of locals; one local turns up in every case. Facts, lines, openers and
      names used recently come last (avoid maps hold a counter: higher = used more recently). */
-  var SEASON_ONE = 15, SEASON_DAYS = 28; // Season 1 starts with Daily #15, Monday 9 November 2026. 4 weeks each.
+  var SEASON_ONE = 15, SEASON_DAYS = 45; // Season 1 starts with Daily #15, Monday 9 November 2026. 45 days each.
   var H = { clock: clock, dur: dur, cap: cap, pick: pick };
   function seasonOf(day) { return day < SEASON_ONE ? 0 : Math.floor((day - SEASON_ONE) / SEASON_DAYS) + 1; }
   function seasonStart(n) { return SEASON_ONE + (n - 1) * SEASON_DAYS; }

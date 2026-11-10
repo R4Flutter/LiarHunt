@@ -392,7 +392,7 @@
     $("today-meta").innerHTML = meta.join("<br>");
     if ($("btn-yesterday")) $("btn-yesterday").addEventListener("click", function () { Snd.play("click"); openFinale(TODAY - 1); });
   }
-  /* ---------- seasons: 4 weeks each, with their own cases (js/seasons.js) ----------
+  /* ---------- seasons: 45 days each, with their own cases (js/seasons.js) ----------
      The season score is the liars caught in that season's Dailies, played on the day (catch-ups and practice don't count),
      so it's the same number the season scoreboard checks. */
   var SEASON = WL.seasonOf(TODAY);

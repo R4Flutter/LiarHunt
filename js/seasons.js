@@ -1,7 +1,7 @@
 /*
   LIARHUNT — seasons
   ----------------------
-  A season lasts 4 weeks, Monday to Sunday. Season 1 starts with Daily #15 (Monday 9 November 2026).
+  A season lasts 45 days. Season 1 starts with Daily #15 (Monday 9 November 2026) and ends with Daily #59.
   Each season brings its own case templates: a town, a cast of locals who keep turning up, story openers
   with motives, facts, and two-fact puzzles. The case generator mixes them with the game's built-in facts.
 
@@ -33,7 +33,7 @@ window.WL_SEASONS = [
     town: "Port Ellery",
     places: ["the lighthouse", "the ferry terminal", "the harbor office", "the old cannery", "the Maritime Museum", "the Harbor Hotel",
       "Sadie's Café", "the boatyard", "The Anchor pub", "the yacht club", "the Gazette office", "the fish market"],
-    tagline: "Fog, ferries and a harbor full of secrets. Four weeks, one small town, a lot of lies.",
+    tagline: "Fog, ferries and a harbor full of secrets. 45 days, one small town, a lot of lies.",
     cast: [
       ["Marta", "Harbor master"], ["Otto", "Ferry captain"], ["Ines", "Fishmonger"], ["Jonah", "Lighthouse keeper"],
       ["Priya", "Hotel manager"], ["Leo", "Boatbuilder"], ["Sadie", "Café owner"], ["Tomas", "Dock worker"],

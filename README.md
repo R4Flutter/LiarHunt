@@ -324,7 +324,7 @@ The checker also makes sure Dailies #1 to #14 never change (players already play
 
 ### Seasons
 
-From Daily #15 (Monday 9 November 2026) the game runs in seasons of 4 weeks. Each season has its own case templates in `js/seasons.js`: a town, a cast of locals, story openers with motives, facts and two-fact puzzles. The generator mixes them with the built-in facts for every Daily and Rush case, so each season feels different.
+From Daily #15 (Monday 9 November 2026) the game runs in seasons of 45 days. Each season has its own case templates in `js/seasons.js`: a town, a cast of locals, story openers with motives, facts and two-fact puzzles. The generator mixes them with the built-in facts for every Daily and Rush case, so each season feels different.
 
 - To add Season 2, copy Season 1's block in `js/seasons.js`, change the content, and run the checker. When a season ends without a new block, the next season reuses the last one's templates in a new mix, so the game never stops.
 - The season league runs on league points from every Daily of the season (see "Why players come back"). `js/engine.js` (`LADDER`) and `firebase/firestore.rules` (season ladder section) hold the same numbers: change both together.
