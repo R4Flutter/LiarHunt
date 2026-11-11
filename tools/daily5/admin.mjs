@@ -8,7 +8,7 @@ import http from "node:http";
 import { spawn } from "node:child_process";
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, resolve, extname, relative } from "node:path";
-import { check, split, dataDir, readJson, writeJson, ROOT, importDraft } from "./lib.mjs";
+import { check, split, dataDir, readJson, writeJson, ROOT, importDraft, checkRemix } from "./lib.mjs";
 
 const PORT = +process.env.PORT || 8787, HOST = "127.0.0.1";
 const DRAFTS = dataDir("drafts");
@@ -91,9 +91,16 @@ async function nightPublish(d) {
   if (d.meta.for !== "night") throw httpErr(400, "Only Story Night remixes go to Story Night.");
   if (d.meta.status !== "approved") throw httpErr(400, "Approve it first.");
   const id = d.meta.id, out = split(d.story, 0);
+  // a past case, new twist: the lobby names the Daily it retells, and hides it until that day is over
+  let past = {};
+  if (d.meta.remixOf) {
+    const orig = allDrafts().find((x) => x.story && x.story.id === d.meta.remixOf);
+    if (!orig || !orig.meta.day) throw httpErr(400, "Schedule or publish the original story as a Daily first: a remix opens on Story Night after that day.");
+    past = { remixOf: d.meta.remixOf, origDay: orig.meta.day, origTitle: orig.story.title };
+  }
   const { db, FieldValue } = await firestore();
   const b = db.batch();
-  b.set(db.doc(`nights/${id}`), Object.assign({}, out.edition, { id, publishedAt: FieldValue.serverTimestamp() }));
+  b.set(db.doc(`nights/${id}`), Object.assign({}, out.edition, past, { id, publishedAt: FieldValue.serverTimestamp() }));
   b.set(db.doc(`nights/${id}/end/finale`), out.finale);
   for (let n = 1; n <= 5; n++) { b.set(db.doc(`nights/${id}/cases/${n}`), out.cases[n]); b.set(db.doc(`nights/${id}/reveals/${n}`), out.reveals[n]); }
   await b.commit();
@@ -222,6 +229,11 @@ const server = http.createServer(async (req, res) => {
       }
       const id = "imp-" + new Date().toISOString().slice(0, 19).replace(/\D/g, "");
       const d = importDraft(story, id);
+      if (story.remixOf) { // a remix keeps the original's people and changes who did it
+        const orig = allDrafts().find((x) => x.story && x.story.id === story.remixOf);
+        const probs = checkRemix(story, orig ? orig.story : null);
+        if (probs.length) { d.meta.status = "failed"; d.meta.report.errors.push(...probs.map((p) => "remix: " + p)); }
+      }
       saveDraft(d);
       return send(200, { id, ok: d.meta.status === "ready", errors: d.meta.report.errors.slice(0, 12),
         message: d.meta.status === "ready" ? "Imported and it passes the check. Play it, then approve it." : "Imported, but it doesn't pass the check yet: " + d.meta.report.errors.length + " problem(s)." });

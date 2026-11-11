@@ -122,7 +122,7 @@ function render(res) {
   var night = m.for === "night";
   if (night && m.status === "approved") h += '<button class="primary" id="a-npub">Publish to Story Night</button>';
   if (m.status === "night") h += '<button class="danger" id="a-nunpub">Take off Story Night</button>';
-  if (!night && m.status === "published") h += '<button id="a-remix">📖 Remix for Story Night</button>';
+  if (!night && m.status === "published") h += '<small class="hint">For Story Night, write a remix in Claude Code (same people, someone else did it; see WRITING.md), then import it.</small>';
   if (!night && ["approved", "scheduled"].includes(m.status)) h += '<input type="date" id="a-date" value="' + (res.date || state.stock.nextEmptyDate) + '"><button id="a-schedule">' + (m.status === "scheduled" ? "Move" : "Schedule") + "</button>";
   if (m.status === "scheduled") h += '<button id="a-unschedule">Unschedule</button><button class="primary" id="a-publish">Publish to Firebase</button>';
   if (m.status === "published") h += '<button class="danger" id="a-unpublish">Take down (before its day)</button>';
@@ -175,7 +175,6 @@ function wire(d, res) {
   on("a-export", function () { if (confirm("This file holds the answers. Keep it out of the game folder and never put it on GitHub. Download it?")) location.href = "/api/draft/" + id + "/export"; });
   on("a-npub", function () { if (confirm("Publish this story to Story Night? Hosts can pick it at once.")) act(id, "night-publish"); });
   on("a-nunpub", function () { if (confirm("Take this story off Story Night?")) act(id, "night-unpublish"); });
-  on("a-remix", function () { if (confirm("Write a Story Night remix of this story: same setting, a new cast and a different twist? It costs about the same as a new story (free with dry run).")) api("/api/generate", { remix: id, dry: $("dry").checked }).then(function () { toast("Remix started."); load(); }).catch(function (e) { toast(e.message); }); });
   on("a-reject", function () { var why = prompt("Why reject it? (kept in the history so new stories avoid it)"); if (why !== null) act(id, "reject", { reason: why }); });
   on("a-schedule", function () { act(id, "schedule", { date: $("a-date").value }); });
   on("a-unschedule", function () { act(id, "unschedule"); });

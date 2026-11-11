@@ -1466,7 +1466,7 @@
     } else if (k === "train") {
       $("rec-left").textContent = "Training";
     } else if (k === "friend" || k === "room") {
-      $("rec-left").textContent = k === "room" ? "Case " + run.round : "Friend's case";
+      $("rec-left").textContent = k === "room" ? (run.d5 && run.d5.ed && run.d5.ed.fmt === 2 ? "Chapter " : "Case ") + run.round : "Friend's case";
     } else {
       var res = run.prog.results;
       $("pips").innerHTML = run.cases.map(function (_, i) {
@@ -3618,7 +3618,7 @@
         if (!room.data || room.data.state !== "play" || room.data.round !== r) return;
         run = { kind: "room", night: true, round: r, seed: d.seed, day: 0, cases: [null, null, null, null, null], idx: r - 1, elapsed: 0,
           prog: { results: [], cur: null }, d5: { ed: n.ed, st: n.st, api: nightApi(n), r: n.r } };
-        run.limit = roomLimit(null);
+        run.limit = n.ed && n.ed.fmt === 2 ? 480000 : roomLimit(null); // a v2 chapter is searched and questioned: 8 minutes
         if (r === 1) markNight(n.id);
         d5Open(r);
       });
@@ -3777,10 +3777,13 @@
         "</b><span>Made in Write a case" + (played[id] ? " · you've played it" : "") + "</span></button>";
     }).join("") + "</div>" : "";
     if (!l || !l.length) return (l && made.length ? "" : '<p class="muted small">' + (l ? "No stories yet. The first Story Nights are on their way." : "Opening the story shelf…") + "</p>") + mine;
-    return '<div class="night-list" role="list">' + l.map(function (s) {
-      var on = s.id === d.story;
-      return '<button class="night-pick' + (on ? " on" : "") + '" type="button" role="listitem" aria-pressed="' + on + '" data-room="story" data-id="' + esc(s.id) + '"><b>' + esc(s.title) +
-        "</b><span>" + esc(s.place || "") + (played[s.id] ? " · you've played it" : "") + "</span></button>";
+    // a past Daily 5 retold (someone else did it) stays off the shelf until its own day is over
+    var shelf = l.filter(function (s) { return !s.origDay || s.origDay < TODAY; });
+    return '<div class="night-list" role="list">' + shelf.map(function (s) {
+      var on = s.id === d.story, past = !!s.remixOf;
+      return '<button class="night-pick' + (on ? " on" : "") + (past ? " twist" : "") + '" type="button" role="listitem" aria-pressed="' + on + '" data-room="story" data-id="' + esc(s.id) + '">' +
+        (past ? '<em class="night-twist">Past case, new twist</em>' : "") + "<b>" + esc(s.title) + "</b><span>" +
+        (past ? "Daily #" + s.origDay + " · Someone else did it this time" : esc(s.place || "")) + (played[s.id] ? " · you've played it" : "") + "</span></button>";
     }).join("") + "</div>" + mine;
   }
   function nightReveal(r) {

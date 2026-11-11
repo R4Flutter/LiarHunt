@@ -2095,3 +2095,7 @@ button.bk-ev:hover { filter: brightness(0.96); }
 #suspects { position: relative; }
 .stamp.case-closed { right: 0.4rem; top: -0.4rem; font-size: 1.9rem; border-style: double; border-width: 5px; }
 @media (prefers-reduced-motion: reduce) { .stamp.case-closed { animation: none; } }
+
+/* Story Night: a past Daily 5 retold */
+.night-pick.twist { border-color: var(--needle); }
+.night-twist { display: block; font-style: normal; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--needle); }
