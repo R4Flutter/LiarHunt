@@ -2078,6 +2078,17 @@ button.bk-ev:hover { filter: brightness(0.96); }
 .d5f-thread .ok span { background: var(--ok); border-color: var(--ok); color: var(--surface); }
 .d5f-thread .bad span { border-color: var(--needle); color: var(--needle); }
 .d5f-thread .lock span { opacity: 0.4; }
+.d5f-thread .missed span { border-style: dashed; color: var(--pencil); }
+.d5f-thread .missed em { color: var(--needle); }
+/* HQ: weekday chapters missed on their day, to play later for half XP */
+.past-d5 { display: grid; gap: 0.45rem; }
+.past-row { display: flex; align-items: center; gap: 0.7rem; width: 100%; text-align: left; border: 2px solid var(--ink); border-radius: var(--r); background: var(--surface); color: var(--ink); padding: 0.55rem 0.7rem; box-shadow: 0 2px 0 var(--ink); font: inherit; cursor: pointer; }
+.past-row:active { transform: translateY(2px); box-shadow: none; }
+.past-row > span:nth-child(2) { display: grid; min-width: 0; flex: 1; }
+.past-row b, .past-row small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.past-row small { color: var(--pencil); }
+.past-row em { font-style: normal; font-weight: 700; font-size: 0.8rem; color: var(--needle); white-space: nowrap; }
+.past-pin { display: grid; place-items: center; flex: none; width: 1.75rem; height: 1.75rem; border-radius: 50%; border: 2px dashed var(--ink); font-family: var(--display); font-weight: 900; }
 .d5f-h { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--pencil); }
 .d5f-faces { display: flex; gap: 0.35rem; flex-wrap: wrap; }
 .d5f-mug { display: grid; justify-items: center; width: 3.3rem; font-size: 0.7rem; }

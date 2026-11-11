@@ -214,10 +214,13 @@
     return { bonus: bonus };
   }
 
-  // Daily: one result per case, and the end of the day's set
+  // Daily: one result per case, and the end of the day's set. o.chapter: a Daily 5 weekday, whose one chapter is the
+  // whole Daily (pays as 5 cases). o.catchup: that chapter played later from Past cases: half the XP, no coins.
   function dailyCase(o) {
+    var w = o.chapter ? 5 : 1;
+    if (o.replay && o.chapter && o.catchup) { var half = Math.round(rookie(o.correct ? 35 * w : 5 * w) / 2); addXp(half); checkAch(); return { coins: 0, xp: half }; }
     if (o.replay) return { coins: 0, xp: o.correct ? 10 : 0 };
-    var coins = o.correct ? 12 : 0, xp = rookie(o.correct ? 35 : 5);
+    var coins = o.correct ? 12 * w : 0, xp = rookie(o.correct ? 35 * w : 5 * w);
     if (o.correct) {
       S.tot.solved++; S.tot.liars++;
       if (!o.hint) { S.tot.nohint++; missionProgress("nohint", 1); }

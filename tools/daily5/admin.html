@@ -80,14 +80,14 @@ function load() {
     var k = s.stock;
     $("today").textContent = "Today: Daily #" + k.today + " (" + k.todayDate + ", IST)";
     $("stock").className = "stock" + (k.warn ? " warn" : "");
-    $("stock").textContent = k.ahead + " day" + (k.ahead === 1 ? "" : "s") + " covered from today · " + k.approved + " approved waiting" + (k.unpublished ? " · " + k.unpublished + " scheduled but not uploaded" : "") + (k.warn ? " · below 14: generate more" : "");
+    $("stock").textContent = k.ahead + " week" + (k.ahead === 1 ? "" : "s") + " of stories ready (one story runs Monday to Friday) · " + k.approved + " approved waiting" + (k.unpublished ? " · " + k.unpublished + " scheduled but not uploaded" : "") + (k.warn ? " · below 2 weeks: write more" : "");
     var groups = {};
     s.drafts.forEach(function (d) { (groups[d.status] = groups[d.status] || []).push(d); });
     $("list").innerHTML = ["night", "published", "scheduled", "ready", "approved", "failed", "rejected"].filter(function (g) { return groups[g]; }).map(function (g) {
       return '<div class="group"><h3>' + LABEL[g] + " (" + groups[g].length + ")</h3>" + groups[g].map(function (d) {
         var badge = d.gate ? '<span class="ok">✓ checks</span>' : d.stage === "done" ? '<span class="meh">review</span>' : '<span class="bad">✗ ' + esc(d.stage || "") + "</span>";
         return '<button class="item' + (current === d.id ? " on" : "") + '" data-id="' + esc(d.id) + '"><b>' + (d.for === "night" ? "📖 " : "") + esc(d.title) + "</b><small>" + (d.for === "night" ? "Story Night remix · " : "") +
-          (d.day ? "Daily #" + d.day + " · " + d.date + " · " : "") + esc(d.place) + "<br>" + badge + " · critic: " + esc(d.critic || "–") + (d.blockers ? ' · <span class="bad">' + d.blockers + " blocker</span>" : "") + " · $" + d.usd.toFixed(2) + "</small></button>";
+          (d.day ? "Week of Daily #" + d.day + " · Mon " + d.date + " · " : "") + esc(d.place) + "<br>" + badge + " · critic: " + esc(d.critic || "–") + (d.blockers ? ' · <span class="bad">' + d.blockers + " blocker</span>" : "") + " · $" + d.usd.toFixed(2) + "</small></button>";
       }).join("") + "</div>";
     }).join("") || '<p class="muted">No drafts yet. Generate a batch, or try a dry run.</p>';
     [].forEach.call(document.querySelectorAll(".item"), function (b) { b.onclick = function () { openDraft(b.getAttribute("data-id")); }; });
@@ -112,10 +112,10 @@ function openDraft(id) {
 function render(res) {
   var d = res.draft, m = d.meta, s = d.story, r = m.report || {}, keys = res.keys;
   var h = "<h2>" + esc(s ? s.title : m.id) + ' <span class="chip">' + esc(LABEL[m.status] || m.status) + "</span></h2>";
-  h += '<p class="muted small">' + esc(m.id) + (s ? " · " + esc(s.setting.place) : "") + (m.day ? " · Daily #" + m.day + " (" + res.date + ")" : "") + " · brief: " + esc(m.brief ? m.brief.setting + " / " + m.brief.crime : "–") + "</p>";
+  h += '<p class="muted small">' + esc(m.id) + (s ? " · " + esc(s.setting.place) : "") + (m.day ? " · Daily #" + m.day + " to #" + (m.day + 4) + " (from Mon " + res.date + ")" : "") + " · brief: " + esc(m.brief ? m.brief.setting + " / " + m.brief.crime : "–") + "</p>";
   // actions
   h += '<div class="row">';
-  if (s && res.check && res.check.ok) h += '<button class="primary" id="a-play">▶ Play it in the game</button>';
+  if (s && res.check && res.check.ok) h += '<button class="primary" id="a-play">▶ Play it in the game</button><select id="a-day"><option value="">Play one weekday…</option><option value="1">Mon · chapter 1</option><option value="2">Tue · chapter 2</option><option value="3">Wed · chapter 3</option><option value="4">Thu · chapter 4</option><option value="5">Fri · the verdict</option></select>';
   if (s) h += '<button id="a-export">Export JSON</button>';
   if (["ready", "failed", "rejected"].includes(m.status)) h += '<button id="a-approve">Approve</button>';
   if (!["published", "rejected", "night"].includes(m.status)) h += '<button class="danger" id="a-reject">Reject</button>';
@@ -123,7 +123,7 @@ function render(res) {
   if (night && m.status === "approved") h += '<button class="primary" id="a-npub">Publish to Story Night</button>';
   if (m.status === "night") h += '<button class="danger" id="a-nunpub">Take off Story Night</button>';
   if (!night && m.status === "published") h += '<small class="hint">For Story Night, write a remix in Claude Code (same people, someone else did it; see WRITING.md), then import it.</small>';
-  if (!night && ["approved", "scheduled"].includes(m.status)) h += '<input type="date" id="a-date" value="' + (res.date || state.stock.nextEmptyDate) + '"><button id="a-schedule">' + (m.status === "scheduled" ? "Move" : "Schedule") + "</button>";
+  if (!night && ["approved", "scheduled"].includes(m.status)) h += '<input type="date" id="a-date" value="' + (res.date || state.stock.nextEmptyDate) + '"><button id="a-schedule">' + (m.status === "scheduled" ? "Move" : "Schedule") + " (pick a Monday)</button>";
   if (m.status === "scheduled") h += '<button id="a-unschedule">Unschedule</button><button class="primary" id="a-publish">Publish to Firebase</button>';
   if (m.status === "published") h += '<button class="danger" id="a-unpublish">Take down (before its day)</button>';
   if (!["published", "scheduled", "night"].includes(m.status)) h += '<button id="a-redo">Regenerate whole story</button><select id="a-case"><option value="">Rewrite case…</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>';
@@ -171,6 +171,7 @@ function act(id, action, data) { return api("/api/draft/" + id + "/" + action, d
 function wire(d, res) {
   var id = d.meta.id, on = function (el, f) { if ($(el)) $(el).onclick = f; };
   on("a-play", function () { api("/api/play/" + id + "/reset/0", {}).then(function () { window.open("/index.html?test=1&lb=demo&d5=local&fresh=1&draft=" + encodeURIComponent(id), "_blank"); }); });
+  if ($("a-day")) $("a-day").onchange = function () { var n = this.value; this.value = ""; if (n) api("/api/play/" + id + "/reset/0?ch=" + n, {}).then(function () { window.open("/index.html?test=1&lb=demo&d5=local&fresh=1&draft=" + encodeURIComponent(id) + "&ch=" + n, "_blank"); }); };
   on("a-approve", function () { act(id, "approve"); });
   on("a-export", function () { if (confirm("This file holds the answers. Keep it out of the game folder and never put it on GitHub. Download it?")) location.href = "/api/draft/" + id + "/export"; });
   on("a-npub", function () { if (confirm("Publish this story to Story Night? Hosts can pick it at once.")) act(id, "night-publish"); });
@@ -178,7 +179,7 @@ function wire(d, res) {
   on("a-reject", function () { var why = prompt("Why reject it? (kept in the history so new stories avoid it)"); if (why !== null) act(id, "reject", { reason: why }); });
   on("a-schedule", function () { act(id, "schedule", { date: $("a-date").value }); });
   on("a-unschedule", function () { act(id, "unschedule"); });
-  on("a-publish", function () { if (confirm("Upload this story to Firebase as Daily #" + d.meta.day + "? Players get it at midnight IST that day.")) act(id, "publish"); });
+  on("a-publish", function () { if (confirm("Upload this story to Firebase as Daily #" + d.meta.day + " to #" + (d.meta.day + 4) + ", one chapter a day? Each opens at midnight IST.")) act(id, "publish"); });
   on("a-unpublish", function () { if (confirm("Take this story down from Firebase?")) act(id, "unpublish"); });
   on("a-redo", function () { if (confirm("Write this story again from scratch? It costs about $3 (free with dry run).")) api("/api/generate", { redo: id, dry: $("dry").checked }).then(load).catch(function (e) { toast(e.message); }); });
   if ($("a-case")) $("a-case").onchange = function () { var n = this.value; if (n && confirm("Rewrite the words of case " + n + ", keeping the logic?")) api("/api/generate", { redo: id, case: +n, dry: $("dry").checked }).then(load).catch(function (e) { toast(e.message); }); this.value = ""; };
@@ -186,9 +187,9 @@ function wire(d, res) {
     $("st-out").textContent = "Loading…";
     api("/api/stats?day=" + $("st-day").value).then(function (st) {
       var pct = function (a, b) { return b ? Math.round((100 * a) / b) + "%" : "–"; };
-      $("st-out").innerHTML = "<p>Daily #" + st.day + " (" + st.date + "): <b>" + st.started + "</b> started · " + st.completed + " finished all 5 (" + pct(st.completed, st.started) + ") · " + st.perfect + " perfect · " + st.abandoned + " gave up · Hunch used by " + st.hunch + (st.medianMinutes != null ? " · median " + st.medianMinutes + " min" : "") + "</p>" +
-        "<table><tr><th>Case</th><th>Reached</th><th>Solved</th><th>Failed</th><th>Solve rate</th></tr>" + [0, 1, 2, 3, 4].map(function (i) { return "<tr><td>" + (i + 1) + "</td><td>" + st.reached[i] + "</td><td>" + st.solved[i] + "</td><td>" + st.failed[i] + "</td><td>" + pct(st.solved[i], st.solved[i] + st.failed[i]) + "</td></tr>"; }).join("") + "</table>" +
-        "<p>Came back next day: " + st.nextDay + " (" + pct(st.nextDay, st.started) + ") · 7 days later: " + st.sevenDay + " (" + pct(st.sevenDay, st.started) + ")</p>";
+      $("st-out").innerHTML = "<p>Week of Daily #" + st.day + " (Mon " + st.date + "): <b>" + st.started + "</b> players · " + st.completed + " played all 5 chapters on their days (" + pct(st.completed, st.started) + ") · " + st.perfect + " perfect · Hunch used " + st.hunch + " times" + (st.medianMinutes != null ? " · median " + st.medianMinutes + " min a chapter" : "") + "</p>" +
+        "<table><tr><th>Chapter</th><th>Played</th><th>Solved</th><th>Failed</th><th>Solve rate</th></tr>" + [0, 1, 2, 3, 4].map(function (i) { return "<tr><td>" + (i + 1) + "</td><td>" + st.reached[i] + "</td><td>" + st.solved[i] + "</td><td>" + st.failed[i] + "</td><td>" + pct(st.solved[i], st.solved[i] + st.failed[i]) + "</td></tr>"; }).join("") + "</table>" +
+        "<p>Played Monday and came back Tuesday: " + st.nextDay + " (" + pct(st.nextDay, st.reached[0]) + ") · Back for next Monday's story: " + st.sevenDay + " (" + pct(st.sevenDay, st.started) + ")</p>";
     }).catch(function (e) { $("st-out").textContent = e.message; });
   });
 }

@@ -319,8 +319,10 @@ service cloud.firestore {
       }
     }
 
-    // ---------- Daily 5: one story a day in five connected cases ----------
-    // Stories are uploaded ahead of time by the admin tool (Admin SDK, which skips these rules) and open on their day.
+    // ---------- Daily 5: one story a week, one chapter a day (Monday to Friday) ----------
+    // Each weekday's d5/{day} holds that day's chapter as its only case (cases/1, key c1). Saturday and Sunday have no
+    // story and play the classic Daily. Stories are uploaded ahead of time by the admin tool (Admin SDK, which skips
+    // these rules) and open on their day.
     // The day turns over at midnight India time (UTC+5:30) for everyone. A day's story stays playable until 6 AM IST
     // the next morning; after that everything except the answer keys is public, as the archive.
     function istStart(d) { return dayStart(d) - duration.value(330, 'm'); }
@@ -328,17 +330,12 @@ service cloud.firestore {
     function runPath(d) { return /databases/$(database)/documents/d5runs/$(string(d) + '_' + request.auth.uid); }
     function hasRun(d) { return signedIn() && exists(runPath(d)); }
     function myRun(d) { return get(runPath(d)).data; }
-    function reds(g) { return g.size() - g.replace('r', '').size(); }
-    // A player who stopped for the day after a miss (v2 stories) has over: true.
-    function isOver(r) { return r.get('over', false) == true; }
-    // Case n opens when it's the player's next case and they haven't run out of tries or stopped, or once they've played it.
-    function canSee(r, n) { return n <= r.grid.size() || (n == r.grid.size() + 1 && reds(r.grid) < r.strikes && !isOver(r)); }
 
     match /d5/{day} {
       allow get: if request.time >= istStart(int(day));
       allow list, write: if false;
       match /cases/{n} {
-        allow get: if request.time >= istStart(int(day)) && (!d5Open(int(day)) || (hasRun(int(day)) && canSee(myRun(int(day)), int(n))));
+        allow get: if request.time >= istStart(int(day)) && (!d5Open(int(day)) || (hasRun(int(day)) && n == '1'));
         allow list, write: if false;
       }
       // the answer and what it proves: once the player has committed their own answer to that case
@@ -350,10 +347,9 @@ service cloud.firestore {
         allow get: if request.time >= istStart(int(day)) && (!d5Open(int(day)) || (hasRun(int(day)) && myRun(int(day)).hunch == int(n)));
         allow list, write: if false;
       }
-      // the full story: at once for players who played all five, at the next midnight for those who ran out of tries
+      // the full story (Friday's verdict day only): once the player has answered
       match /end/{doc} {
-        allow get: if request.time >= istStart(int(day)) && (!d5Open(int(day)) || (hasRun(int(day))
-          && (myRun(int(day)).grid.size() == 5 || ((reds(myRun(int(day)).grid) >= myRun(int(day)).strikes || isOver(myRun(int(day)))) && request.time >= istStart(int(day) + 1)))));
+        allow get: if request.time >= istStart(int(day)) && (!d5Open(int(day)) || (hasRun(int(day)) && myRun(int(day)).grid.size() == 1));
         allow list, write: if false;
       }
     }
@@ -362,19 +358,17 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // A player's run through a day's story. Each answer takes two writes: commit the pick (it can never change after
+    // A player's run through a day's chapter. Each answer takes two writes: commit the pick (it can never change after
     // that), then resolve it once the reveal is open. Resolving checks the pick against the key, so the run, and the
     // score posted from it, can't be faked, and no one can try answers until one is accepted.
     function d5Key(d, c) { return get(/databases/$(database)/documents/d5keys/$(string(d))).data.get(c, null); }
     function d5Commit() {
       let r = resource.data;
       let q = request.resource.data;
-      let c = 'c' + string(r.grid.size() + 1);
-      let p = q.picks.get(c, null);
+      let p = q.picks.get('c1', null);
       return q.diff(r).affectedKeys().hasOnly(['picks'])
-        && r.grid.size() < 5 && reds(r.grid) < r.strikes && !isOver(r)
-        && !(c in r.picks)
-        && q.picks.diff(r.picks).affectedKeys().hasOnly([c])
+        && r.grid == '' && !('c1' in r.picks)
+        && q.picks.diff(r.picks).affectedKeys().hasOnly(['c1'])
         && p is map && p.keys().hasOnly(['s', 'p', 'at'])
         && p.s is string && p.s.size() <= 120 && p.p is string && p.p.size() <= 60
         && p.at == request.time;
@@ -382,31 +376,18 @@ service cloud.firestore {
     function d5Resolve() {
       let r = resource.data;
       let q = request.resource.data;
-      let n = r.grid.size() + 1;
-      let c = 'c' + string(n);
-      let p = r.picks.get(c, null);
-      let k = d5Key(r.day, c);
+      let p = r.picks.get('c1', null);
+      let k = d5Key(r.day, 'c1');
       let right = p != null && k != null && p.s == k.s && p.p in k.proofs;
       return q.diff(r).affectedKeys().hasOnly(['grid'])
-        && p != null && k != null
-        && q.grid == r.grid + (right ? (r.hunch == n ? 'y' : 'g') : 'r');
+        && r.grid == '' && p != null && k != null
+        && q.grid == (right ? (r.hunch == 1 ? 'y' : 'g') : 'r');
     }
     function d5Hunch() {
       let r = resource.data;
       let q = request.resource.data;
-      let n = r.grid.size() + 1;
       return q.diff(r).affectedKeys().hasOnly(['hunch'])
-        && r.hunch == 0 && q.hunch == n && n <= 5
-        && !(('c' + string(n)) in r.picks)
-        && reds(r.grid) < r.strikes;
-    }
-    // Stop for today: right after a miss, before the next answer, once, and never undone.
-    function d5Stop() {
-      let r = resource.data;
-      let q = request.resource.data;
-      return q.diff(r).affectedKeys().hasOnly(['over']) && q.over == true && !isOver(r)
-        && r.grid.matches('.*r$') && reds(r.grid) < r.strikes && r.grid.size() < 5
-        && !(('c' + string(r.grid.size() + 1)) in r.picks);
+        && r.hunch == 0 && q.hunch == 1 && r.grid == '' && !('c1' in r.picks);
     }
     match /d5runs/{id} {
       allow get: if signedIn() && id.split('_')[1] == request.auth.uid;
@@ -424,14 +405,15 @@ service cloud.firestore {
         && request.time < istStart(request.resource.data.day + 1)
         && request.resource.data.startedAt == request.time;
       allow update: if signedIn() && resource.data.uid == request.auth.uid && d5Open(resource.data.day)
-        && (d5Commit() || d5Resolve() || d5Hunch() || d5Stop());
+        && (d5Commit() || d5Resolve() || d5Hunch());
     }
-    // On a day with a story, the Daily score must be the player's finished run (grid padded with - for locked cases).
+    // On a story day, the Daily score must be the player's answered chapter, counted as a whole Daily so the ladder
+    // stays fair: right is ggggg (yyyyy with the Hunch), wrong is r----.
     function d5ScoreOk(day, grid) {
       let rp = runPath(day);
       return !exists(/databases/$(database)/documents/d5keys/$(string(day)))
-        || (exists(rp) && (get(rp).data.grid.size() == 5 || reds(get(rp).data.grid) >= get(rp).data.strikes || get(rp).data.get('over', false) == true)
-          && grid.matches(get(rp).data.grid + '-*'));
+        || (exists(rp) && get(rp).data.grid in ['g', 'y', 'r']
+          && grid == (get(rp).data.grid == 'r' ? 'r----' : get(rp).data.grid + get(rp).data.grid + get(rp).data.grid + get(rp).data.grid + get(rp).data.grid));
     }
 
     // Endless mode: each player keeps their best run. It can only go up.

@@ -259,7 +259,7 @@
     $("brand").hidden = !onHQ;
     $("hud-title").hidden = onHQ;
     if (name !== "case") { Plat.gameplayStop(); hideCoach(); $("stage-card").hidden = true; }
-    Snd.mood(name === "case" ? (run && run.kind === "rush" ? "rush" : run && run.d5 && run.c && run.c.n === 5 ? "verdict" : "case") : name === "book" ? "case" : "hq");
+    Snd.mood(name === "case" ? (run && run.kind === "rush" ? "rush" : run && run.d5 && run.c && run.c.mode === "verdict" ? "verdict" : "case") : name === "book" ? "case" : "hq");
     if (onHQ) harborSoon();
     if (onHQ) { gameTrace.stop(); hqTrace.start(); } else if (name === "case") { hqTrace.stop(); gameTrace.start(); } else { hqTrace.stop(); gameTrace.stop(); }
     if (name === "hq" || name === "results") setTimeout(cloudFlush, 0);
@@ -335,20 +335,64 @@
     renderBanner();
     renderCoins(false);
   }
-  // A v2 story on HQ: the scene in a photo, five chapter pins on a red thread, and the day's suspects.
+  // A v2 story on HQ: the scene in a photo, five chapter pins on a red thread, and the story's suspects.
+  // A weekday (ed.ch): the pins are the week, Monday to Friday; earlier days come from this player's history.
+  function weekMark(ed, i) {
+    var h = S.history[ed.week + i];
+    return h ? h.grid.charAt(0) : ed.week + i < TODAY ? "m" : ""; // m: missed on its day (it waits in Past cases)
+  }
   function d5Folder(ed, res, done) {
-    var A = window.WLArt, cs = ed.cases || [], cur = Math.min(res.length, 4), sc = (cs[cur] && cs[cur].scene) || (cs[0] && cs[0].scene);
+    var A = window.WLArt, cs = ed.cases || [], wk = ed.ch || 0, cur = wk ? wk - 1 : Math.min(res.length, 4), sc = (cs[cur] && cs[cur].scene) || (cs[0] && cs[0].scene);
     var pins = cs.map(function (c, i) {
-      var r = res[i], ok = r === "g" || r === "y", cls = ok ? "ok" : r === "r" ? "bad" : r === "-" ? "lock" : i === res.length && !done ? "now" : "";
+      var r = !wk ? res[i] : i === wk - 1 ? res[0] : i < wk - 1 ? weekMark(ed, i) : "", now = wk ? i === wk - 1 : i === res.length;
+      var ok = r === "g" || r === "y", cls = ok ? "ok" : r === "r" ? "bad" : r === "-" ? "lock" : r === "m" ? "missed" : now && !done ? "now" : "";
       var mark = ok ? "✓" : r === "r" ? "✗" : i === 4 && A ? A.icon("scales") : String(i + 1);
-      var lab = i === 4 ? "Verdict" : (A && A.SCENES[c.scene] || {}).name || c.title;
+      var lab = wk ? ["Mon", "Tue", "Wed", "Thu", "Fri"][i] + (r === "m" ? " · missed" : "") : i === 4 ? "Verdict" : (A && A.SCENES[c.scene] || {}).name || c.title;
       return '<li class="' + cls + '"><span>' + mark + "</span><em>" + esc(lab) + "</em></li>";
     }).join("");
     var faces = (ed.cast || []).map(function (p) { return '<span class="d5f-mug">' + WL.avatar(p.name, p.face) + "<b>" + esc(p.name.split(" ")[0]) + "</b></span>"; }).join("");
     return (done ? "" : '<span class="d5f-stamp" aria-hidden="true">Confidential</span>') +
       (sc && A ? '<figure class="d5f-photo">' + A.scene(sc) + "<figcaption>" + esc(ed.place || "") + "</figcaption></figure>" : "") +
-      '<ol class="d5f-thread" aria-label="Five chapters">' + pins + "</ol>" +
-      '<p class="d5f-h">Your suspects, all day</p><div class="d5f-faces">' + faces + "</div>";
+      '<ol class="d5f-thread" aria-label="' + (wk ? "This week's five chapters" : "Five chapters") + '">' + pins + "</ol>" +
+      '<p class="d5f-h">Your suspects, all ' + (wk ? "week" : "day") + '</p><div class="d5f-faces">' + faces + "</div>";
+  }
+  /* ---------- Past cases: weekday chapters missed on their day ----------
+     Each plays from the public archive (from 6 AM the day after) and pays half the XP, once. The last 14 days are kept. */
+  var pastBusy = false;
+  function pastChapters() {
+    var out = [];
+    for (var d = TODAY - 1; d >= Math.max(1, TODAY - 14); d--) {
+      var ed = d5Edition[d], h = S.history[d];
+      if (ed && ed.ch && !h && (d < TODAY - 1 || WL.istHour() >= 6)) out.push({ day: d, ed: ed });
+    }
+    return out.reverse(); // oldest first: the story in order
+  }
+  function loadPast() {
+    if (pastBusy || !D5 || D5.mode === "local") return;
+    var want = [];
+    for (var d = TODAY - 1; d >= Math.max(1, TODAY - 14); d--) if ((d - 1) % 7 < 5 && !S.history[d] && d5Edition[d] === undefined) want.push(d); // weekdays not played
+    if (!want.length) { renderPast(); return; }
+    pastBusy = true;
+    Promise.all(want.map(d5Load)).then(function () { pastBusy = false; if (screen === "hq") renderPast(); });
+  }
+  function renderPast() {
+    var box = $("past-d5");
+    if (!box) return;
+    var list = pastChapters();
+    box.hidden = !list.length;
+    box.innerHTML = list.length ? '<h3 class="sec">Past cases <span class="muted small">· missed chapters, half XP</span></h3>' + list.map(function (x) {
+      var c = (x.ed.cases || [])[x.ed.ch - 1] || {};
+      return '<button class="past-row" type="button" data-day="' + x.day + '"><span class="past-pin">' + x.ed.ch + "</span><span><b>" + (x.ed.ch === 5 ? "The verdict" : "Chapter " + x.ed.ch) + " · " + esc(c.title || "") +
+        "</b><small>" + esc(x.ed.title) + " · " + WL.formatDate(WL.dateForDay(x.day)) + "</small></span><em>Play · ½ XP</em></button>";
+    }).join("") : "";
+    [].forEach.call(box.querySelectorAll(".past-row"), function (b) {
+      b.addEventListener("click", function () {
+        var day = +b.getAttribute("data-day");
+        Snd.play("folder");
+        WL.track("d5_past_open", { day: day });
+        startDaily(day, "practice");
+      });
+    });
   }
   function renderToday() {
     var d = S.daily && S.daily.day === TODAY ? S.daily : null, streak = dailyStreak();
@@ -358,8 +402,19 @@
     $("today-tab").textContent = "Daily #" + TODAY;
     $("today-cells").hidden = !res.length;
     $("today-cells").innerHTML = res.length ? cells(res, 5) : "";
-    var title, sub, btn, v2 = !!(ed && ed.fmt === 2);
-    if (ed) {
+    var title, sub, btn, v2 = !!(ed && ed.fmt === 2), wk = ed ? ed.ch || 0 : 0, keep = streak > 0 ? " Play to keep your <strong>" + streak + "-day streak</strong>." : "";
+    if (wk) { // a weekday: one chapter of this week's story
+      var ok = scoreOf(res) === 5;
+      if (done) {
+        title = wk === 5 ? (ok ? "Solved: " + ed.title : ed.title + ": not the whole truth") : (ok ? "Chapter " + wk + " solved" : "Chapter " + wk + ": the trail went cold");
+        sub = wk < 5 ? (wk === 4 ? "Your verdict" : "Chapter " + (wk + 1)) + ' opens in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) + "</strong>" : "Classic cases this weekend. A new story starts on Monday.";
+        btn = "See your result";
+      } else {
+        title = (wk === 5 ? "The verdict" : "Chapter " + wk + " of 5") + " · " + ed.title;
+        sub = (wk === 1 ? "A new story: one chapter a day, Monday to Friday. Search the scene, question the suspects, then accuse." : wk === 5 ? "Name everyone behind it. One try." : "The story so far is waiting in the case file.") + " About 5 minutes." + keep;
+        btn = wk === 1 ? "Open the case file" : wk === 5 ? "Give your verdict" : "Open Chapter " + wk;
+      }
+    } else if (ed) {
       if (done) {
         title = scoreOf(res) === 5 ? "Solved: " + ed.title : ed.title + ": the trail went cold";
         sub = (scoreOf(res) === 5 ? "A new mystery" : "The ending, and a new mystery,") + ' in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) + "</strong>";
@@ -406,10 +461,11 @@
     if (c && c.day === TODAY && !done) meta.push("⚔️ " + esc(c.name) + " challenged you: " + scoreOf(c.grid.split("")) + "/5 in " + WL.fmtTime(c.time * 1000));
     // a story you didn't finish yesterday: its ending is open now
     var yh = S.history[TODAY - 1];
-    if (D5 && yh && yh.story && yh.score < 5) meta.push('<button class="link-btn" type="button" id="btn-yesterday">📜 How “' + esc(yh.story) + "” ended</button>");
+    if (D5 && yh && yh.story && yh.score < 5 && (!yh.ch || yh.ch === 5)) meta.push('<button class="link-btn" type="button" id="btn-yesterday">📜 How “' + esc(yh.story) + "” ended</button>");
     $("today-meta").hidden = !meta.length;
     $("today-meta").innerHTML = meta.join("<br>");
     if ($("btn-yesterday")) $("btn-yesterday").addEventListener("click", function () { Snd.play("click"); openFinale(TODAY - 1); });
+    loadPast();
   }
   /* ---------- seasons: 45 days each, with their own cases (js/seasons.js) ----------
      The season score is the liars caught in that season's Dailies, played on the day (catch-ups and practice don't count),
@@ -718,11 +774,13 @@
     loadCase();
   }
 
-  /* ---------- Daily 5: one story, five connected cases ----------
-     The cases come from Firebase one at a time (WLLB.d5 in leaderboard.js), and the run is kept there too, so a reload,
-     another device or a lost connection never counts as a wrong answer. The rules only open a case once the one before
-     is solved, and check every answer against a key players can't read. Past days replay from the public archive,
-     judged on this device. A day without a story plays the classic Daily. */
+  /* ---------- Daily 5: one story a week, one chapter a day ----------
+     A story runs Monday to Friday: each weekday's edition (ed.ch = 1-5, ed.week = its Monday) holds that day's chapter
+     as its only case, and the chapter counts as the whole Daily. Saturday and Sunday have no story: the classic Daily.
+     A chapter missed on its day waits in Past cases on HQ (half XP). Story Night still plays a whole story in one go.
+     The chapter comes from Firebase (WLLB.d5 in leaderboard.js), and the run is kept there too, so a reload, another
+     device or a lost connection never counts as a wrong answer. The rules check every answer against a key players
+     can't read. Past days replay from the public archive, judged on this device. */
   var D5 = LB.d5 || null, d5Edition = {}, d5Loading = {};
   var D5_LEVEL = ["easy", "medium", "medium", "hard", "twist"];
   function d5Today() {
@@ -770,10 +828,16 @@
     };
   }
   function reds(g) { return (String(g).match(/r/g) || []).length; }
-  function d5Over(r) { return r.grid.length >= 5 || reds(r.grid) >= (r.strikes || 1) || !!r.over; }
+  function d5Over(r, ed) { return r.grid.length >= (ed && ed.ch ? 1 : 5) || reds(r.grid) >= (r.strikes || 1) || !!r.over; }
   // A miss in a story that allows a second chance, and the player hasn't chosen yet: Revive, or stop for today.
-  function d5Pending(r, st) { var g = r.grid; return !d5Over(r) && g.length > 0 && g.charAt(g.length - 1) === "r" && st.revived !== g.length; }
-  function d5Results(r) { var out = r.grid.split(""); if (d5Over(r)) while (out.length < 5) out.push("-"); return out; }
+  function d5Pending(r, st, ed) { var g = r.grid; return !d5Over(r, ed) && g.length > 0 && g.charAt(g.length - 1) === "r" && st.revived !== g.length; }
+  // A weekday's chapter counts as a whole Daily (the rules check the same): right is ggggg (yyyyy with the Hunch), wrong r----.
+  function d5Results(r, ed) {
+    var out = r.grid.split("");
+    if (ed && ed.ch) return !out.length ? [] : out[0] === "r" ? ["r", "-", "-", "-", "-"] : [out[0], out[0], out[0], out[0], out[0]];
+    if (d5Over(r, ed)) while (out.length < 5) out.push("-");
+    return out;
+  }
   function d5Failed(results, strikes) { return results.indexOf("-") >= 0 || reds(results.join("")) >= (strikes || 1); }
   function verdictKey(v) { return Object.keys(v).sort().map(function (q) { return q + "=" + v[q]; }).join(";"); }
   function d5Fail(e) {
@@ -806,36 +870,38 @@
     var replay = day !== TODAY;
     var prog = progressFor(day), st = d5St(day), api = d5Api(day, prog), kept = chLocal();
     if (kept && kept.day === day && kept.revived > (st.revived || 0)) st.revived = kept.revived; // the account copy may be up to 20 s behind
-    prog.d5 = ed.id; prog.title = ed.title; prog.strikes = ed.strikes; prog.fmt = ed.fmt || 1;
+    prog.d5 = ed.id; prog.title = ed.title; prog.strikes = ed.strikes; prog.fmt = ed.fmt || 1; prog.ch = ed.ch || 0;
     if (prog.done) { showDailyResults(day, prog, replay, null); return; }
     d5Busy(true);
     api.run(day).then(function (r) { return r || api.start(day, ed.strikes); }).then(function (r) {
       st.run = r;
-      prog.results = d5Results(r); persist();
+      prog.results = d5Results(r, ed); persist();
       var away = prog.at ? Math.min(AWAY_MAX, Math.max(0, Date.now() - prog.at)) : 0;
-      run = { kind: replay ? "replay" : "daily", day: day, cases: [null, null, null, null, null], prog: prog, idx: r.grid.length,
-        elapsed: (prog.elapsed || 0) + away, d5: { ed: ed, st: st, api: api, r: r } };
-      if (d5Over(r)) { d5Busy(false); finishDaily(); return; }
-      if (!r.grid.length) WL.track(replay ? "replay_start" : "d5_start", { day: day, story: ed.id });
-      d5Open(d5Pending(r, st) ? r.grid.length : r.grid.length + 1); // a miss still waiting for Revive or Stop comes back to that choice
+      run = { kind: replay ? "replay" : "daily", day: day, cases: ed.ch ? [null] : [null, null, null, null, null], prog: prog, idx: r.grid.length,
+        elapsed: (prog.elapsed || 0) + away, d5: { ed: ed, st: st, api: api, r: r },
+        catchup: replay && !!ed.ch && !S.history[day] }; // a weekday chapter missed on its day: half XP, once
+      if (d5Over(r, ed)) { d5Busy(false); finishDaily(); return; }
+      if (!r.grid.length) WL.track(replay ? "replay_start" : "d5_start", { day: day, story: ed.id, ch: ed.ch || 0 });
+      d5Open(d5Pending(r, st, ed) ? r.grid.length : r.grid.length + 1); // a miss still waiting for Revive or Stop comes back to that choice
     }).catch(function (e) { d5Busy(false); d5Fail(e); });
   }
   function d5Case(doc, n) {
     if (doc.fmt === 2 && doc.mode === "liar") return d5Chapter(doc, n);
     // Story files often list the liar, the proof and the right verdict first, so show them in a fixed shuffled order.
     var rng = WL.rngFrom((doc.title || "") + ":" + n), f = WL.shuffle(doc.facts || [], rng), sus = WL.shuffle(doc.suspects || [], rng);
-    return { d5: true, n: n, title: doc.title, setup: doc.intro, prev: doc.previously || "", ask: doc.ask, mode: doc.mode, level: D5_LEVEL[n - 1],
+    return { d5: true, n: n, ch: doc.n || n, title: doc.title, setup: doc.intro, prev: doc.previously || "", ask: doc.ask, mode: doc.mode, level: D5_LEVEL[(doc.n || n) - 1],
       facts: f, clues: f.map(function (x) { return x.text; }), factIds: f.map(function (x) { return x.id; }),
       suspects: sus.map(function (s) { return { name: s.name, role: s.role, says: s.says }; }),
       sids: sus.map(function (s) { return s.sid; }), pids: sus.map(function (s) { return s.id; }),
       parts: doc.parts ? doc.parts.map(function (q) { return Object.assign({}, q, { options: WL.shuffle(q.options || [], rng) }); }) : null, answer: -1, proof: new Array(doc.need || 0).fill(-1), alt: [], why: "" };
   }
   // A v2 chapter (js/chapter.js draws it). The verdict card reads the statements as "suspects" and the evidence as "clues".
+  // n: the case's place in this run (always 1 on a weekday); ch: the chapter of the story (1-5).
   function d5Chapter(doc, n) {
     var cast = {}, facts = (doc.evidence || []).concat(doc.carried || []);
     (run.d5.ed.cast || []).forEach(function (p) { cast[p.id] = p; });
     var name = function (pid) { return (cast[pid] || {}).name || pid; };
-    return { d5: true, fmt: 2, n: n, title: doc.title, setup: doc.intro, prev: doc.previously || "", ask: doc.ask, mode: "liar", level: D5_LEVEL[n - 1], need: doc.need || 1,
+    return { d5: true, fmt: 2, n: n, ch: doc.n || n, title: doc.title, setup: doc.intro, prev: doc.previously || "", ask: doc.ask, mode: "liar", level: D5_LEVEL[(doc.n || n) - 1], need: doc.need || 1,
       scene: doc.scene, time: doc.time, people: doc.suspects || [], spots: doc.spots || [], evidence: doc.evidence || [], carried: doc.carried || [],
       questions: doc.questions || [], presses: doc.presses || [], statements: doc.statements || [], cast: cast,
       facts: facts, clues: facts.map(function (f) { return f.text; }), factIds: facts.map(function (f) { return f.id; }),
@@ -877,20 +943,20 @@
   }
   // The card between cases: where the story stands, then the new case. The clock waits.
   function d5Intro(n) {
-    var c = run.c, ed = run.d5.ed, el = $("stage-card"), keep = run;
+    var c = run.c, ed = run.d5.ed, el = $("stage-card"), keep = run, ch = c.ch || n, verdict = c.mode === "verdict";
     var v2 = ed.fmt === 2, art = $("stage-art"), A = window.WLArt;
-    $("stage-n").textContent = n === 1 ? (run.night ? (run.label || "Story Night") + " · " : "Daily 5 · ") + ed.title : (v2 ? (n === 5 ? "The verdict" : "Chapter " + n + " of 5") : "Case " + n + " of 5");
-    $("stage-name").textContent = n === 1 ? (v2 ? "Chapter 1 · " : "Case 1 · ") + c.title : c.title;
+    $("stage-n").textContent = n === 1 ? (run.night ? (run.label || "Story Night") + " · " : "Daily 5 · ") + ed.title : (v2 ? (verdict ? "The verdict" : "Chapter " + ch + " of 5") : "Case " + ch + " of 5");
+    $("stage-name").textContent = n === 1 ? (v2 ? (verdict ? "" : "Chapter " + ch + " · ") : "Case " + ch + " · ") + c.title : c.title;
     var who = c.fmt === 2 ? c.people : v2 ? (ed.cast || []).map(function (p) { return p.id; }) : [];
     art.hidden = !v2 || !A;
     art.innerHTML = v2 && A ? (c.scene ? '<span class="stage-photo">' + A.scene(c.scene) + "</span>" : "") + '<span class="stage-faces">' + who.map(function (pid) {
       var p = (ed.cast || []).filter(function (x) { return x.id === pid; })[0] || { name: pid };
       return "<span>" + WL.avatar(p.name, p.face) + "</span>";
     }).join("") + "</span>" : "";
-    $("stage-text").textContent = n === 1 ? ed.intro : c.prev;
-    el.querySelector(".stage-tap").textContent = v2 ? (n === 5 ? "Tap to give your verdict" : "Tap to open the chapter") : "Tap to open the case";
+    $("stage-text").textContent = ch === 1 ? ed.intro : c.prev; // later weekdays open with the story so far
+    el.querySelector(".stage-tap").textContent = v2 ? (verdict ? "Tap to give your verdict" : "Tap to open the chapter") : "Tap to open the case";
     el.classList.add("story"); el.hidden = false; run.hold = true;
-    Snd.play(n === 5 ? "twist" : "whoosh");
+    Snd.play(verdict ? "twist" : "whoosh");
     var done = function () { el.hidden = true; el.classList.remove("story"); art.hidden = true; art.innerHTML = ""; el.querySelector(".stage-tap").textContent = "Tap to start"; if (run === keep) run.hold = false; el.onclick = null; };
     el.onclick = function () { Snd.play("click"); done(); };
   }
@@ -1038,7 +1104,7 @@
       $("btn-verdict-hq").disabled = false;
       if (run !== keep) return;
       run.d5.r = run.d5.st.run = r; run.reviveAsk = false;
-      run.prog.results = d5Results(r); persist();
+      run.prog.results = d5Results(r, run.d5.ed); persist();
       WL.track("d5_stop", { day: run.day, n: run.c.n });
       $("verdict").hidden = true;
       finishDaily();
@@ -1071,6 +1137,11 @@
   function d5EndCard(day, p) {
     var box = $("d5-end");
     if (!box || !D5) return;
+    if (p.ch && p.ch < 5) { // Monday to Thursday: the story carries on tomorrow
+      box.innerHTML = day !== TODAY ? "" : '<div class="d5-locked"><b>' + (p.ch === 4 ? "Friday: your verdict" : "Chapter " + (p.ch + 1)) + ' opens at midnight</b><span>In <strong data-countdown="1">' +
+        WL.fmtCountdown(WL.msToNextDay()) + "</strong>. What this chapter proved carries into the next one.</span></div>";
+      return;
+    }
     box.innerHTML = '<p class="muted small">Opening the full story…</p>';
     D5.finale(day).then(function (f) {
       if (f) { box.innerHTML = '<h3 class="sec">How it happened</h3>' + finaleHtml(f); WL.track("d5_finale_view", { day: day, from: "results" }); }
@@ -1087,11 +1158,12 @@
   var KIND = { cctv: "CCTV", log: "Log", document: "Document", witness: "Witness", photo: "Photo", record: "Record", phone: "Phone", object: "Object", finding: "Finding" };
   function nbData() {
     var d5 = run.d5, st = d5.st, cur = run.c.n, ev = [], fi = [], tl = [], says = {};
-    for (var n = 1; n <= cur; n++) {
-      var c = st.cases[n], rv = n < cur || run.revealed ? st.reveals[n] : null; // never the open case's answer
+    var had = {}; // findings carried in from earlier chapters (on a weekday, those were other days)
+    for (var i = 1; i <= cur; i++) {
+      var c = st.cases[i], rv = i < cur || run.revealed ? st.reveals[i] : null, n = (c && c.n) || i; // never the open case's answer; n: its chapter
       if (!c) continue;
       if (c.fmt === 2 && c.mode === "liar") {
-        var ch = (st.ch && st.ch[n]) || {}, got = Chapter.found(c, ch), hd = Chapter.heard(c, ch);
+        var ch = (st.ch && st.ch[i]) || {}, got = Chapter.found(c, ch), hd = Chapter.heard(c, ch);
         (c.evidence || []).forEach(function (f) { if (got.indexOf(f.id) < 0) return; ev.push({ n: n, f: f }); if (f.time) tl.push({ at: f.time, text: f.title + ": " + f.text, n: n, sure: false }); });
         (c.statements || []).forEach(function (x) { if (hd.indexOf(x.id) >= 0) (says[x.by] = says[x.by] || []).push({ n: n, text: x.text, liar: !!(rv && rv.answer && rv.answer.s === x.id) }); });
       } else {
@@ -1099,9 +1171,11 @@
         (c.suspects || []).forEach(function (s) { (says[s.id] = says[s.id] || []).push({ n: n, text: s.says, liar: !!(rv && rv.answer && rv.answer.s === s.sid) }); });
         (c.facts || []).forEach(function (f) { if (f.time && f.kind !== "finding") tl.push({ at: f.time, text: f.title + ": " + f.text, n: n, sure: false }); });
       }
-      if (rv && rv.finding) fi.push({ n: n, f: rv.finding, why: rv.why });
+      (c.carried || (c.facts || []).filter(function (f) { return f.kind === "finding"; })).forEach(function (f) { if (!(f.id in had)) had[f.id] = { n: f.from, f: f }; });
+      if (rv && rv.finding) { fi.push({ n: n, f: rv.finding, why: rv.why }); had[rv.finding.id] = null; }
       if (rv && rv.timeline) rv.timeline.forEach(function (t) { tl.push({ at: t.at, text: t.text, n: n, sure: true }); });
     }
+    fi = Object.keys(had).map(function (k) { return had[k]; }).filter(Boolean).sort(function (a, b) { return a.n - b.n; }).concat(fi);
     tl.sort(function (a, b) { return a.at < b.at ? -1 : a.at > b.at ? 1 : (b.sure ? 1 : 0) - (a.sure ? 1 : 0); });
     return { ev: ev, fi: fi, tl: tl, says: says };
   }
@@ -1124,28 +1198,28 @@
       b.setAttribute("aria-selected", on ? "true" : "false"); b.tabIndex = on ? 0 : -1;
       b.querySelector("b").textContent = count[b.getAttribute("data-tab")];
     });
-    var h = "", notes = run.d5.st.notes, NOTE = { ok: "Checks out", sus: "Suspicious" };
+    var h = "", notes = run.d5.st.notes, NOTE = { ok: "Checks out", sus: "Suspicious" }, U = run.d5.ed.fmt === 2 ? "Chapter " : "Case ";
     if (nbTab === "evidence") {
       h = x.ev.length ? x.ev.slice().reverse().map(function (e, i) {
         var f = e.f;
         return '<details class="nb-item"' + (i === 0 ? " open" : "") + '><summary><span class="ev-kind">' + esc(KIND[f.kind] || f.kind) + "</span><b>" + esc(f.title) + "</b>" +
-          '<span class="nb-from">Case ' + e.n + (f.time ? " · " + esc(fmtClock(f.time)) : "") + "</span></summary><p>" + esc(f.text) + '</p><p class="nb-src">Source: ' + esc(f.source) + "</p></details>";
+          '<span class="nb-from">' + U + e.n + (f.time ? " · " + esc(fmtClock(f.time)) : "") + "</span></summary><p>" + esc(f.text) + '</p><p class="nb-src">Source: ' + esc(f.source) + "</p></details>";
       }).join("") : '<p class="nb-empty">No evidence yet.</p>';
     } else if (nbTab === "findings") {
       h = x.fi.length ? x.fi.map(function (e) {
-        return '<div class="nb-item nb-finding"><span class="nb-stamp">Confirmed · Case ' + e.n + "</span><p><b>" + esc(e.f.text) + "</b></p></div>";
-      }).join("") : '<p class="nb-empty">Solve a case to confirm what really happened. Findings go here, and the next case builds on them.</p>';
+        return '<div class="nb-item nb-finding"><span class="nb-stamp">Confirmed · ' + U + e.n + "</span><p><b>" + esc(e.f.text) + "</b></p></div>";
+      }).join("") : '<p class="nb-empty">Solve a ' + U.trim().toLowerCase() + " to confirm what really happened. Findings go here, and the next one builds on them.</p>";
     } else if (nbTab === "suspects") {
       h = run.d5.ed.cast.map(function (p) {
         var said = x.says[p.id] || [], mine = notes[p.id];
         return '<div class="nb-item nb-person"><span class="mug">' + WL.avatar(p.name) + '</span><div><p class="nb-name"><b>' + esc(p.name) + "</b> · " + esc(p.role) +
           (mine ? ' <span class="nb-note ' + mine + '">Your note: ' + NOTE[mine] + "</span>" : "") + '</p><p class="nb-bg">' + esc(p.background) + "</p>" +
-          (said.length ? '<ul class="nb-said">' + said.map(function (s) { return '<li class="' + (s.liar ? "lied" : "") + '"><span class="nb-from">Case ' + s.n + (s.liar ? " · caught lying" : "") + "</span>“" + esc(s.text) + "”</li>"; }).join("") + "</ul>"
+          (said.length ? '<ul class="nb-said">' + said.map(function (s) { return '<li class="' + (s.liar ? "lied" : "") + '"><span class="nb-from">' + U + s.n + (s.liar ? " · caught lying" : "") + "</span>“" + esc(s.text) + "”</li>"; }).join("") + "</ul>"
             : '<p class="nb-from">Hasn\'t spoken yet.</p>') + "</div></div>";
       }).join("");
     } else {
       h = x.tl.length ? '<ol class="end-time nb-tl">' + x.tl.map(function (t) {
-        return '<li class="' + (t.sure ? "sure" : "") + '"><span class="t">' + esc(fmtClock(t.at)) + "</span><span>" + esc(t.text) + ' <em class="end-case">' + (t.sure ? "Confirmed · " : "Evidence · ") + "Case " + t.n + "</em></span></li>";
+        return '<li class="' + (t.sure ? "sure" : "") + '"><span class="t">' + esc(fmtClock(t.at)) + "</span><span>" + esc(t.text) + ' <em class="end-case">' + (t.sure ? "Confirmed · " : "Evidence · ") + U + t.n + "</em></span></li>";
       }).join("") + "</ol>" : '<p class="nb-empty">Nothing on the timeline yet.</p>';
     }
     $("nb-body").innerHTML = h;
@@ -1260,6 +1334,7 @@
     startClock();
     if (run.kind === "train" && !S.settings.tutorialDone) startCoach();
   }
+  function dayTag() { return run.kind !== "replay" ? "" : run.catchup ? " · past case" : " practice"; }
   function renderCase(c) {
     var planted = c.mode === "planted";
     if (run.kind === "train") {
@@ -1282,15 +1357,15 @@
       $("case-kicker").textContent = "Written by " + c.by + " · One try";
     } else {
       var unit = c.d5 && run.d5.ed.fmt === 2 ? "Chapter " : "Case ";
-      setHud("Daily #" + run.day + (run.kind === "replay" ? " practice" : ""), unit + (run.idx + 1) + " of 5" + (c.d5 ? " · " + run.d5.ed.title : ""));
-      $("case-kicker").textContent = c.d5 ? unit + c.n + " of 5 · " + (c.n === 5 ? "The verdict" : "One wrong answer ends the day") : (LEVEL[c.level] || "Case") + " · One try";
+      setHud("Daily #" + run.day + dayTag(), unit + (c.d5 ? c.ch : run.idx + 1) + " of 5" + (c.d5 ? " · " + run.d5.ed.title : ""));
+      $("case-kicker").textContent = c.d5 ? unit + c.ch + " of 5 · " + (c.mode === "verdict" ? "The verdict" : "One wrong answer ends the day") : (LEVEL[c.level] || "Case") + " · One try";
     }
     var chap = c.fmt === 2;
     $("scr-case").classList.toggle("chapter-mode", chap);
     $("chapter").hidden = !chap;
     if (chap) {
-      $("case-kicker").textContent = "Chapter " + c.n + " of 5";
-      setHud(run.night ? run.label || "Story Night" : "Daily #" + run.day + (run.kind === "replay" ? " practice" : ""), "Chapter " + c.n + " of 5 · " + run.d5.ed.title);
+      $("case-kicker").textContent = "Chapter " + c.ch + " of 5";
+      setHud(run.night ? run.label || "Story Night" : "Daily #" + run.day + dayTag(), "Chapter " + c.ch + " of 5 · " + run.d5.ed.title);
       run.notes = []; run.sel = []; run.phase = "pick";
       Chapter.open(c, chState(c.n));
       renderTools();
@@ -1472,12 +1547,12 @@
     } else if (k === "friend" || k === "room") {
       $("rec-left").textContent = k === "room" ? (run.d5 && run.d5.ed && run.d5.ed.fmt === 2 ? "Chapter " : "Case ") + run.round : "Friend's case";
     } else {
-      var res = run.prog.results;
+      var res = run.prog.results, wk = run.d5 && run.d5.ed.ch, at = wk || Math.min(run.idx, 4) + 1; // wk: a weekday's one chapter
       $("pips").innerHTML = run.cases.map(function (_, i) {
-        return '<span class="' + (res[i] ? "cell-" + cellClass(res[i]) : i === run.idx ? "now" : "") + '">' + (res[i] === "r" ? "✗" : res[i] === "-" ? "" : res[i] ? "✓" : i + 1) + "</span>";
+        return '<span class="' + (res[i] ? "cell-" + cellClass(res[i]) : i === run.idx ? "now" : "") + '">' + (res[i] === "r" ? "✗" : res[i] === "-" ? "" : res[i] ? "✓" : wk || i + 1) + "</span>";
       }).join("");
-      $("pips").setAttribute("aria-label", "Case " + (Math.min(run.idx, 4) + 1) + " of 5. " + scoreOf(res) + " caught so far.");
-      $("rec-left").textContent = (run.d5 && run.d5.ed.fmt === 2 ? "Chapter " : "Case ") + (Math.min(run.idx, 4) + 1) + " of 5";
+      $("pips").setAttribute("aria-label", (wk ? "Chapter " + at + " of 5." : "Case " + at + " of 5. " + scoreOf(res) + " caught so far."));
+      $("rec-left").textContent = (run.d5 && run.d5.ed.fmt === 2 ? "Chapter " : "Case ") + at + " of 5";
     }
   }
   function optionEls() { return els(run.phase === "proof" ? proofKind() : pickKind()); }
@@ -1849,22 +1924,23 @@
     WL.track("training_done", { wrong: run.wrong, hint: run.hint });
   }
   function verdictDaily(correct, how) {
-    var c = run.c, code = correct ? (run.hint ? "y" : "g") : "r";
-    if (run.d5) run.prog.results = d5Results(run.d5.r); // the file's record, with the cases locked after a wrong answer
+    var c = run.c, code = correct ? (run.hint ? "y" : "g") : "r", wk = !!(run.d5 && run.d5.ed.ch); // wk: a weekday's one chapter, worth the whole Daily
+    if (run.d5) run.prog.results = d5Results(run.d5.r, run.d5.ed); // the file's record, with the cases locked after a wrong answer
     else run.prog.results.push(code);
     run.prog.hints.push(run.hint); run.prog.elapsed = run.elapsed; run.prog.cur = null; run.prog.at = 0;
-    var r = run.again ? { coins: 0, xp: 0 } : P.dailyCase({ correct: correct, hint: run.hint, twist: c.mode !== "liar" && !c.d5, replay: run.kind === "replay" });
+    var r = run.again ? { coins: 0, xp: 0 } : P.dailyCase({ correct: correct, hint: run.hint, twist: c.mode !== "liar" && !c.d5, replay: run.kind === "replay", chapter: wk, catchup: !!run.catchup });
     run.again = false;
     persist();
-    var last = run.prog.results.length >= run.cases.length, locked = c.d5 && !correct && last && c.n < 5;
-    run.reviveAsk = !!(c.d5 && !correct && c.n < 5 && d5Pending(run.d5.r, run.d5.st));
+    var last = run.prog.results.length >= run.cases.length, locked = c.d5 && !wk && !correct && last && c.n < 5;
+    run.reviveAsk = !!(c.d5 && !wk && !correct && c.n < 5 && d5Pending(run.d5.r, run.d5.st, run.d5.ed));
+    var tomorrow = wk && run.kind === "daily" && c.ch < 5 ? (c.ch === 4 ? "Tomorrow: your final verdict." : "Chapter " + (c.ch + 1) + " opens tomorrow.") : "";
     setVerdict({
       head: correct ? (c.mode === "verdict" ? "Case closed!" : pick(CAUGHT)) : how === "proof" ? "Not proven." : c.mode === "verdict" ? "Not the whole truth." : "Not quite.", good: correct,
-      banner: run.reviveAsk ? "You get one second chance today." : locked ? "The trail went cold. " + (run.d5.ed.fmt === 2 ? "Chapters " : "Cases ") + (c.n + 1) + "-5 are locked." : c.d5 && correct && c.n === 4 ? "One step left: your final verdict" : "",
+      banner: run.reviveAsk ? "You get one second chance today." : locked ? "The trail went cold. " + (run.d5.ed.fmt === 2 ? "Chapters " : "Cases ") + (c.n + 1) + "-5 are locked." : c.d5 && correct && !wk && c.n === 4 ? "One step left: your final verdict" : tomorrow,
       rewards: rw(r.coins, r.xp),
       sub: c.mode === "verdict" ? (correct ? "You named everyone behind it." : "Here's what the file proves.") : missLine(how) + answerLine(),
       story: c.d5 && c.finding ? "📓 New in your notebook: " + c.finding.text : "",
-      next: run.reviveAsk ? (canRewarded() ? "Revive: watch a short ad" : "Use your second chance") : last ? (c.d5 && correct && c.n === 5 ? "See how it all happened" : "See your result") : c.fmt === 2 ? "Next chapter" : "Next case",
+      next: run.reviveAsk ? (canRewarded() ? "Revive: watch a short ad" : "Use your second chance") : last ? (c.d5 && c.mode === "verdict" && (correct || wk) ? "See how it all happened" : "See your result") : c.fmt === 2 ? "Next chapter" : "Next case",
       hq: run.reviveAsk ? "Stop for today" : ""
     });
     if (r.coins) { FX.float("+" + r.coins, $("coins"), "coin"); renderCoins(true); }
@@ -1989,7 +2065,7 @@
     } else if (!S.history[day]) {
       S.history[day] = { score: score, grid: p.results.join(""), time: p.elapsed, replay: true };
     }
-    if (run.d5 && S.history[day]) S.history[day].story = run.d5.ed.title;
+    if (run.d5 && S.history[day]) { S.history[day].story = run.d5.ed.title; if (run.d5.ed.ch) S.history[day].ch = run.d5.ed.ch; }
     var failed = !!run.d5 && d5Failed(p.results, run.d5.ed.strikes);
     var r = P.dailyDone(score, replay, failed);
     persist();
@@ -2075,8 +2151,8 @@
   function showDailyResults(day, p, replay, bonus, extra) {
     stopClock();
     show("results");
-    var label = replay ? " practice" : "";
-    setHud("Daily #" + day, replay ? "Practice" : "Results");
+    var label = replay ? (p.ch ? " · past case" : " practice") : "";
+    setHud("Daily #" + day, replay ? (p.ch ? "Past case" : "Practice") : "Results");
     var score = scoreOf(p.results), hints = p.results.filter(function (r) { return r === "y"; }).length;
     $("res-kicker").textContent = "Daily #" + day + label + (p.d5 ? " · " + p.title : " complete");
     $("res-title").textContent = DAILY_TITLES[score];
@@ -2089,6 +2165,13 @@
       $("res-body").innerHTML = '<div class="res-grid" role="img" aria-label="' + score + ' of 5 solved">' + cells(p.results, 5) + "</div>" +
         '<p class="res-line">You cracked <strong>' + score + " of 5</strong> " + (p.fmt === 2 ? "chapters" : "cases") + (replay ? "" : " in <strong>" + WL.fmtTime(p.elapsed) + "</strong>") +
         (hints ? ", with your Hunch" : "") + ".</p>" + (D5 ? '<div class="d5-end" id="d5-end"></div>' : "");
+      if (p.ch) { // a weekday: one chapter of the week's story
+        var ok = score === 5, fri = p.ch === 5;
+        $("res-title").textContent = ok ? (fri ? "Case closed. Nobody fooled you." : "Chapter " + p.ch + " solved.") : fri ? "Not the whole truth." : "Chapter " + p.ch + ": the trail went cold.";
+        $("res-body").innerHTML = '<div class="res-grid" role="img" aria-label="' + (ok ? "Solved" : "Not solved") + '">' + cells(p.results.slice(0, 1), 1) + "</div>" +
+          '<p class="res-line">' + (fri ? "The verdict" : "Chapter " + p.ch + " of 5") + (ok ? " solved" : ": not this time") + (replay ? "" : " in <strong>" + WL.fmtTime(p.elapsed) + "</strong>") +
+          (hints ? ", with your Hunch" : "") + ".</p>" + (D5 ? '<div class="d5-end" id="d5-end"></div>' : "");
+      }
       d5EndCard(day, p);
     }
     $("res-rewards").innerHTML = (bonus && bonus.bonus ? '<span class="rw coin">' + COIN_SVG + "Daily done +" + bonus.bonus + "</span>" : "") +
@@ -2115,7 +2198,7 @@
     var st = S.stats;
     $("res-stats").innerHTML = statsRow([["Days played", st.played], ["Streak", dailyStreak()], ["Best streak", st.maxStreak], ["Perfect days", st.perfect]]);
     resProgress();
-    $("res-next").innerHTML = 'New cases in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) + "</strong>";
+    $("res-next").innerHTML = (p.ch && p.ch < 5 && day === TODAY ? (p.ch === 4 ? "The verdict" : "Chapter " + (p.ch + 1)) : "New cases") + ' in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) + "</strong>";
     var acts = $("res-actions"); acts.innerHTML = "";
     acts.appendChild(actionBtn(careerLabel(), "primary", function () { Book.start(); }));
     if (replay) {
@@ -2123,11 +2206,12 @@
     }
     $("review").hidden = false; $("review").open = false;
     var d5st = p.d5 && S.d5 && S.d5[day];
-    if (p.d5) $("review-list").innerHTML = [1, 2, 3, 4, 5].map(function (n) { // only the cases this player opened
+    if (p.d5) $("review-list").innerHTML = (p.ch ? [1] : [1, 2, 3, 4, 5]).map(function (n) { // only the cases this player opened
       var c = d5st && d5st.cases[n], rv = d5st && d5st.reveals[n], r = cellClass(p.results[n - 1]);
       if (!c || !rv) return '<div class="review-item locked"><h4><span class="cell-' + r + '"></span>Case ' + n + ' · locked</h4><p class="muted">This case never opened.</p></div>';
+      var st0 = (c.statements || []).filter(function (s) { return s.id === rv.answer.s; })[0], who = st0 && ((d5Edition[day] && d5Edition[day].cast) || []).filter(function (x) { return x.id === st0.by; })[0];
       var ans = c.mode === "verdict" ? c.parts.map(function (q) { var o = q.options.filter(function (x) { return x.id === rv.answer.parts[q.id]; })[0]; return q.ask + " " + (o ? o.label : ""); }).join(" · ")
-        : "The liar: " + ((c.suspects || []).filter(function (s) { return s.sid === rv.answer.s; })[0] || {}).name;
+        : "The liar: " + (st0 ? (who ? who.name : st0.by) + ": “" + st0.text + "”" : ((c.suspects || []).filter(function (s) { return s.sid === rv.answer.s; })[0] || {}).name);
       return '<div class="review-item"><h4><span class="cell-' + r + '"></span>' + esc(c.title) + '</h4><p class="ans">' + esc(ans) + "</p><p>" + esc(rv.why) + "</p></div>";
     }).join("");
     var cases = p.d5 ? [] : WL.buildDay(day);
@@ -2183,7 +2267,8 @@
   function challengeCode(day, p) { return day + "." + p.results.join("") + "." + Math.round(p.elapsed / 1000) + "." + (myName() || "A friend"); }
   function dailyShareText(day, p, replay, rank) {
     var grid = p.results.map(function (r) { return GRID[r]; }).join("");
-    var lines = [(CFG.siteName || "LiarHunt") + " #" + day + (p.d5 ? " · " + p.title : "") + (replay ? " (replay)" : ""), grid + " " + scoreOf(p.results) + "/5  ⏱️ " + WL.fmtTime(p.elapsed)];
+    var lines = [(CFG.siteName || "LiarHunt") + " #" + day + (p.d5 ? " · " + p.title : "") + (replay ? " (replay)" : ""),
+      p.ch ? (p.ch === 5 ? "The verdict " : "Chapter " + p.ch + "/5 ") + GRID[p.results[0]] + "  ⏱️ " + WL.fmtTime(p.elapsed) : grid + " " + scoreOf(p.results) + "/5  ⏱️ " + WL.fmtTime(p.elapsed)];
     var st = dailyStreak(), stand = !replay && S.lb.stand && S.lb.stand.day === day ? S.lb.stand : null;
     if (!replay && st > 1) lines.push("🔥 " + st + "-day streak");
     if (stand && stand.total >= RANK_MIN) lines.push("🕵️ Top " + Math.max(1, Math.ceil((100 * stand.rank) / stand.total)) + "% today");

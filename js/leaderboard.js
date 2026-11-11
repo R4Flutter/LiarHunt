@@ -664,13 +664,14 @@
      Firebase: the rules open each case only when the player reaches it, and check every answer against a key
      no player can read (firebase/firestore.rules). Each answer is two writes: commit the pick (it can't change
      afterwards), then resolve it once the reveal is open, so nobody can try answers until one sticks.
-     ?d5=local&draft=ID plays a draft from the admin desk instead (node tools/daily5/admin.mjs).
+     ?d5=local&draft=ID plays a draft from the admin desk instead (node tools/daily5/admin.mjs); add &ch=N to play
+     weekday N (one chapter) as players get it.
      Everything returns a Promise. A doc that isn't open yet fails with code "permission-denied". */
-  var d5mode = provider === "firebase" ? "firebase" : "", d5draft = "";
-  try { var dq = new URLSearchParams(location.search); if (dq.get("d5") === "local" && dq.get("draft")) { d5mode = "local"; d5draft = dq.get("draft"); } } catch (e) { /* ignore */ }
+  var d5mode = provider === "firebase" ? "firebase" : "", d5draft = "", d5ch = "";
+  try { var dq = new URLSearchParams(location.search); if (dq.get("d5") === "local" && dq.get("draft")) { d5mode = "local"; d5draft = dq.get("draft"); d5ch = dq.get("ch") || ""; } } catch (e) { /* ignore */ }
   function d5local(action, n, body) {
     var opts = body ? { method: "POST", headers: { "Content-Type": "application/json", "X-D5": "1" }, body: JSON.stringify(body) } : {};
-    return fetch("/api/play/" + encodeURIComponent(d5draft) + "/" + action + "/" + (n || 0), opts).then(function (r) {
+    return fetch("/api/play/" + encodeURIComponent(d5draft) + "/" + action + "/" + (n || 0) + (d5ch ? "?ch=" + encodeURIComponent(d5ch) : ""), opts).then(function (r) {
       return r.json().then(function (j) { if (!r.ok) throw err(r.status === 403 ? "permission-denied" : "unavailable", j.error || "preview error"); return j; });
     });
   }

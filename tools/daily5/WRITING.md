@@ -2,6 +2,8 @@
 
 A Daily 5 story is one crime told in five chapters. In chapters 1 to 4 the player **searches** a drawn scene for evidence, **questions** the suspects, then **accuses**: they name the one statement that can't be true and the evidence that proves it. Each solved chapter adds a **finding** to the notebook that the next chapter needs. Chapter 5 is the **verdict**: who planned it, who helped, how, and where the stolen thing is now.
 
+**One story a week, one chapter a day.** A story runs Monday to Friday: chapter 1 on Monday, the verdict on Friday. Saturday and Sunday play the classic Daily. So write for someone who comes back the next day, or who missed a day: each chapter's `previously` line must recap the story so far in plain words, and the findings a chapter needs are handed to the player with it. A chapter missed on its day waits in Past cases (half XP). The desk schedules a story on a Monday and publishes all five days at once.
+
 Stories are written by Claude **in Claude Code**, on the owner's own Claude plan (no API bill), or by hand. However a story is written, it only goes live after it passes the checker, a blind solver can solve it, the owner plays it in the admin desk and approves it, and the owner publishes it.
 
 **A story file holds the answers.** Keep it outside the game folder, in `~/.liarhunt/daily5/inbox/`. Never commit it, never put it on GitHub. (The two stories in `fixtures/` are test stories that will never be published.)
@@ -12,7 +14,7 @@ Stories are written by Claude **in Claude Code**, on the owner's own Claude plan
 2. Check it: `node tools/daily5/check.mjs ~/.liarhunt/daily5/inbox/<story-id>.json`. Fix every ✗ and re-run until it says ✓. Read the ! warnings too.
 3. Solve it blind: run `node tools/daily5/check.mjs --player <file>` (only what a player can ever see) and give that output to a **fresh subagent** with the prompt in `BLIND.md`. If it can't solve every chapter, or solves one without searching and questioning, rewrite and check again.
 4. Make it a draft for the desk: `node tools/daily5/check.mjs --import <file>` (the draft id is `d5-<story-id>`).
-5. The owner opens the desk (`node tools/daily5/admin.mjs`), plays it in the game from there, approves it, schedules it on a day and publishes it.
+5. The owner opens the desk (`node tools/daily5/admin.mjs`), plays it in the game from there (the whole story, or one weekday as players get it), approves it, schedules it on a Monday and publishes it.
 
 ## The voice
 
@@ -56,7 +58,7 @@ A cool, professional case file:
 | `v` | `2` |
 | `id`, `title`, `summary` | A short id (lowercase, dashes), the story's name (2 to 5 words), and one line on what really happened (never shown before the end). |
 | `setting` | `{ place, intro }`: where it happens and the opening scene (2 or 3 sentences). |
-| `strikes` | `2` (one miss, then the Revive). |
+| `strikes` | `2` (the checker asks for it; a weekday is one chapter, so each day is published with one try and no Revive). |
 | `travel` | Optional walking times: `[{ a: "l2", b: "l4", mins: 15 }]`. Two places with no listed time never clash this way. Say the time ("a 25-minute row") in the finding or evidence the proof uses, or the player can't see why it proves anything; the checker warns if you don't. |
 | `people` | 5 or 6: `{ id: "p1", name, role, face, background, part, motive, secret }`. `face` is `f00` to `f15`, different for everyone. `part` is `mastermind` (exactly one), `accomplice` (at most two) or `innocent`. An innocent person's `secret` is why they lie in one chapter. |
 | `places`, `items`, `acts` | Things the facts point at: `{ id: "l1", name }`, `{ id: "i1", name }`, `{ id: "a1", name }`. |

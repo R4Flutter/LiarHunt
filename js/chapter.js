@@ -45,7 +45,7 @@
     return '<div class="slip k-' + esc(e.kind) + '"><span class="slip-meta">' + esc(meta) + '</span><b class="slip-t">' + esc(e.title) + '</b><p class="slip-x">' + esc(e.text) + "</p></div>";
   }
   function head() {
-    return '<header class="ch-head"><p class="ch-kicker">Chapter ' + C.n + " of 5</p><h2 class=\"ch-title\">" + esc(C.title) + "</h2>" +
+    return '<header class="ch-head"><p class="ch-kicker">Chapter ' + (C.ch || C.n) + " of 5</p><h2 class=\"ch-title\">" + esc(C.title) + "</h2>" +
       (C.prev ? '<p class="ch-prev"><b>So far</b> ' + esc(C.prev) + "</p>" : "") + '<p class="ch-intro">' + esc(C.setup) + "</p></header>";
   }
   function tabs() {

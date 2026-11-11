@@ -81,6 +81,22 @@ export function split(story, day) {
   return out;
 }
 
+// A story runs one chapter a day, Monday to Friday (Saturday and Sunday play the classic Daily). Day monday+i holds
+// chapter i+1 as its only case (cases/1, key c1), so the rules judge one answer a day. The edition keeps every
+// chapter's title for the week's thread; only Friday (the verdict) has the full story.
+// Daily #1 was a Monday, so day d is a Monday when (d - 1) % 7 === 0.
+export const weekday = (day) => (day - 1) % 7; // 0 = Monday ... 6 = Sunday
+export function splitWeek(story, monday) {
+  if (weekday(monday) !== 0) throw new Error(`Daily #${monday} isn't a Monday. A story starts on a Monday and runs to Friday.`);
+  const out = split(story, monday);
+  return [1, 2, 3, 4, 5].map((n) => ({
+    day: monday + n - 1,
+    edition: Object.assign({}, out.edition, { day: monday + n - 1, ch: n, week: monday, strikes: 1 }),
+    case: out.cases[n], reveal: out.reveals[n], hunch: out.hunch[n], keys: { c1: out.keys["c" + n] },
+    finale: n === 5 ? out.finale : null
+  }));
+}
+
 // A Story Night remix of a past Daily 5 story: the same people (names, roles, faces), someone else behind it.
 // -> a list of problems (empty when it's a proper remix)
 export function checkRemix(story, original) {

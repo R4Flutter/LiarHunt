@@ -4,7 +4,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import vm from "node:vm";
-import { check, split, ROOT, proofKey, importDraft, art, checkRemix, dataDir, writeJson, readJson, archiveOpen } from "./lib.mjs";
+import { check, split, splitWeek, ROOT, proofKey, importDraft, art, checkRemix, dataDir, writeJson, readJson, archiveOpen } from "./lib.mjs";
 
 const arg = process.argv[2];
 if (!arg) { console.log("Usage: node tools/daily5/check.mjs <story.json> | --import <story.json>... [--force] | --player <story.json> | --self-test"); process.exit(2); }
@@ -114,6 +114,13 @@ expect("v2 verdict options keep faces and icons", out2.cases[5].parts[0].options
 expect("v2 hunch names a suspect who isn't the liar", [1, 2, 3, 4].every((n) => { const c = v2.cases[n - 1], liar = c.statements.find((s) => s.id === c.answer).by; return c.suspects.includes(out2.hunch[n].who) && out2.hunch[n].who !== liar; }));
 expect("v2 keys use the same format", out2.keys.c2.s === "s12" && out2.keys.c2.proofs[0] === proofKey(["e6", "f1"]));
 expect("the old Crown Job still passes as v1", check(good).ok);
+// a week: Monday to Friday, one chapter a day, each judged as case 1 of its day
+const week = splitWeek(v2, 22);
+expect("a week is five days from a Monday", week.map((x) => x.day).join() === "22,23,24,25,26" && week.every((x, i) => x.edition.ch === i + 1 && x.edition.week === 22 && x.edition.strikes === 1));
+expect("each day keys only its own chapter, as c1", week.every((x, i) => Object.keys(x.keys).join() === "c1" && x.keys.c1.s === out2.keys["c" + (i + 1)].s && x.case.n === i + 1));
+expect("only Friday carries the full story", week.every((x, i) => (i === 4) === !!x.finale));
+expect("a week can't start on a Tuesday", (() => { try { splitWeek(v2, 23); return false; } catch (e) { return /Monday/.test(e.message); } })());
+expect("a weekday's public docs carry no answers", !/"(answer|claims|why|lie|truth|motive|secret|part|because|shows)":/.test(JSON.stringify(week.map((x) => [x.edition, x.case]))));
 const broken2 = [
   ["a travel lie with no travel times", (s) => { delete s.travel; }, /nothing the player knows catches|doesn't lie/],
   ["a spot on an unknown anchor", (s) => { s.cases[0].spots[0].anchor = "moon"; }, /anchor/],
