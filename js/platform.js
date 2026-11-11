@@ -104,14 +104,14 @@
 
   /* ---------- ads ----------
      midgame(): a break between levels. Resolves when it's done (or skipped).
-     rewarded(): resolves true only if the player watched to the end. */
+     rewarded(): resolves true only if the player watched to the end; null when no ad could play at all. */
   function adStarted() { adActive = true; emit("adStart"); }
   function adEnded() { if (adActive) { adActive = false; emit("adEnd"); } }
 
   function cgAd(kind) {
     return new Promise(function (resolve) {
       var done = false;
-      function finish(ok) { if (done) return; done = true; adEnded(); resolve(ok); }
+      function finish(ok) { if (done) return; done = true; adEnded(); resolve(ok || (kind === "rewarded" && lastAdError ? null : ok)); }
       lastAdError = "";
       try {
         sdk.ad.requestAd(kind, {

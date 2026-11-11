@@ -2,7 +2,8 @@
   LIARHUNT — ads
   One small layer so the game never talks to an ad network directly.
     WLAds.interstitial(type, name)  full-screen ad at a natural break   -> Promise<void>
-    WLAds.rewarded(name)            player chooses to watch for a reward -> Promise<boolean> (true = reward earned)
+    WLAds.rewarded(name)            player chooses to watch for a reward -> Promise<true|false|null>
+                                    (true = reward earned, false = closed early, null = no ad could play)
     WLAds.display(element)          optional banner in a page slot
   Provider is set in js/config.js (ads.provider). Add ?ads=demo or ?ads=none
   to the address to try another provider without editing the file.
@@ -44,7 +45,7 @@
         if (finished) return;
         finished = true;
         if (started) hooks.onResume();
-        resolve(rewarded ? earned : undefined);
+        resolve(rewarded ? (started ? earned : null) : undefined);
       }
       var o = {
         type: rewarded ? "reward" : type,

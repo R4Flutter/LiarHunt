@@ -449,7 +449,7 @@
   function potential() { return R.retried ? 1 : Math.max(1, 3 - R.mistakes - (R.hint ? 1 : 0)); }
   function saveWip(k) {
     if (R.replay) return;
-    st().wip = { n: R.n, k: k == null ? R.k : k, mistakes: R.mistakes, hint: R.hint, retried: R.retried, h: hashOf(R.m) };
+    st().wip = { n: R.n, k: k == null ? R.k : k, mistakes: R.mistakes, hint: R.hint, retried: R.retried, revived: R.revived, h: hashOf(R.m) };
     api.persist();
   }
   // n: a mission up to the one the player is on. No n: the current mission (or the map once the book is done).
@@ -461,10 +461,11 @@
     if (!n && finished()) { if (mine) n = 1; else { api.openMap(); return; } }
     n = Math.max(1, Math.min(n || b.at, b.at, N));
     var m = mission(n), w = b.wip;
-    R = { n: n, m: m, replay: n < b.at, k: 0, phase: "brief", mistakes: 0, hint: false, retried: false, gained: [], st: null };
+    R = { n: n, m: m, replay: n < b.at, k: 0, phase: "brief", mistakes: 0, hint: false, retried: false, revived: false, gained: [], st: null };
     // a mission left half-way comes back at the same step, with its mistakes and hints (a reload can't wipe them)
     if (!R.replay && w && w.n === n && w.h === hashOf(m) && w.k < m.steps.length && (w.k > 0 || w.mistakes || w.hint || w.retried)) {
-      R.k = w.k; R.mistakes = w.mistakes || 0; R.hint = !!w.hint; R.retried = !!w.retried; R.phase = "play";
+      R.k = w.k; R.mistakes = w.mistakes || 0; R.hint = !!w.hint; R.retried = !!w.retried; R.revived = !!w.revived;
+      R.phase = R.mistakes >= MAX_MISTAKES ? (canRevive() ? "revive" : "fail") : "play"; // left at the "falling apart" choice: back to it
     }
     R.ev = evidenceAt(n, R.k);
     if (R.phase === "play") initStep();
@@ -488,10 +489,8 @@
       return;
     }
     if (R.phase === "solved") { R.k++; R.phase = "play"; initStep(); saveWip(); render(true); return; }
-    if (R.phase === "fail") {
-      R.retried = true; R.mistakes = 0; R.phase = "play"; initStep(); saveWip(); render(true);
-      return;
-    }
+    if (R.phase === "fail") { retryStep(); return; }
+    if (R.phase === "revive") { reviveNow(); return; }
     if (R.phase === "end") { nextMission(); return; }
     var k = step(), t = T[k.type];
     if (!t.ready(k, R.st).ok) return;
@@ -515,13 +514,29 @@
     var d = document.querySelector(".bk-done");
     if (d) setTimeout(function () { d.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, 60);
   }
+  // One Revive per mission attempt, in Book 1 only (not replays or a player's own story).
+  function canRevive() { return !R.revived && !R.replay && !mine; }
+  function retryStep() { R.retried = true; R.mistakes = 0; R.phase = "play"; initStep(); saveWip(); render(true); }
+  // The second chance: a rewarded ad when ads are on; free with no ads or no ad to show. Closing the ad keeps the choice.
+  function reviveNow() {
+    var P = api.Plat, keep = R, go = $("bk-go");
+    go.disabled = true;
+    (P.hasAds() ? P.rewarded("book_revive").then(function (ok) { return ok !== false; }) : Promise.resolve(true)).then(function (ok) {
+      go.disabled = false;
+      if (R !== keep || R.phase !== "revive") return;
+      if (!ok) { api.toast("No reward this time. Try again, or start the step over."); return; }
+      R.revived = true; R.mistakes = MAX_MISTAKES - 1; R.phase = "play"; saveWip(); render(true);
+      api.Snd.play("whoosh");
+      track("book_revive", { mission: R.n, step: R.k + 1 });
+    });
+  }
   function mistake(msg, scroll) {
     R.mistakes++;
     api.Snd.play("wrong");
     api.FX.shake($("bk-body"));
     track("book_mistake", { mission: R.n, step: R.k + 1, type: step().type, count: R.mistakes });
     if (R.mistakes >= MAX_MISTAKES) {
-      R.phase = "fail"; saveWip(); render(true);
+      R.phase = canRevive() ? "revive" : "fail"; saveWip(); render(true);
       track("book_failed", { mission: R.n, step: R.k + 1 });
       return;
     }
@@ -576,6 +591,8 @@
     if (R.phase === "brief") h = briefHtml();
     else if (R.phase === "end") h = endHtml();
     else if (R.phase === "fail") h = stepHead() + '<div class="bk-fail"><p class="verdict-head bad">The case fell apart.</p><p>Three mistakes on this step. Take a breath and try it again. This mission can now earn 1 star.</p></div>';
+    else if (R.phase === "revive") h = stepHead() + '<div class="bk-fail"><p class="verdict-head bad">The case is falling apart.</p><p>Three mistakes on this step. Use your one Revive to keep going from here, or start the step over for 1 star.</p>' +
+      '<button type="button" class="btn ghost" data-a="retry">Start the step over</button></div>';
     else {
       var k = step();
       h = stepHead() + '<div class="bk-play' + (R.phase === "solved" ? " is-solved" : "") + '" data-kind="' + k.type + '">' + T[k.type].html(k, R.st) + "</div>" +
@@ -610,6 +627,7 @@
     if (R.phase === "brief") { goBtn.textContent = "Start the mission"; note.textContent = R.m.goal; return; }
     if (R.phase === "solved") { goBtn.textContent = "Next step"; note.textContent = "Step " + (R.k + 1) + " of " + R.m.steps.length + " done"; return; }
     if (R.phase === "fail") { goBtn.textContent = "Try this step again"; note.textContent = ""; return; }
+    if (R.phase === "revive") { goBtn.textContent = api.Plat.hasAds() ? "Revive: watch a short ad" : "Revive: keep going"; goBtn.className = "btn danger"; note.textContent = "One Revive per mission."; return; }
     if (R.phase !== "play") return;
     var k = step(), r = T[k.type].ready(k, R.st), m = api.hintMode(), can = !R.stepHint && T[k.type].canHint(k, R.st);
     goBtn.textContent = r.label; goBtn.disabled = !r.ok; goBtn.className = "btn " + (r.ok ? "danger" : "primary");
@@ -768,6 +786,7 @@
     if (a === "next") { api.Snd.play("click"); nextMission(); return; }
     if (a === "map") { api.Snd.play("click"); api.openMap(); return; }
     if (a === "hq") { api.Snd.play("click"); api.goHQ(); return; }
+    if (a === "retry" && R.phase === "revive") { api.Snd.play("click"); retryStep(); return; }
     if (a === "share" && mine) { api.Snd.play("click"); mine.share(starsTotal(), N * 3); return; }
     if (R.phase !== "play") return;
     var k = step(), res = T[k.type].act(k, R.st, a, id);

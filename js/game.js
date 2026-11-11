@@ -765,11 +765,14 @@
       caseDoc: D5.caseDoc, reveal: D5.reveal, finale: D5.finale,
       commit: function (d, n, pick) { var r = mine(); r.picks["c" + n] = r.picks["c" + n] || { s: pick.s, p: pick.p }; return Promise.resolve(r); },
       resolve: function (d, n, letter) { var r = mine(); if (r.grid.length === n - 1) r.grid += letter; return Promise.resolve(r); },
+      over: function () { mine().over = true; return Promise.resolve(mine()); },
       hunch: function (d, n) { mine().hunch = n; return D5.hunchDoc(d, n); }
     };
   }
   function reds(g) { return (String(g).match(/r/g) || []).length; }
-  function d5Over(r) { return r.grid.length >= 5 || reds(r.grid) >= (r.strikes || 1); }
+  function d5Over(r) { return r.grid.length >= 5 || reds(r.grid) >= (r.strikes || 1) || !!r.over; }
+  // A miss in a story that allows a second chance, and the player hasn't chosen yet: Revive, or stop for today.
+  function d5Pending(r, st) { var g = r.grid; return !d5Over(r) && g.length > 0 && g.charAt(g.length - 1) === "r" && st.revived !== g.length; }
   function d5Results(r) { var out = r.grid.split(""); if (d5Over(r)) while (out.length < 5) out.push("-"); return out; }
   function d5Failed(results, strikes) { return results.indexOf("-") >= 0 || reds(results.join("")) >= (strikes || 1); }
   function verdictKey(v) { return Object.keys(v).sort().map(function (q) { return q + "=" + v[q]; }).join(";"); }
@@ -802,7 +805,7 @@
     }
     var replay = day !== TODAY;
     var prog = progressFor(day), st = d5St(day), api = d5Api(day, prog);
-    prog.d5 = ed.id; prog.title = ed.title; prog.strikes = ed.strikes;
+    prog.d5 = ed.id; prog.title = ed.title; prog.strikes = ed.strikes; prog.fmt = ed.fmt || 1;
     if (prog.done) { showDailyResults(day, prog, replay, null); return; }
     d5Busy(true);
     api.run(day).then(function (r) { return r || api.start(day, ed.strikes); }).then(function (r) {
@@ -813,7 +816,7 @@
         elapsed: (prog.elapsed || 0) + away, d5: { ed: ed, st: st, api: api, r: r } };
       if (d5Over(r)) { d5Busy(false); finishDaily(); return; }
       if (!r.grid.length) WL.track(replay ? "replay_start" : "d5_start", { day: day, story: ed.id });
-      d5Open(r.grid.length + 1);
+      d5Open(d5Pending(r, st) ? r.grid.length : r.grid.length + 1); // a miss still waiting for Revive or Stop comes back to that choice
     }).catch(function (e) { d5Busy(false); d5Fail(e); });
   }
   function d5Case(doc, n) {
@@ -918,6 +921,7 @@
       d5.st.reveals[n] = rev;
       var right = pk.s === rev.answer.s && (c.mode === "verdict" || rev.answer.p.indexOf(pk.p) >= 0); // proofs are written "e7,f2", sorted
       var letter = right ? (d5.r.hunch === n ? "y" : "g") : "r";
+      run.again = d5.r.grid.length >= n; // judged before (a reload at the Revive choice): no second reward
       var saved = d5.r.grid.length >= n ? Promise.resolve(d5.r) : d5.api.resolve(run.day, n, letter, d5.r.grid);
       return saved.then(function (r) {
         if (run !== keep) return;
@@ -1003,6 +1007,38 @@
     $("accuse-q").textContent = "Is this your final verdict? One try.";
     $("btn-accuse").textContent = "Submit verdict";
     $("tools").hidden = true; $("confirm").hidden = false;
+  }
+  // The second chance: a rewarded ad when ads are on. With no ads, or no ad to show, it's free (the owner's call);
+  // closing the ad early is the only way to miss it, and the choice stays open.
+  function revive(name) {
+    if (!canRewarded()) return Promise.resolve(true);
+    return Plat.rewarded(name).then(function (ok) { return ok !== false; });
+  }
+  function d5Revive() {
+    var keep = run, b = $("btn-next");
+    b.disabled = true;
+    revive("d5_revive").then(function (ok) {
+      b.disabled = false;
+      if (run !== keep) return;
+      if (!ok) { toast("No reward this time. Try again, or stop for today."); return; }
+      run.d5.st.revived = run.d5.r.grid.length; run.reviveAsk = false; persist();
+      $("verdict").hidden = true;
+      if (!run.night) WL.track("d5_revive", { day: run.day, n: run.c.n });
+      d5Next();
+    });
+  }
+  function d5Stop() {
+    var keep = run;
+    $("btn-verdict-hq").disabled = true;
+    run.d5.api.over(run.day).then(function (r) {
+      $("btn-verdict-hq").disabled = false;
+      if (run !== keep) return;
+      run.d5.r = run.d5.st.run = r; run.reviveAsk = false;
+      run.prog.results = d5Results(r); persist();
+      WL.track("d5_stop", { day: run.day, n: run.c.n });
+      $("verdict").hidden = true;
+      finishDaily();
+    }).catch(function (e) { $("btn-verdict-hq").disabled = false; if (run === keep) d5Fail(e); });
   }
   // Next case: the next doc only opens once this one is solved, so fetch it now.
   function d5Next() {
@@ -1767,6 +1803,7 @@
     vs.setAttribute("aria-label", (o.stars || 0) + " of 3 stars");
     $("verdict-banner").hidden = !o.banner; $("verdict-banner").textContent = o.banner || "";
     $("btn-verdict-hq").textContent = o.hq || "HQ";
+    $("btn-verdict-hq").classList.toggle("stop", !!o.hq && o.hq === "Stop for today");
     $("verdict-rewards").innerHTML = o.rewards || "";
     $("why").innerHTML = "<strong>" + esc(o.sub) + "</strong>";
     $("proof-box").innerHTML = proofHtml(run.c);
@@ -1812,16 +1849,19 @@
     if (run.d5) run.prog.results = d5Results(run.d5.r); // the file's record, with the cases locked after a wrong answer
     else run.prog.results.push(code);
     run.prog.hints.push(run.hint); run.prog.elapsed = run.elapsed; run.prog.cur = null; run.prog.at = 0;
-    var r = P.dailyCase({ correct: correct, hint: run.hint, twist: c.mode !== "liar" && !c.d5, replay: run.kind === "replay" });
+    var r = run.again ? { coins: 0, xp: 0 } : P.dailyCase({ correct: correct, hint: run.hint, twist: c.mode !== "liar" && !c.d5, replay: run.kind === "replay" });
+    run.again = false;
     persist();
     var last = run.prog.results.length >= run.cases.length, locked = c.d5 && !correct && last && c.n < 5;
+    run.reviveAsk = !!(c.d5 && !correct && c.n < 5 && d5Pending(run.d5.r, run.d5.st));
     setVerdict({
       head: correct ? (c.mode === "verdict" ? "Case closed!" : pick(CAUGHT)) : how === "proof" ? "Not proven." : c.mode === "verdict" ? "Not the whole truth." : "Not quite.", good: correct,
-      banner: locked ? "The trail went cold. Cases " + (c.n + 1) + "-5 are locked." : c.d5 && correct && c.n === 4 ? "One step left: your final verdict" : "",
+      banner: run.reviveAsk ? "You get one second chance today." : locked ? "The trail went cold. " + (run.d5.ed.fmt === 2 ? "Chapters " : "Cases ") + (c.n + 1) + "-5 are locked." : c.d5 && correct && c.n === 4 ? "One step left: your final verdict" : "",
       rewards: rw(r.coins, r.xp),
       sub: c.mode === "verdict" ? (correct ? "You named everyone behind it." : "Here's what the file proves.") : missLine(how) + answerLine(),
       story: c.d5 && c.finding ? "📓 New in your notebook: " + c.finding.text : "",
-      next: last ? (c.d5 && correct && c.n === 5 ? "See how it all happened" : "See your result") : "Next case"
+      next: run.reviveAsk ? (canRewarded() ? "Revive: watch a short ad" : "Use your second chance") : last ? (c.d5 && correct && c.n === 5 ? "See how it all happened" : "See your result") : c.fmt === 2 ? "Next chapter" : "Next case",
+      hq: run.reviveAsk ? "Stop for today" : ""
     });
     if (r.coins) { FX.float("+" + r.coins, $("coins"), "coin"); renderCoins(true); }
     renderMeta();
@@ -1859,6 +1899,7 @@
   function next() {
     if (!run) return;
     Snd.play("click");
+    if (run.d5 && run.reviveAsk) { d5Revive(); return; } // the choice stays on screen until the Revive is taken
     if (run.kind === "friend" && !run.preview && !run.again) { shareFriendResult(); return; } // stays on the result
     $("verdict").hidden = true;
     if (run.kind === "friend") { openWrite(); return; }
@@ -2039,10 +2080,10 @@
       '<p class="res-line">You caught <strong>' + score + " of 5</strong> liars" + (replay ? "" : " in <strong>" + WL.fmtTime(p.elapsed) + "</strong>") +
       (hints ? ", with " + hints + " hint" + (hints > 1 ? "s" : "") : "") + ".</p>";
     if (p.d5) { // one story: how far the investigation got, then how it ends (now, or at midnight)
-      var cold = d5Failed(p.results, p.strikes), at = p.results.indexOf("r") + 1;
-      $("res-title").textContent = score === 5 ? "Case closed. Nobody fooled you." : cold ? "The trail went cold" + (at ? " at Case " + at : "") + "." : "Case closed.";
+      var cold = d5Failed(p.results, p.strikes), at = p.results.lastIndexOf("r") + 1; // with a second chance, the miss that ended it
+      $("res-title").textContent = score === 5 ? "Case closed. Nobody fooled you." : cold ? "The trail went cold" + (at ? (p.fmt === 2 ? " at Chapter " : " at Case ") + at : "") + "." : "Case closed.";
       $("res-body").innerHTML = '<div class="res-grid" role="img" aria-label="' + score + ' of 5 solved">' + cells(p.results, 5) + "</div>" +
-        '<p class="res-line">You cracked <strong>' + score + " of 5</strong> cases" + (replay ? "" : " in <strong>" + WL.fmtTime(p.elapsed) + "</strong>") +
+        '<p class="res-line">You cracked <strong>' + score + " of 5</strong> " + (p.fmt === 2 ? "chapters" : "cases") + (replay ? "" : " in <strong>" + WL.fmtTime(p.elapsed) + "</strong>") +
         (hints ? ", with your Hunch" : "") + ".</p>" + (D5 ? '<div class="d5-end" id="d5-end"></div>' : "");
       d5EndCard(day, p);
     }
@@ -4168,6 +4209,7 @@
     Snd.play("click");
     if (run && run.kind === "train") { S.settings.tutorialDone = true; persist(); }
     if (run && run.kind === "rush" && run.lives <= 0) { $("verdict").hidden = true; endRush(false); return; }
+    if (run && run.d5 && run.reviveAsk) { d5Stop(); return; } // "Stop for today"
     if (run && (run.kind === "daily" || run.kind === "replay") && run.prog.results.length >= run.cases.length) { $("verdict").hidden = true; finishDaily(); return; }
     if (run && run.kind === "friend" && !run.preview && !run.again) { openWrite(); return; } // "Write one back"
     if (run && run.kind === "room") { leaveRoom(); goHQ(); return; } // "Leave room"
