@@ -525,7 +525,9 @@
       go.disabled = false;
       if (R !== keep || R.phase !== "revive") return;
       if (!ok) { api.toast("No reward this time. Try again, or start the step over."); return; }
-      R.revived = true; R.mistakes = MAX_MISTAKES - 1; R.phase = "play"; saveWip(); render(true);
+      R.revived = true; R.mistakes = MAX_MISTAKES - 1; R.phase = "play";
+      if (!R.st) initStep(); // back at the choice after a reload: the step starts fresh (taps aren't saved)
+      saveWip(); render(true);
       api.Snd.play("whoosh");
       track("book_revive", { mission: R.n, step: R.k + 1 });
     });

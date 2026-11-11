@@ -187,6 +187,15 @@ await t("over: refused without a miss, after the next answer, twice, or to undo 
   await assertFails(over(fin, "fin", true));
   await assertFails(over(fin, "fin", false));
 });
+await t("over: refused after a right answer that followed the miss", async () => {
+  const ivy = as("ivy");
+  await assertSucceeds(start(ivy, "ivy", TODAY, two));
+  await assertSucceeds(commit(ivy, "ivy", 1, "s1", "e2"));
+  await assertSucceeds(grid(ivy, "ivy", "r"));
+  await assertSucceeds(commit(ivy, "ivy", 2, ...R2[2]));
+  await assertSucceeds(grid(ivy, "ivy", "rg"));
+  await assertFails(over(ivy, "ivy", true));
+});
 await t("over: the Daily score posts with the grid padded", async () => {
   await assertFails(score(fin, "fin", "rg---", 1));
   await assertSucceeds(score(fin, "fin", "r----", 0));

@@ -106,7 +106,7 @@
           (rev && id === rev.answer.s ? '<span class="stamp-lie">Lie</span>' : S.pick === id ? '<span class="stamp-lie soft">Lie?</span>' : "") + "</button>";
       }).join("") + "</div></div>";
     }).join("");
-    var proof = rev ? (rev.answer.p[0] || "").split(",") : [];
+    var mine = S.proof.slice().sort().join(","), proof = rev ? (rev.answer.p.indexOf(mine) >= 0 ? mine : rev.answer.p[0] || "").split(",") : [];
     var chips = have().map(function (e) {
       var on = S.proof.indexOf(e.id) >= 0, cls = (on ? " on" : "") + (e.kind === "finding" ? " nb" : "") + (rev && proof.indexOf(e.id) >= 0 ? " is-proof" : "") + (rev && on && proof.indexOf(e.id) < 0 ? " is-wrong" : "");
       return '<button type="button" class="chip' + cls + '" data-pf="' + e.id + '" data-k="pf:' + e.id + '"' + (rev ? " disabled" : "") + ">" + icon(e.kind === "finding" ? "pin" : chipIcon(e)) + "<span>" + esc(e.title) + "</span></button>";

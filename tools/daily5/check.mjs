@@ -4,7 +4,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import vm from "node:vm";
-import { check, split, ROOT, proofKey, importDraft, art, checkRemix, dataDir, writeJson, readJson } from "./lib.mjs";
+import { check, split, ROOT, proofKey, importDraft, art, checkRemix, dataDir, writeJson, readJson, archiveOpen } from "./lib.mjs";
 
 const arg = process.argv[2];
 if (!arg) { console.log("Usage: node tools/daily5/check.mjs <story.json> | --import <story.json>... [--force] | --player <story.json> | --self-test"); process.exit(2); }
@@ -129,6 +129,7 @@ const broken2 = [
   ["a verdict with three parts", (s) => { s.cases[4].parts.pop(); }, /4 questions|exactly 4/],
   ["a route option without an icon", (s) => { delete s.cases[4].parts[2].options[1].icon; }, /icon/],
   ["strikes 1 in v2", (s) => { s.strikes = 1; }, /strikes/],
+  ["the lie only comes out by showing a past finding", (s) => { const c = s.cases[1]; c.questions = c.questions.filter((q) => q.says !== "s12"); c.presses.push({ by: "p4", shown: "f1", says: "s12" }); }, /only after|search/],
   ["a lie kind that doesn't fit", (s) => { s.cases[2].lie = "time"; }, /travel/],
   ["an unknown lie kind", (s) => { s.cases[0].lie = "fib"; }, /lie must be/]
 ];
@@ -150,6 +151,9 @@ const rmx2 = clone2(); rmx2.remixOf = v2.id; rmx2.people.find((p) => p.id === "p
 expect("a remix with someone else behind it is fine", checkRemix(rmx2, v2).length === 0, checkRemix(rmx2, v2).join("; "));
 const rmx3 = clone2(); rmx3.remixOf = v2.id; rmx3.people[4].part = "mastermind"; rmx3.people[0].part = "innocent"; rmx3.people[2].name = "Ivan Petrov";
 expect("a remix that renames someone is refused", checkRemix(rmx3, v2).some((p) => /Ivan Petrov|Ivo Petrov/.test(p)));
+const L = Date.UTC(2026, 9, 26); // Daily #1
+expect("a day's story stays private until 6 AM IST the next day", archiveOpen(16, Date.UTC(2026, 10, 11, 0, 29), L) === false);
+expect("a day's story is public from 6 AM IST the next day", archiveOpen(16, Date.UTC(2026, 10, 11, 0, 30), L) === true);
 expect("an imported remix is for Story Night", importDraft(Object.assign(clone2(), { remixOf: "x" }), "d5-r").meta.for === "night");
 
 // the art kit (js/art.js): the scenes and icons a v2 story may name

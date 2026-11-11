@@ -8,7 +8,7 @@ import http from "node:http";
 import { spawn } from "node:child_process";
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, resolve, extname, relative } from "node:path";
-import { check, split, dataDir, readJson, writeJson, ROOT, importDraft, checkRemix } from "./lib.mjs";
+import { check, split, dataDir, readJson, writeJson, ROOT, importDraft, checkRemix, archiveOpen } from "./lib.mjs";
 
 const PORT = +process.env.PORT || 8787, HOST = "127.0.0.1";
 const DRAFTS = dataDir("drafts");
@@ -95,7 +95,9 @@ async function nightPublish(d) {
   let past = {};
   if (d.meta.remixOf) {
     const orig = allDrafts().find((x) => x.story && x.story.id === d.meta.remixOf);
-    if (!orig || !orig.meta.day) throw httpErr(400, "Schedule or publish the original story as a Daily first: a remix opens on Story Night after that day.");
+    if (!orig || !orig.meta.day) throw httpErr(400, "Publish the original story as a Daily first.");
+    // Story Night docs are public: publishing before the original is public would give a Daily away early
+    if (!archiveOpen(orig.meta.day, Date.now(), LAUNCH)) throw httpErr(400, `Wait until 6 AM IST the day after Daily #${orig.meta.day}. Until then its story is secret, and the remix would give it away.`);
     past = { remixOf: d.meta.remixOf, origDay: orig.meta.day, origTitle: orig.story.title };
   }
   const { db, FieldValue } = await firestore();
@@ -185,7 +187,7 @@ function play(id, action, n, body) {
     }
     case "hunch": if (!r || r.hunch || n !== r.grid.length + 1 || r.picks[k] || reds(r.grid) >= r.strikes) throw playErr(); r.hunch = n; return out.hunch[n];
     case "over": { // Stop for today: right after a miss, before the next answer, once
-      if (!r || r.over || !reds(r.grid) || reds(r.grid) >= r.strikes || r.grid.length >= 5 || r.picks["c" + (r.grid.length + 1)]) throw playErr();
+      if (!r || r.over || !r.grid.endsWith("r") || reds(r.grid) >= r.strikes || r.grid.length >= 5 || r.picks["c" + (r.grid.length + 1)]) throw playErr();
       r.over = true; return r;
     }
     case "finale": if (!r || !(r.grid.length === 5)) throw playErr(); return out.finale; // failed players wait for the next reset, as in the game

@@ -804,7 +804,8 @@
       return;
     }
     var replay = day !== TODAY;
-    var prog = progressFor(day), st = d5St(day), api = d5Api(day, prog);
+    var prog = progressFor(day), st = d5St(day), api = d5Api(day, prog), kept = chLocal();
+    if (kept && kept.day === day && kept.revived > (st.revived || 0)) st.revived = kept.revived; // the account copy may be up to 20 s behind
     prog.d5 = ed.id; prog.title = ed.title; prog.strikes = ed.strikes; prog.fmt = ed.fmt || 1;
     if (prog.done) { showDailyResults(day, prog, replay, null); return; }
     d5Busy(true);
@@ -847,13 +848,14 @@
   function chState(n) {
     var st = run.d5.st, mine = !run.night && chLocal();
     st.ch = st.ch || {};
-    if (mine && mine.day === run.day && mine.ch && mine.ch[n]) st.ch[n] = mine.ch[n];
-    return (st.ch[n] = st.ch[n] || {});
+    st.ch[n] = st.ch[n] || {};
+    if (mine && mine.day === run.day && mine.ch && mine.ch[n]) Object.assign(st.ch[n], mine.ch[n]);
+    return st.ch[n];
   }
   function chLocal(keep) {
     try { if (keep) localStorage.setItem("wl-ch", JSON.stringify(keep)); else return JSON.parse(localStorage.getItem("wl-ch")); } catch (e) { return null; }
   }
-  function chSave() { persist(); if (run && run.d5 && !run.night) chLocal({ day: run.day, ch: run.d5.st.ch }); }
+  function chSave() { persist(); if (run && run.d5 && !run.night) chLocal({ day: run.day, ch: run.d5.st.ch, revived: run.d5.st.revived || 0 }); }
   // Open case n: fetch it (the rules only allow the next one), show its intro card, and carry on an answer already on file.
   function d5Open(n) {
     var d5 = run.d5, st = d5.st, keep = run;
@@ -1016,12 +1018,13 @@
   }
   function d5Revive() {
     var keep = run, b = $("btn-next");
+    if (b.disabled) return; // an ad is already playing
     b.disabled = true;
     revive("d5_revive").then(function (ok) {
       b.disabled = false;
       if (run !== keep) return;
       if (!ok) { toast("No reward this time. Try again, or stop for today."); return; }
-      run.d5.st.revived = run.d5.r.grid.length; run.reviveAsk = false; persist();
+      run.d5.st.revived = run.d5.r.grid.length; run.reviveAsk = false; chSave();
       $("verdict").hidden = true;
       if (!run.night) WL.track("d5_revive", { day: run.day, n: run.c.n });
       d5Next();
@@ -1029,6 +1032,7 @@
   }
   function d5Stop() {
     var keep = run;
+    if ($("btn-verdict-hq").disabled) return;
     $("btn-verdict-hq").disabled = true;
     run.d5.api.over(run.day).then(function (r) {
       $("btn-verdict-hq").disabled = false;
@@ -1557,7 +1561,7 @@
       if (run !== keep || !h) return;
       d5.r.hunch = n; if (d5.st.run) d5.st.run.hunch = n;
       run.hint = true;
-      if (c.fmt === 2) { chState(n).hunchOut = h.who; Chapter.hunch(h.who); }
+      if (c.fmt === 2) Chapter.hunch(h.who);
       else if (c.mode === "verdict") {
         var b = $("suspects").querySelector('.vopt[data-q="' + h.part + '"][data-o="' + h.out + '"]');
         if (b) { b.classList.add("is-out"); b.classList.remove("is-picked"); b.disabled = true; if (run.vpick[h.part] === h.out) { delete run.vpick[h.part]; hideConfirm(); } }
@@ -3362,7 +3366,7 @@
   function rmode() { return (room && room.data && room.data.mode) || "race"; }
   function roomLimit(c) {
     var m = rmode();
-    if (m === "night") return 300000;
+    if (m === "night") return room && room.night && room.night.ed && room.night.ed.fmt === 2 ? 480000 : 300000; // a v2 chapter is searched and questioned: 8 minutes
     if (m === "partners") return 180000; // talking it through takes time
     return c && c.mode === "liar" ? ROUND_MS : ROUND_MS + 30000;
   }
@@ -3618,7 +3622,7 @@
         if (!room.data || room.data.state !== "play" || room.data.round !== r) return;
         run = { kind: "room", night: true, round: r, seed: d.seed, day: 0, cases: [null, null, null, null, null], idx: r - 1, elapsed: 0,
           prog: { results: [], cur: null }, d5: { ed: n.ed, st: n.st, api: nightApi(n), r: n.r } };
-        run.limit = n.ed && n.ed.fmt === 2 ? 480000 : roomLimit(null); // a v2 chapter is searched and questioned: 8 minutes
+        run.limit = roomLimit(null);
         if (r === 1) markNight(n.id);
         d5Open(r);
       });
@@ -3777,8 +3781,8 @@
         "</b><span>Made in Write a case" + (played[id] ? " · you've played it" : "") + "</span></button>";
     }).join("") + "</div>" : "";
     if (!l || !l.length) return (l && made.length ? "" : '<p class="muted small">' + (l ? "No stories yet. The first Story Nights are on their way." : "Opening the story shelf…") + "</p>") + mine;
-    // a past Daily 5 retold (someone else did it) stays off the shelf until its own day is over
-    var shelf = l.filter(function (s) { return !s.origDay || s.origDay < TODAY; });
+    // a past Daily 5 retold (someone else did it) stays off the shelf until its day's story is public (6 AM IST the day after)
+    var shelf = l.filter(function (s) { return !s.origDay || s.origDay < TODAY - 1 || (s.origDay === TODAY - 1 && WL.istHour() >= 6); });
     return '<div class="night-list" role="list">' + shelf.map(function (s) {
       var on = s.id === d.story, past = !!s.remixOf;
       return '<button class="night-pick' + (on ? " on" : "") + (past ? " twist" : "") + '" type="button" role="listitem" aria-pressed="' + on + '" data-room="story" data-id="' + esc(s.id) + '">' +

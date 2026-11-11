@@ -405,7 +405,7 @@ service cloud.firestore {
       let r = resource.data;
       let q = request.resource.data;
       return q.diff(r).affectedKeys().hasOnly(['over']) && q.over == true && !isOver(r)
-        && reds(r.grid) >= 1 && reds(r.grid) < r.strikes && r.grid.size() < 5
+        && r.grid.matches('.*r$') && reds(r.grid) < r.strikes && r.grid.size() < 5
         && !(('c' + string(r.grid.size() + 1)) in r.picks);
     }
     match /d5runs/{id} {

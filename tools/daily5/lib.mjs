@@ -95,3 +95,7 @@ export function checkRemix(story, original) {
   if (boss(story) && boss(story) === boss(original)) out.push(`the mastermind is still ${boss(story)}: in a remix someone else did it`);
   return out;
 }
+
+// A day's story is public (the archive) from 6 AM IST the day after it ran, as in the Firestore rules.
+// launchUTC is Date.UTC of Daily #1 (js/config.js launchDate).
+export function archiveOpen(day, now, launchUTC) { return now >= launchUTC + day * 86400000 - 330 * 60000 + 6 * 3600000; }

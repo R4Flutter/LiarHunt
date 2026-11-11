@@ -412,6 +412,8 @@
       if (liar && prs.length && !prs.some((pr) => pr.by !== liar)) err(w, "at least one press must be of a suspect who isn't the liar (innocent people react too)");
       const viaQ = qs.find((q) => q.says === c.answer);
       if (viaQ && !(Array.isArray(viaQ.needs) && viaQ.needs.length)) err(w, `the lie (${c.answer}) must be heard only after finding evidence, but its question needs nothing`);
+      const viaP = prs.find((pr) => pr.says === c.answer);
+      if (viaP && !evIds.has(viaP.shown)) err(w, `the lie (${c.answer}) must be heard only after finding evidence in this scene, but its press shows ${viaP.shown}, which needs no search`);
       if (!LIE_KINDS.includes(c.lie)) err(w, `lie must be one of ${LIE_KINDS.join(", ")}`);
     }
   }
