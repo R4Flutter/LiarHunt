@@ -137,6 +137,9 @@ for (const [name, mutate, reason] of broken2) {
   const r = check(s);
   expect(`v2 rejects: ${name}`, !r.ok && r.errors.some((e) => reason.test(e)), r.ok ? "it passed" : r.errors.slice(0, 3).join("\n    "));
 }
+const tw = clone2(); tw.cases[1].finding.text = tw.cases[1].finding.text.replace(/\s*It's a 15-minute walk[^.]*\./, "");
+expect("warns when a 'too fast' proof never states the walking time", check(tw).warnings.some((w) => /walking time/.test(w)), check(tw).warnings.join("; "));
+expect("no walking-time warning when the proof states it", !r2.warnings.some((w) => /walking time/.test(w)), r2.warnings.join("; "));
 const wk = clone2(); wk.cases[1].lie = "seen";
 expect("v2 warns when a story uses fewer than 4 kinds of lie", check(wk).warnings.some((w) => /kinds of lie/.test(w)));
 

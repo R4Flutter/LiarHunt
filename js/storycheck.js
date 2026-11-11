@@ -292,6 +292,12 @@
         if (c.lie === "travel" && !(fast && !plain)) err(w, `lie is "travel", but ${c.answer} is caught without a walking time`);
         if (c.lie !== "travel" && !plain && fast) err(w, `${c.answer} is only caught by a walking time, so its lie is "travel"`);
         if (c.lie === "holder" && !lie.some((f) => f.slot.startsWith("holder:") && known.some((a) => clash(f, a)))) err(w, `lie is "holder", but ${c.answer} isn't caught on who had something`);
+        // a "too fast" proof has to say how long the walk takes, or the player can't see why it proves anything
+        if (c.lie === "travel") {
+          const said = (id) => { const e = ev.find((x) => x.id === id), fc = cases.find((x) => x.finding && x.finding.id === id); return String((e && e.title + " " + e.text) || (fc && fc.finding.text) || ""); };
+          const mins = [...tr.values()].map(String);
+          if (found.some((set) => !set.some((id) => mins.some((m) => new RegExp("\\b" + m + "\\b").test(said(id)))))) warn(w, "a travel proof never states the walking time in its own text; say it in the finding or evidence the proof uses");
+        }
         kinds[n] = c.lie;
       }
 

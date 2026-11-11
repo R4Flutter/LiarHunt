@@ -1125,7 +1125,7 @@
       "why": "Lena says Nadia never came back into the office after nine. But Nadia held the strongbox from 9:00 to 9:10, and the camera shows the box going through the office door at 9:10. Nadia carried it in herself.",
       "finding": {
         "id": "f2",
-        "text": "Nadia carried the strongbox into the harbor office at 9:10 PM and stayed until 9:40. At 9:45 Lena let Hugo in with the key, and he was inside until 9:52.",
+        "text": "Nadia carried the strongbox into the harbor office at 9:10 PM and stayed until 9:40. At 9:45 Lena let Hugo in with the key, and he was inside until 9:52. It's a 15-minute walk from there to the old cannery.",
         "facts": [
           {
             "slot": "at:p1",

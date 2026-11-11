@@ -33,6 +33,8 @@ A cool, professional case file:
 - Proofs from chapter 2 on must need an earlier finding, so the chapters build on each other.
 - Use at least four kinds of lie across chapters 1 to 4 (below). Mix single-piece proofs with two-piece ones.
 - Two or more spots in every scene find nothing. Some evidence only matters in a later chapter.
+- Read every piece of evidence as a player would. If one *seems* to contradict the lie but isn't in the proof (a neighbour who "heard oars at 10:55"), players will pick it and be marked wrong: rewrite it so it doesn't, or make it the proof.
+- Keep the story straight across chapters: someone who left at 11:10 can't have seen who arrived at 11:20, and a note signed with an initial points at whoever has that initial.
 
 ## Kinds of lie (`lie` on each chapter)
 
@@ -53,7 +55,7 @@ A cool, professional case file:
 | `id`, `title`, `summary` | A short id (lowercase, dashes), the story's name (2 to 5 words), and one line on what really happened (never shown before the end). |
 | `setting` | `{ place, intro }`: where it happens and the opening scene (2 or 3 sentences). |
 | `strikes` | `2` (one miss, then the Revive). |
-| `travel` | Optional walking times: `[{ a: "l2", b: "l4", mins: 15 }]`. Two places with no listed time never clash this way. Mention the time in some evidence text, or the player can't know it. |
+| `travel` | Optional walking times: `[{ a: "l2", b: "l4", mins: 15 }]`. Two places with no listed time never clash this way. Say the time ("a 25-minute row") in the finding or evidence the proof uses, or the player can't see why it proves anything; the checker warns if you don't. |
 | `people` | 5 or 6: `{ id: "p1", name, role, face, background, part, motive, secret }`. `face` is `f00` to `f15`, different for everyone. `part` is `mastermind` (exactly one), `accomplice` (at most two) or `innocent`. An innocent person's `secret` is why they lie in one chapter. |
 | `places`, `items`, `acts` | Things the facts point at: `{ id: "l1", name }`, `{ id: "i1", name }`, `{ id: "a1", name }`. |
 | `truth` | What really happened, as small facts (below). Everything except the lies must agree with it. |
