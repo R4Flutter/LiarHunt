@@ -34,6 +34,8 @@ A cool, professional case file:
 - Use at least four kinds of lie across chapters 1 to 4 (below). Mix single-piece proofs with two-piece ones.
 - Two or more spots in every scene find nothing. Some evidence only matters in a later chapter.
 - Read every piece of evidence as a player would. If one *seems* to contradict the lie but isn't in the proof (a neighbour who "heard oars at 10:55"), players will pick it and be marked wrong: rewrite it so it doesn't, or make it the proof.
+- Don't let a finding hand over the next answer word for word. Prefer proofs that combine a finding with this chapter's evidence (`need` 2), and keep the last finding from naming who planned it: the verdict should take putting findings together.
+- A lie should be one false claim. Extra clauses ("...and nobody came by") get disproved by other evidence and give the player a second, wrong-looking proof.
 - Keep the story straight across chapters: someone who left at 11:10 can't have seen who arrived at 11:20, and a note signed with an initial points at whoever has that initial.
 
 ## Kinds of lie (`lie` on each chapter)
