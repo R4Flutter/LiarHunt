@@ -3,6 +3,7 @@
 //   node tools/daily5/check.mjs --self-test            the Crown Job must pass, and broken copies of it must fail
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import vm from "node:vm";
 import { check, split, ROOT, proofKey, importDraft, art, checkRemix, dataDir, writeJson, readJson } from "./lib.mjs";
 
 const arg = process.argv[2];
@@ -160,6 +161,17 @@ else {
   expect("at least 30 icons, all draw", art.ICONS.length >= 30 && art.ICONS.every((i) => art.icon(i).includes("<svg")), art.ICONS.length + " icons");
   expect("six lie kinds", Object.keys(art.LIES).join() === "time,place,travel,seen,holder,count");
   expect("lie icons exist", Object.values(art.LIES).every((l) => art.ICONS.includes(l.icon)));
+}
+
+// every season place has a drawn scene, so a story set there can be searched
+{
+  const sbox = { window: {} };
+  vm.createContext(sbox);
+  vm.runInContext(readFileSync(join(ROOT, "js/seasons.js"), "utf8"), sbox);
+  (sbox.window.WL_SEASONS || []).forEach((pack, i) => {
+    const sc = pack.scenes || {}, missing = (pack.places || []).filter((p) => !art || !art.SCENES[sc[p]]);
+    expect(`season ${i + 1}: every place has a drawn scene`, !missing.length, "no scene for: " + missing.join(", "));
+  });
 }
 
 console.log(failed ? `\n${failed} check(s) failed.` : "\nAll Daily 5 checks passed.");
