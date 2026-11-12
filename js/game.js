@@ -30,6 +30,7 @@
   var COIN_SVG = '<svg class="coin-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5c0-1.2 1.1-2 2.5-2s2.5.8 2.5 1.8c0 2.4-5 1.6-5 4.2 0 1.1 1.1 2 2.5 2s2.5-.8 2.5-2"/></svg>';
   var AD_SVG = '<svg class="ad-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M10 9.2v5.6l4.8-2.8z" fill="currentColor"/></svg>';
   var PENCIL_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>';
+  var SHARE_SVG = '<svg class="share-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14.5V3.5M7.5 8 12 3.5 16.5 8M7 11H5.5a1.5 1.5 0 0 0-1.5 1.5v7A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5v-7a1.5 1.5 0 0 0-1.5-1.5H17"/></svg>';
   var FLAME_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c1 4-3 5.5-3 9.5A3 3 0 0 0 12 15a3 3 0 0 0 3-3.2c0-1.6-1-2.6-1-4.3 2.7 1.4 5 4.6 5 8A7 7 0 0 1 5 15.5C5 9.6 10.5 7.4 12 2z"/></svg>';
 
   var S = null;            // saved state (see progress.js)
@@ -51,8 +52,26 @@
   function scoreOf(results) { return results.filter(function (r) { return r === "g" || r === "y"; }).length; }
   // A tick for each liar caught (amber if a hint helped), a cross for a miss, a lock for a Daily 5 case that never opened,
   // an empty slot for a case not played yet.
-  var TICK = '<path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/>', MARK = { g: TICK, y: TICK, r: '<path pathLength="1" d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>', l: '<path d="M8 11V8.5a4 4 0 0 1 8 0V11M6.5 11h11v8h-11z"/>' };
+  var MARK_D = { g: "M5 12.5l4.5 4.5L19 7.5", r: "M6.5 6.5l11 11M17.5 6.5l-11 11", l: "M8 11V8.5a4 4 0 0 1 8 0V11M6.5 11h11v8h-11z" }; MARK_D.y = MARK_D.g;
+  var MARK = { g: '<path pathLength="1" d="' + MARK_D.g + '"/>', y: '<path pathLength="1" d="' + MARK_D.y + '"/>', r: '<path pathLength="1" d="' + MARK_D.r + '"/>', l: '<path d="' + MARK_D.l + '"/>' };
   function cellClass(r) { return r === "-" ? "l" : r || "n"; }
+  // The day as a polygraph strip, one stretch per case (x 0-100, y 0-60, rest at 30): the needle jumps where you
+  // caught the liar, jumps less with a hint, and scribbles where the liar got away. The share card draws the same strip.
+  var TRACE = {
+    g: [[30, 31], [38, 29], [42, 33], [46, 5], [51, 55], [55, 17], [59, 37], [63, 28], [70, 31]],
+    y: [[34, 31], [40, 27], [45, 15], [51, 45], [56, 23], [61, 33], [68, 29]],
+    r: [[18, 31], [24, 24], [29, 38], [34, 21], [39, 42], [44, 19], [49, 40], [54, 24], [59, 37], [64, 27], [70, 32]]
+  };
+  function tracePts(r, i) { return [[0, 30]].concat(TRACE[r] || [], [[100, 30]]).map(function (p) { return [i * 100 + p[0], p[1]]; }); }
+  function readout(results, n, label) {
+    var paths = "";
+    for (var i = 0; i < n; i++) {
+      var r = cellClass(results[i]);
+      paths += '<path class="rd-' + r + '" d="M' + tracePts(r, i).join("L").replace(/,/g, " ") + '"/>';
+    }
+    return '<div class="readout"><div class="rd-strip"><svg viewBox="0 0 ' + n * 100 + ' 60" preserveAspectRatio="none" aria-hidden="true">' + paths + "</svg></div>" +
+      '<div class="res-grid" role="img" aria-label="' + label + '">' + cells(results, n) + "</div></div>";
+  }
   function cells(results, total) {
     var out = "";
     for (var i = 0; i < (total || results.length); i++) {
@@ -2157,19 +2176,19 @@
     var score = scoreOf(p.results), hints = p.results.filter(function (r) { return r === "y"; }).length;
     $("res-kicker").textContent = "Daily #" + day + label + (p.d5 ? " · " + p.title : " complete");
     $("res-title").textContent = DAILY_TITLES[score];
-    $("res-body").innerHTML = '<div class="res-grid" role="img" aria-label="' + score + ' of 5 caught">' + cells(p.results, 5) + "</div>" +
+    $("res-body").innerHTML = readout(p.results, 5, score + " of 5 caught") +
       '<p class="res-line">You caught <strong>' + score + " of 5</strong> liars" + (replay ? "" : " in <strong>" + WL.fmtTime(p.elapsed) + "</strong>") +
       (hints ? ", with " + hints + " hint" + (hints > 1 ? "s" : "") : "") + ".</p>";
     if (p.d5) { // one story: how far the investigation got, then how it ends (now, or at midnight)
       var cold = d5Failed(p.results, p.strikes), at = p.results.lastIndexOf("r") + 1; // with a second chance, the miss that ended it
       $("res-title").textContent = score === 5 ? "Case closed. Nobody fooled you." : cold ? "The trail went cold" + (at ? (p.fmt === 2 ? " at Chapter " : " at Case ") + at : "") + "." : "Case closed.";
-      $("res-body").innerHTML = '<div class="res-grid" role="img" aria-label="' + score + ' of 5 solved">' + cells(p.results, 5) + "</div>" +
+      $("res-body").innerHTML = readout(p.results, 5, score + " of 5 solved") +
         '<p class="res-line">You cracked <strong>' + score + " of 5</strong> " + (p.fmt === 2 ? "chapters" : "cases") + (replay ? "" : " in <strong>" + WL.fmtTime(p.elapsed) + "</strong>") +
         (hints ? ", with your Hunch" : "") + ".</p>" + (D5 ? '<div class="d5-end" id="d5-end"></div>' : "");
       if (p.ch) { // a weekday: one chapter of the week's story
         var ok = score === 5, fri = p.ch === 5;
         $("res-title").textContent = ok ? (fri ? "Case closed. Nobody fooled you." : "Chapter " + p.ch + " solved.") : fri ? "Not the whole truth." : "Chapter " + p.ch + ": the trail went cold.";
-        $("res-body").innerHTML = '<div class="res-grid" role="img" aria-label="' + (ok ? "Solved" : "Not solved") + '">' + cells(p.results.slice(0, 1), 1) + "</div>" +
+        $("res-body").innerHTML = readout(p.results, 1, ok ? "Solved" : "Not solved") +
           '<p class="res-line">' + (fri ? "The verdict" : "Chapter " + p.ch + " of 5") + (ok ? " solved" : ": not this time") + (replay ? "" : " in <strong>" + WL.fmtTime(p.elapsed) + "</strong>") +
           (hints ? ", with your Hunch" : "") + ".</p>" + (D5 ? '<div class="d5-end" id="d5-end"></div>' : "");
       }
@@ -2178,7 +2197,8 @@
     $("res-rewards").innerHTML = (bonus && bonus.bonus ? '<span class="rw coin">' + COIN_SVG + "Daily done +" + bonus.bonus + "</span>" : "") +
       (bonus && bonus.perfect ? '<span class="rw coin">' + COIN_SVG + "Perfect day +" + bonus.perfect + "</span>" : "");
     var known = !replay && day === TODAY ? S.lb.ranks[day] : 0;
-    setShare(function () { return dailyShareText(day, p, replay, known); });
+    var title = $("res-title").textContent;
+    setShare(function () { return dailyShareText(day, p, replay, known); }, function () { return dailyCard(day, p, replay, known, title); });
     rankCard("");
     renderVersus(day, p);
     renderExtras(day, replay, extra || {});
@@ -2239,7 +2259,7 @@
       (score === 0 ? " Tip: read every statement before the clock gets loud." : " Your best: <strong>" + S.endless.best + "</strong>") + "</p>" +
       (isBest && score > 0 ? '<span class="new-best">New best</span>' : "");
     $("res-rewards").innerHTML = r.endBonus ? '<span class="rw coin">' + COIN_SVG + "Run bonus +" + r.endBonus + "</span>" : "";
-    setShare(rushShareText(score));
+    setShare(rushShareText(score), rushCard(r, isBest && score > 0, prevBest));
     rankCard("");
     $("res-stats").innerHTML = statsRow([["Cases", r.n], ["Caught", score], ["Best", S.endless.best], ["Runs", S.endless.runs]]);
     resProgress();
@@ -2270,30 +2290,180 @@
     var grid = p.results.map(function (r) { return GRID[r]; }).join("");
     var lines = [(CFG.siteName || "LiarHunt") + " #" + day + (p.d5 ? " · " + p.title : "") + (replay ? " (replay)" : ""),
       p.ch ? (p.ch === 5 ? "The verdict " : "Chapter " + p.ch + "/5 ") + GRID[p.results[0]] + "  ⏱️ " + WL.fmtTime(p.elapsed) : grid + " " + scoreOf(p.results) + "/5  ⏱️ " + WL.fmtTime(p.elapsed)];
-    var st = dailyStreak(), stand = !replay && S.lb.stand && S.lb.stand.day === day ? S.lb.stand : null;
+    var st = dailyStreak(), rk = rankTag(day, replay, rank);
     if (!replay && st > 1) lines.push("🔥 " + st + "-day streak");
-    if (stand && stand.total >= RANK_MIN) lines.push("🕵️ Top " + Math.max(1, Math.ceil((100 * stand.rank) / stand.total)) + "% today");
-    else if (!replay && rank) lines.push("🏆 #" + rank + " on today's leaderboard");
+    if (rk) lines.push(rk.charAt(0) === "#" ? "🏆 " + rk + " on today's leaderboard" : "🕵️ " + rk + " today");
     lines.push("Can you beat me? ⚔️");
     var u = Plat.shareLink({ day: day, c: challengeCode(day, p) }); if (u) lines.push(u);
     return lines.join("\n");
+  }
+  // "Top 12%" once enough people played, else "#3" on the leaderboard, else ""
+  function rankTag(day, replay, rank) {
+    if (replay) return "";
+    var stand = S.lb.stand && S.lb.stand.day === day ? S.lb.stand : null;
+    if (stand && stand.total >= RANK_MIN) return "Top " + Math.max(1, Math.ceil((100 * stand.rank) / stand.total)) + "%";
+    return rank ? "#" + rank : "";
   }
   function rushShareText(score) {
     var lines = [(CFG.siteName || "LiarHunt") + " Rush 🕵️", "I caught " + score + " liar" + (score === 1 ? "" : "s") + " in a row. Can you beat that?"];
     var u = Plat.shareLink({ mode: "rush" }); if (u) lines.push(u);
     return lines.join("\n");
   }
-  // t: the text, or a function that builds it (so it can be rebuilt once the player picks a name)
-  var shareFn = function () { return ""; };
-  function setShare(t) {
+  // What the share picture shows (see cardFile)
+  function dailyCard(day, p, replay, rank, title) {
+    var score = scoreOf(p.results), st = dailyStreak(), hints = p.results.filter(function (r) { return r === "y"; }).length, rk = rankTag(day, replay, rank);
+    var stats = [p.ch ? [score ? "Solved" : "Missed", p.ch === 5 ? "the verdict" : "chapter " + p.ch + " of 5"] : [score + "/5", p.d5 ? (p.fmt === 2 ? "chapters cracked" : "cases cracked") : "liars caught"]];
+    if (!replay) stats.push([WL.fmtTime(p.elapsed), "time"]);
+    if (!replay && st > 1) stats.push([st, "day streak"]);
+    else if (hints) stats.push([hints, hints > 1 ? "hints used" : "hint used"]);
+    return {
+      head: "Daily #" + day, sub: WL.formatDate(WL.dateForDay(day)), kicker: p.d5 ? p.title : replay ? "Practice" : "",
+      title: title || DAILY_TITLES[score], results: p.ch ? p.results.slice(0, 1) : p.results, n: p.ch ? 1 : 5, stats: stats,
+      stamp: rk ? [rk, "today"] : score === 5 && !replay ? ["Perfect"] : null, file: "liarhunt-daily-" + day + ".jpg"
+    };
+  }
+  function rushCard(r, isBest, prevBest) {
+    return {
+      head: "Rush", sub: "Stage " + rushStage(Math.max(1, r.n)), title: $("res-title").textContent,
+      big: r.score, bigLabel: (r.score === 1 ? "liar" : "liars") + " caught in a row",
+      stats: [isBest && prevBest > 0 ? [prevBest, "old best"] : [S.endless.best, "personal best"], r.bestCombo > 1 ? ["×" + r.bestCombo, "best combo"] : null, [r.n, "cases"]].filter(Boolean),
+      stamp: isBest ? ["New best"] : null, file: "liarhunt-rush.jpg"
+    };
+  }
+
+  /* The share picture: a 1080x1350 case report in the LiarHunt poster look (dark desk, cream type, red needle).
+     It is drawn inside the tap and read back with toDataURL, which is synchronous, so phones still open the share sheet. */
+  var cardIcon = new Image();
+  function cardPrep() {
+    if (!cardIcon.src) cardIcon.src = "assets/icon-192.png";
+    if (document.fonts && document.fonts.load) ['900 9px "Big Shoulders Display"', '800 9px "Big Shoulders Display"', '400 9px "Atkinson Hyperlegible"', '700 9px "Atkinson Hyperlegible"']
+      .forEach(function (f) { document.fonts.load(f).catch(function () { /* the fallback font still draws */ }); });
+  }
+  function rrect(x, l, t, w, h, r) {
+    x.beginPath(); x.moveTo(l + r, t); x.arcTo(l + w, t, l + w, t + h, r); x.arcTo(l + w, t + h, l, t + h, r);
+    x.arcTo(l, t + h, l, t, r); x.arcTo(l, t, l + w, t, r); x.closePath();
+  }
+  function wrapLines(x, text, w) {
+    var lines = [], cur = "";
+    String(text).split(" ").forEach(function (wd) { var t = cur ? cur + " " + wd : wd; if (cur && x.measureText(t).width > w) { lines.push(cur); cur = wd; } else cur = t; });
+    if (cur) lines.push(cur);
+    return lines;
+  }
+  function cardFile(c) {
+    if (!c) return null;
+    try {
+      var W = 1080, H = 1350, M = 80, CW = W - 2 * M, cv = document.createElement("canvas"), x = cv.getContext("2d");
+      cv.width = W; cv.height = H;
+      var DARK = "#120f0e", CREAM = "#f3e8cf", MUTE = "rgba(243,232,207,0.62)", FAINT = "rgba(243,232,207,0.13)", RED = "#ff3b47";
+      var FILL = { g: "#3cc47f", y: "#f2b632", r: RED }, INK = { g: CREAM, y: "#f2b632", r: RED };
+      var DISP = '"Big Shoulders Display", Impact, sans-serif', BODY = '"Atkinson Hyperlegible", Arial, sans-serif';
+      // the desk: a warm dark glow with faint chart paper
+      var bg = x.createRadialGradient(W / 2, 420, 80, W / 2, 640, 1000);
+      bg.addColorStop(0, "#2c2421"); bg.addColorStop(1, DARK);
+      x.fillStyle = bg; x.fillRect(0, 0, W, H);
+      x.fillStyle = "rgba(243,232,207,0.04)";
+      for (var g = 0; g < W; g += 54) x.fillRect(g, 0, 2, H);
+      for (g = 0; g < H; g += 54) x.fillRect(0, g, W, 2);
+      // header: icon and wordmark, the day on the right
+      if (cardIcon.complete && cardIcon.naturalWidth) { x.save(); rrect(x, M, 76, 96, 96, 22); x.clip(); x.drawImage(cardIcon, M, 76, 96, 96); x.restore(); }
+      x.save(); x.translate(M + 122, 158); x.transform(1, 0, -0.18, 1, 0, 0);
+      x.font = "900 92px " + DISP; x.fillStyle = CREAM; x.fillText("LIAR", 0, 0);
+      x.fillStyle = RED; x.fillText("HUNT", x.measureText("LIAR").width + 2, 0); x.restore();
+      x.textAlign = "right";
+      x.font = "800 52px " + DISP; x.fillStyle = CREAM; x.fillText(c.head, W - M, 124, 400);
+      x.font = "400 30px " + BODY; x.fillStyle = MUTE; x.fillText(c.sub, W - M, 166, 400);
+      x.textAlign = "left";
+      x.fillStyle = FAINT; x.fillRect(M, 224, CW, 2);
+      // the verdict, up to two lines, centred in its band; a rubber stamp on the right when there is one
+      var tw = c.stamp ? CW - 290 : CW, size = 156, lines;
+      do { x.font = "900 " + size + "px " + DISP; lines = wrapLines(x, c.title, tw); size -= 8; } while (lines.length > 2 && size > 84);
+      size += 8;
+      var lh = size * 0.92, top0 = c.kicker ? 316 : 262, top = top0 + (604 - top0 - lines.length * lh) / 2;
+      if (c.kicker) { x.font = "700 34px " + BODY; x.fillStyle = RED; x.fillText(c.kicker, M, 300, CW); }
+      x.font = "900 " + size + "px " + DISP; x.fillStyle = CREAM;
+      lines.forEach(function (ln, i) { x.fillText(ln, M, top + i * lh + size * 0.8, tw); });
+      if (c.stamp) {
+        x.save(); x.translate(W - M - 130, 430); x.rotate(-0.16);
+        x.strokeStyle = x.fillStyle = RED; x.lineWidth = 7; rrect(x, -128, -82, 256, 164, 12); x.stroke();
+        x.lineWidth = 3; rrect(x, -116, -70, 232, 140, 6); x.stroke();
+        x.textAlign = "center"; x.font = "900 " + (c.stamp[1] ? 72 : 64) + "px " + DISP;
+        x.fillText(c.stamp[0].toUpperCase(), 0, c.stamp[1] ? 8 : 22, 210);
+        if (c.stamp[1]) { x.font = "800 34px " + DISP; x.fillText(c.stamp[1].toUpperCase(), 0, 50); }
+        x.restore();
+      }
+      if (c.results) {
+        // the polygraph strip, then the five results under it
+        var n = c.n, cw = CW / n, sy = 630, sh = 130, ys = sh / 60;
+        x.fillStyle = "rgba(243,232,207,0.05)"; x.fillRect(M, sy, CW, sh);
+        x.fillStyle = FAINT; x.fillRect(M, sy, CW, 2); x.fillRect(M, sy + sh - 2, CW, 2);
+        for (g = 1; g < n * 2; g++) x.fillRect(M + (g * cw) / 2, sy, 2, sh);
+        x.lineWidth = 6; x.lineJoin = x.lineCap = "round";
+        for (var i = 0; i < n; i++) {
+          var r = cellClass(c.results[i]);
+          x.beginPath();
+          tracePts(r, i).forEach(function (pt, k) { x[k ? "lineTo" : "moveTo"](M + (pt[0] * cw) / 100, sy + pt[1] * ys); });
+          x.strokeStyle = INK[r] || MUTE; x.setLineDash(INK[r] ? [] : [10, 12]);
+          x.shadowColor = r === "r" ? RED : "transparent"; x.shadowBlur = r === "r" ? 22 : 0;
+          x.stroke();
+        }
+        x.shadowBlur = 0; x.setLineDash([]);
+        var t = Math.min(150, cw - 34), ty = 788;
+        for (i = 0; i < n; i++) {
+          var rr = cellClass(c.results[i]), tx = M + cw * i + (cw - t) / 2;
+          rrect(x, tx, ty, t, t, t * 0.2);
+          if (FILL[rr]) { x.fillStyle = FILL[rr]; x.fill(); } else { x.setLineDash([12, 10]); x.strokeStyle = MUTE; x.lineWidth = 4; x.stroke(); x.setLineDash([]); }
+          if (MARK_D[rr] && window.Path2D) {
+            x.save(); x.translate(tx + t * 0.17, ty + t * 0.17); x.scale((t * 0.66) / 24, (t * 0.66) / 24);
+            x.strokeStyle = FILL[rr] ? DARK : MUTE; x.lineWidth = 3; x.stroke(new Path2D(MARK_D[rr])); x.restore();
+          }
+        }
+      } else if (c.big !== undefined) {
+        x.font = "900 330px " + DISP; x.fillStyle = CREAM; x.fillText(String(c.big), M - 6, 895);
+        x.font = "700 40px " + BODY; x.fillStyle = MUTE; x.fillText(c.bigLabel, M, 950, CW);
+      }
+      // the numbers
+      x.fillStyle = FAINT; x.fillRect(M, 990, CW, 2);
+      var sw = CW / c.stats.length;
+      c.stats.forEach(function (s, i) {
+        var sx = M + sw * i + (i ? 30 : 0);
+        if (i) { x.fillStyle = FAINT; x.fillRect(M + sw * i, 1020, 2, 112); }
+        x.fillStyle = CREAM; x.font = "900 108px " + DISP; x.fillText(String(s[0]), sx, 1094, sw - 40);
+        x.fillStyle = MUTE; x.font = "400 31px " + BODY; x.fillText(s[1], sx, 1138, sw - 40);
+      });
+      // the tear-off stub: the challenge and where to play
+      var by = myName(), site = String(CFG.siteUrl || "liarhunt.com").replace(/^https?:\/\/(www\.)?/, "").replace(/\/.*$/, "") || "liarhunt.com";
+      x.fillStyle = CREAM; x.fillRect(0, 1194, W, H - 1194);
+      x.fillStyle = DARK; for (g = 0; g < W; g += 28) x.fillRect(g, 1194, 14, 4);
+      x.font = "900 74px " + DISP; x.fillText(by ? "Can you beat " + by + "?" : "Can you beat me?", M, 1296, CW - 330);
+      x.textAlign = "right"; x.font = "700 36px " + BODY; x.fillStyle = "#c21d2b"; x.fillText(site, W - M, 1290, 300);
+      var b = atob(cv.toDataURL("image/jpeg", 0.92).split(",")[1]), a = new Uint8Array(b.length);
+      for (var k = 0; k < b.length; k++) a[k] = b.charCodeAt(k);
+      return new File([a], c.file || "liarhunt.jpg", { type: "image/jpeg" });
+    } catch (e) { return null; }
+  }
+  function saveCard() {
+    var f = cardFile(cardData());
+    if (!f) { toast("Couldn't make the picture. Copy the text instead."); return; }
+    var a = document.createElement("a"), url = URL.createObjectURL(f);
+    a.href = url; a.download = f.name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+    WL.track("share", { method: "image" });
+  }
+
+  // t: the text, or a function that builds it (so it can be rebuilt once the player picks a name).
+  // card: what the share picture shows, or a function that builds it; left out, the current picture stays.
+  var shareFn = function () { return ""; }, cardNow = null;
+  function cardData() { return typeof cardNow === "function" ? cardNow() : cardNow; }
+  function setShare(t, card) {
     shareFn = typeof t === "function" ? t : function () { return t; };
+    if (card !== undefined) { cardNow = card; cardPrep(); }
     var text = shareTextNow = shareFn();
     if ($("share-wa")) {
-      $("share-wa").href = "https://api.whatsapp.com/send?text=" + encodeURIComponent(text);
+      $("share-wa").href = "https://api.whatsapp.com/send?text=" + encodeURIComponent(text.replace(/^[^\n]+/, "*$&*")); // the first line in bold
       $("share-x").href = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text);
     }
     $("share-text").hidden = true;
-    $("btn-share").textContent = Plat.allowExternal() ? "Share your result" : "Copy your result";
+    $("btn-share").innerHTML = SHARE_SVG + (Plat.allowExternal() ? "Share your result" : "Copy your result");
   }
   // The first share asks for a name, so the challenge your friends get isn't signed "A friend".
   function share() {
@@ -2301,11 +2471,11 @@
     if (!myName() && lbOn() && !S.pwa.askedShareName) {
       S.pwa.askedShareName = true; persist();
       var named = false;
-      askName(function () { named = true; afterJoin(); setShare(shareFn); shareOut(shareTextNow); }, "share");
-      $("dlg-name").addEventListener("close", function () { if (!named) shareOut(shareTextNow); }, { once: true });
+      askName(function () { named = true; afterJoin(); setShare(shareFn); shareOut(shareTextNow, "", cardData()); }, "share");
+      $("dlg-name").addEventListener("close", function () { if (!named) shareOut(shareTextNow, "", cardData()); }, { once: true });
       return;
     }
-    shareOut(shareTextNow);
+    shareOut(shareTextNow, "", cardData());
   }
   function postAnon(day, p) {
     if (S.lb.posted[day]) return Promise.resolve();
@@ -2313,9 +2483,12 @@
       if (ok) { S.lb.posted[day] = 1; S.lb.anon = S.lb.anon || {}; S.lb.anon[day] = 1; persist(); }
     }).catch(function () { /* the rules may not allow unnamed results yet */ });
   }
-  function shareOut(text, copiedMsg) {
+  // card: what the share picture shows. Phones that can share files send the picture with the text as its caption.
+  function shareOut(text, copiedMsg, card) {
     if (web() && coarse && navigator.share) {
-      navigator.share({ text: text }).catch(function (e) { if (!e || e.name !== "AbortError") copyText(text, copiedMsg); });
+      var f = card ? cardFile(card) : null, data = { text: text };
+      if (f && navigator.canShare && navigator.canShare({ files: [f] })) data.files = [f];
+      navigator.share(data).catch(function (e) { if (!e || e.name !== "AbortError") copyText(text, copiedMsg); });
       return;
     }
     copyText(text, copiedMsg);
@@ -2839,7 +3012,7 @@
       var v = versus(h, c);
       countWin(v, c);
       notice({ icon: v.win ? "🏆" : "⚔️", eyebrow: "Daily #" + c.day + " challenge", title: v.head, html: v.html, yes: "Send a rematch", no: "Close",
-        onYes: function () { shareOut(dailyShareText(c.day, { results: h.grid.split(""), elapsed: h.time * 1000 }, false, 0)); } });
+        onYes: function () { var hp = { results: h.grid.split(""), elapsed: h.time * 1000 }; shareOut(dailyShareText(c.day, hp, false, 0), "", dailyCard(c.day, hp, false, 0)); } });
       return;
     }
     notice({
@@ -3069,7 +3242,7 @@
       if (b.dataset.challenge) {
         var d = S.daily && S.daily.day === TODAY && S.daily.done ? S.daily : null;
         if (!d) { toast("Play today's Daily first, then send them your result to beat."); return; }
-        shareOut(dailyShareText(TODAY, d, false, S.lb.ranks[TODAY] || 0));
+        shareOut(dailyShareText(TODAY, d, false, S.lb.ranks[TODAY] || 0), "", dailyCard(TODAY, d, false, S.lb.ranks[TODAY] || 0));
       }
     });
   }
@@ -4324,6 +4497,7 @@
   $("btn-share").addEventListener("click", share);
   if ($("share-wa")) {
     $("btn-copy").addEventListener("click", copy);
+    if ($("btn-card")) $("btn-card").addEventListener("click", saveCard); // an older cached page has no Save button
     $("share-wa").addEventListener("click", function () { WL.track("share", { method: "whatsapp" }); });
     $("share-x").addEventListener("click", function () { WL.track("share", { method: "x" }); });
   }
@@ -4544,7 +4718,7 @@
   // Test hook for automated checks (only with ?test=1 in the address).
   if (/[?&]test=1/.test(location.search)) window.__WLtest = {
     run: function () { return run; }, room: function () { return room; }, state: function () { return S; }, persist: persist,
-    hq: goHQ, train: startTraining, book: Book, rush: startRush, daily: startDaily,
+    hq: goHQ, train: startTraining, book: Book, rush: startRush, daily: startDaily, results: showDailyResults, rushResults: showRushResults, card: function () { return cardFile(cardData()); },
     cloud: function () { return cloud; }, push: function () { S.sync.dirty = true; return cloudPush(); },
     d5: function () { return { editions: d5Edition, store: S.d5, run: run && run.d5 ? run.d5.r : null }; }, notebook: openNotebook
   };

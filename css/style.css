@@ -555,13 +555,43 @@ button.id-mug { cursor: pointer; padding: 0; font: inherit; }
 .res-big { font-family: var(--display); font-weight: 900; font-size: 6rem; line-height: 0.85; }
 .res-line { font-size: var(--s1); }
 .res-line strong { font-variant-numeric: tabular-nums; }
-.share-box { display: grid; gap: 0.55rem; }
-.share-alt { display: flex; flex-wrap: wrap; gap: 0.45rem; }
-.share-alt a, .share-alt button {
-  flex: 1 1 0; min-width: 5.5rem; min-height: 2.6rem; display: inline-flex; align-items: center; justify-content: center;
-  border: 2px solid var(--ink); border-radius: var(--r); background: var(--surface);
-  font-weight: 700; text-decoration: none; cursor: pointer; font-size: var(--s-1);
+/* the result card: the verdict, then the day as a polygraph strip with the five results under it (readout() in game.js) */
+.res-card {
+  display: grid; gap: 0.8rem; min-width: 0; padding: 1rem 1rem 1.1rem;
+  background: var(--surface); border: 2px solid var(--ink); border-radius: var(--r); box-shadow: 0 3px 0 var(--ink);
 }
+.res-card #res-body { justify-items: stretch; }
+.res-card .res-line { margin: 0; }
+.res-card .new-best { justify-self: start; }
+.readout { display: grid; gap: 0.6rem; }
+.rd-strip {
+  height: 3.6rem; border-block: 1px solid var(--grid-strong);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 100% 25%, 10% 100%;
+}
+.rd-strip svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.rd-strip path { fill: none; stroke: var(--ink); stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.rd-strip .rd-y { stroke: var(--hint); }
+.rd-strip .rd-r { stroke: var(--needle); }
+.rd-strip :is(.rd-n, .rd-l) { stroke: var(--grid-strong); stroke-dasharray: 3 5; }
+.readout .res-grid { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); justify-items: center; gap: 0; }
+.readout .res-grid span { width: min(3.4rem, 84%); height: auto; aspect-ratio: 1; }
+/* the chart recorder writes the strip left to right, reaching each case as its square flips over */
+#res-body .rd-strip svg { animation: rdwrite 0.5s linear backwards; }
+@keyframes rdwrite { from { clip-path: inset(0 100% 0 0); } }
+
+.share-box { display: grid; gap: 0.55rem; }
+.share-ico { width: 1.15em; height: 1.15em; flex: none; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.share-alt { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.45rem; }
+.share-alt a, .share-alt button {
+  min-height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
+  border: 2px solid var(--ink); border-radius: var(--r); background: var(--surface); color: var(--ink);
+  font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; font-size: var(--s-1);
+}
+.share-alt a:hover, .share-alt button:hover { background: var(--grid); }
+.share-alt svg { width: 1.2rem; height: 1.2rem; flex: none; fill: currentColor; }
+.share-alt svg.sa-line { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.share-alt .sa-wa svg { fill: #1fa855; }
 .share-text { width: 100%; min-height: 6.5rem; font: inherit; font-size: var(--s-1); padding: 0.6rem; border: 2px solid var(--ink); border-radius: var(--r); background: var(--surface); color: var(--ink); }
 .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin: 0; }
 .stat-row div { display: grid; gap: 0.1rem; text-align: center; padding: 0.55rem 0.2rem; border-top: 2px solid var(--ink); }
