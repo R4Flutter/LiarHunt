@@ -40,14 +40,16 @@ function summary(d) {
 }
 // meta.day of a Daily story is the Monday its week starts. ahead: weeks covered in a row from this week (or next week, at the weekend).
 const mondayOf = (day) => day - weekday(day);
+const overlaps = (a, b) => Math.abs(a - b) <= 4; // two five-day stories starting on days a and b would share a day
 function stock(list) {
   const today = istDay(), taken = new Map();
   list.forEach((d) => { if (d.meta.day && ["scheduled", "published"].includes(d.meta.status)) taken.set(d.meta.day, d.meta); });
   const first = weekday(today) >= 5 ? mondayOf(today) + 7 : mondayOf(today);
-  let ahead = 0; while (taken.has(first + ahead * 7)) ahead++;
+  const busy = (n) => [...taken.keys()].some((k) => overlaps(k, n));
+  let ahead = 0; while (busy(first + ahead * 7)) ahead++;
   const upcoming = [...taken.keys()].filter((n) => n + 4 >= today).length;
   const approved = list.filter((d) => d.meta.status === "approved" && d.meta.for !== "night").length;
-  let next = mondayOf(today) + 7; while (taken.has(next)) next += 7;
+  let next = mondayOf(today) + 7; while (busy(next)) next += 7;
   return { today, todayDate: dayDate(today), ahead, upcoming, approved, unpublished: list.filter((d) => d.meta.status === "scheduled").length,
     nextEmpty: next, nextEmptyDate: dayDate(next), warn: ahead < STOCK_WARN };
 }
@@ -78,6 +80,7 @@ async function publish(d) {
   const b = db.batch();
   days.forEach((x, i) => {
     if (same(live[i], x)) return; // already up: a started day must never change
+    if (live[i].exists && live[i].data().id !== d.story.id) throw httpErr(409, `Daily #${x.day} already holds "${live[i].data().title}". Take that story down first.`);
     if (live[i].exists && istDay() >= x.day) throw httpErr(409, `Daily #${x.day} has already started with another story. A started day can't change.`);
     b.set(db.doc("d5/" + x.day), Object.assign({}, x.edition, { publishedAt: FieldValue.serverTimestamp() }));
     b.set(db.doc("d5keys/" + x.day), x.keys);
@@ -102,9 +105,9 @@ async function nightPublish(d) {
     const orig = allDrafts().find((x) => x.story && x.story.id === d.meta.remixOf);
     if (!orig || !orig.meta.day) throw httpErr(400, "Publish the original story as a Daily first.");
     // Story Night docs are public: publishing before the original is public would give a Daily away early.
-    // The original's week ends on Friday (meta.day is its Monday), so that's the day to wait for.
+    // The original's run ends four days after meta.day (its first day), so that's the day to wait for.
     const fri = orig.meta.day + 4;
-    if (!archiveOpen(fri, Date.now(), LAUNCH)) throw httpErr(400, `Wait until 6 AM IST the day after Daily #${fri} (the original's Friday). Until then its story is secret, and the remix would give it away.`);
+    if (!archiveOpen(fri, Date.now(), LAUNCH)) throw httpErr(400, `Wait until 6 AM IST the day after Daily #${fri} (the original's last day). Until then its story is secret, and the remix would give it away.`);
     past = { remixOf: d.meta.remixOf, origDay: fri, origTitle: orig.story.title };
   }
   const { db, FieldValue } = await firestore();
@@ -132,7 +135,8 @@ async function unpublish(d) {
 // How players did in a story's week (any day of it): read straight from the run docs, no tracker needed.
 async function stats(day) {
   const { db } = await firestore();
-  const monday = mondayOf(day);
+  const own = allDrafts().find((x) => x.meta.status === "published" && x.meta.day && x.meta.day <= day && day <= x.meta.day + 4);
+  const monday = own ? own.meta.day : mondayOf(day); // the story's first day
   const runsOf = async (n) => (await db.collection("d5runs").where("day", "==", n).get()).docs.map((x) => x.data());
   const week = await Promise.all([0, 1, 2, 3, 4, 7].map((i) => runsOf(monday + i)));
   const out = { day: monday, date: dayDate(monday), started: 0, reached: [0, 0, 0, 0, 0], solved: [0, 0, 0, 0, 0], failed: [0, 0, 0, 0, 0], completed: 0, perfect: 0, hunch: 0, medianMinutes: null, nextDay: 0, sevenDay: 0 };
@@ -272,7 +276,7 @@ const server = http.createServer(async (req, res) => {
       const out = [];
       let day = from;
       for (const d of free) {
-        while (taken.has(day)) day += 7;
+        while ([...taken].some((k) => overlaps(k, day))) day += 7;
         d.meta.day = day; d.meta.status = "scheduled";
         d.meta.notes = (d.meta.notes || []).concat({ at: new Date().toISOString(), text: "Scheduled for Daily #" + day });
         saveDraft(d); taken.add(day); out.push({ id: d.meta.id, day });
@@ -310,7 +314,7 @@ const server = http.createServer(async (req, res) => {
         const day = b.date ? dayOf(b.date) : +b.day;
         if (weekday(day) !== 0) throw httpErr(400, "Pick a Monday: a story runs Monday to Friday, one chapter a day.");
         if (!(day > istDay())) throw httpErr(400, "Pick a Monday after today (IST).");
-        const clash = list.find((x) => x.meta.id !== d.meta.id && x.meta.day === day && ["scheduled", "published"].includes(x.meta.status));
+        const clash = list.find((x) => x.meta.id !== d.meta.id && x.meta.day && overlaps(x.meta.day, day) && ["scheduled", "published"].includes(x.meta.status));
         if (clash) throw httpErr(409, `The week of ${dayDate(day)} already has "${clash.story.title}".`);
         d.meta.day = day; d.meta.status = "scheduled"; note("Scheduled for the week of Daily #" + day); saveDraft(d);
         return send(200, { message: `Scheduled for Monday ${dayDate(day)} to Friday ${dayDate(day + 4)} (Daily #${day} to #${day + 4}). Publish it to upload.` });

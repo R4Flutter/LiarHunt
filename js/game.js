@@ -330,13 +330,14 @@
     renderMissions();
     $("btn-board").hidden = !lbOn();
     $("btn-friends").hidden = !lbOn();
+    $("btn-past").hidden = !D5;
     renderFriendsBadge();
     $("tile-room").hidden = !lbOn();
     renderBanner();
     renderCoins(false);
   }
   // A v2 story on HQ: the scene in a photo, five chapter pins on a red thread, and the story's suspects.
-  // A weekday (ed.ch): the pins are the week, Monday to Friday; earlier days come from this player's history.
+  // A story day (ed.ch): the pins are the five story days from ed.week (its first day); earlier days come from this player's history.
   function weekMark(ed, i) {
     var h = S.history[ed.week + i];
     return h ? h.grid.charAt(0) : ed.week + i < TODAY ? "m" : ""; // m: missed on its day (it waits in Past cases)
@@ -347,7 +348,7 @@
       var r = !wk ? res[i] : i === wk - 1 ? res[0] : i < wk - 1 ? weekMark(ed, i) : "", now = wk ? i === wk - 1 : i === res.length;
       var ok = r === "g" || r === "y", cls = ok ? "ok" : r === "r" ? "bad" : r === "-" ? "lock" : r === "m" ? "missed" : now && !done ? "now" : "";
       var mark = ok ? "✓" : r === "r" ? "✗" : i === 4 && A ? A.icon("scales") : String(i + 1);
-      var lab = wk ? ["Mon", "Tue", "Wed", "Thu", "Fri"][i] + (r === "m" ? " · missed" : "") : i === 4 ? "Verdict" : (A && A.SCENES[c.scene] || {}).name || c.title;
+      var lab = wk ? dayName(ed.week + i).slice(0, 3) + (r === "m" ? " · missed" : "") : i === 4 ? "Verdict" : (A && A.SCENES[c.scene] || {}).name || c.title;
       return '<li class="' + cls + '"><span>' + mark + "</span><em>" + esc(lab) + "</em></li>";
     }).join("");
     var faces = (ed.cast || []).map(function (p) { return '<span class="d5f-mug">' + WL.avatar(p.name, p.face) + "<b>" + esc(p.name.split(" ")[0]) + "</b></span>"; }).join("");
@@ -370,7 +371,7 @@
   function loadPast() {
     if (pastBusy || !D5 || D5.mode === "local") return;
     var want = [];
-    for (var d = TODAY - 1; d >= Math.max(1, TODAY - 14); d--) if ((d - 1) % 7 < 5 && !S.history[d] && d5Edition[d] === undefined) want.push(d); // weekdays not played
+    for (var d = TODAY - 1; d >= Math.max(1, TODAY - 14); d--) if (!S.history[d] && d5Edition[d] === undefined) want.push(d); // days not played
     if (!want.length) { renderPast(); return; }
     pastBusy = true;
     Promise.all(want.map(d5Load)).then(function () { pastBusy = false; if (screen === "hq") renderPast(); });
@@ -407,11 +408,11 @@
       var ok = scoreOf(res) === 5;
       if (done) {
         title = wk === 5 ? (ok ? "Solved: " + ed.title : ed.title + ": not the whole truth") : (ok ? "Chapter " + wk + " solved" : "Chapter " + wk + ": the trail went cold");
-        sub = wk < 5 ? (wk === 4 ? "Your verdict" : "Chapter " + (wk + 1)) + ' opens in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) + "</strong>" : "Classic cases this weekend. A new story starts on Monday.";
+        sub = wk < 5 ? (wk === 4 ? "Your verdict" : "Chapter " + (wk + 1)) + ' opens in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) + "</strong>" : "Classic cases until a new story starts next Monday.";
         btn = "See your result";
       } else {
         title = (wk === 5 ? "The verdict" : "Chapter " + wk + " of 5") + " · " + ed.title;
-        sub = (wk === 1 ? "A new story: one chapter a day, Monday to Friday. Search the scene, question the suspects, then accuse." : wk === 5 ? "Name everyone behind it. One try." : "The story so far is waiting in the case file.") + " About 5 minutes." + keep;
+        sub = (wk === 1 ? "A new story: one chapter a day for five days. Search the scene, question the suspects, then accuse." : wk === 5 ? "Name everyone behind it. One try." : "The story so far is waiting in the case file.") + " About 5 minutes." + keep;
         btn = wk === 1 ? "Open the case file" : wk === 5 ? "Give your verdict" : "Open Chapter " + wk;
       }
     } else if (ed) {
@@ -775,8 +776,8 @@
   }
 
   /* ---------- Daily 5: one story a week, one chapter a day ----------
-     A story runs Monday to Friday: each weekday's edition (ed.ch = 1-5, ed.week = its Monday) holds that day's chapter
-     as its only case, and the chapter counts as the whole Daily. Saturday and Sunday have no story: the classic Daily.
+     A story runs five days in a row, usually Monday to Friday: each day's edition (ed.ch = 1-5, ed.week = its first day) holds
+     that day's chapter as its only case, and the chapter counts as the whole Daily. Days without a story play the classic Daily.
      A chapter missed on its day waits in Past cases on HQ (half XP). Story Night still plays a whole story in one go.
      The chapter comes from Firebase (WLLB.d5 in leaderboard.js), and the run is kept there too, so a reload, another
      device or a lost connection never counts as a wrong answer. The rules check every answer against a key players
@@ -1137,8 +1138,8 @@
   function d5EndCard(day, p) {
     var box = $("d5-end");
     if (!box || !D5) return;
-    if (p.ch && p.ch < 5) { // Monday to Thursday: the story carries on tomorrow
-      box.innerHTML = day !== TODAY ? "" : '<div class="d5-locked"><b>' + (p.ch === 4 ? "Friday: your verdict" : "Chapter " + (p.ch + 1)) + ' opens at midnight</b><span>In <strong data-countdown="1">' +
+    if (p.ch && p.ch < 5) { // chapters 1-4: the story carries on tomorrow
+      box.innerHTML = day !== TODAY ? "" : '<div class="d5-locked"><b>' + (p.ch === 4 ? "Your verdict" : "Chapter " + (p.ch + 1)) + ' opens at midnight</b><span>In <strong data-countdown="1">' +
         WL.fmtCountdown(WL.msToNextDay()) + "</strong>. What this chapter proved carries into the next one.</span></div>";
       return;
     }
@@ -4291,6 +4292,14 @@
   $("tile-rush").addEventListener("click", function () { Snd.play("click"); if (!unlocked("rush")) return toast("Rush opens tomorrow, or after 10 solved cases."); startRush(); });
   $("btn-shop").addEventListener("click", function () { Snd.play("click"); openShop(false); });
   $("btn-ach").addEventListener("click", function () { Snd.play("click"); openAch(); });
+  // Past cases live on HQ (shown only when there are some); the button takes you there, or says there are none.
+  $("btn-past").addEventListener("click", function () {
+    Snd.play("click");
+    var box = $("past-d5"), row = box.querySelector(".past-row");
+    if (box.hidden || !row) { toast("No missed chapters. Miss one and it waits here for 14 days, at half XP."); return; }
+    box.scrollIntoView({ block: "center" });
+    row.focus({ preventScroll: true });
+  });
   $("btn-stats").addEventListener("click", function () { Snd.play("click"); openProfile(); });
   $("btn-profile").addEventListener("click", function () { Snd.play("click"); openProfile(); });
   $("btn-board").addEventListener("click", function () { Snd.play("click"); openBoard(); });

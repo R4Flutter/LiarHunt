@@ -119,7 +119,7 @@ const week = splitWeek(v2, 22);
 expect("a week is five days from a Monday", week.map((x) => x.day).join() === "22,23,24,25,26" && week.every((x, i) => x.edition.ch === i + 1 && x.edition.week === 22 && x.edition.strikes === 1));
 expect("each day keys only its own chapter, as c1", week.every((x, i) => Object.keys(x.keys).join() === "c1" && x.keys.c1.s === out2.keys["c" + (i + 1)].s && x.case.n === i + 1));
 expect("only Friday carries the full story", week.every((x, i) => (i === 4) === !!x.finale));
-expect("a week can't start on a Tuesday", (() => { try { splitWeek(v2, 23); return false; } catch (e) { return /Monday/.test(e.message); } })());
+expect("a story can start on any day: five days in a row from it", splitWeek(v2, 18).map((x) => x.day + ":" + x.edition.week).join() === "18:18,19:18,20:18,21:18,22:18");
 expect("a weekday's public docs carry no answers", !/"(answer|claims|why|lie|truth|motive|secret|part|because|shows)":/.test(JSON.stringify(week.map((x) => [x.edition, x.case]))));
 const broken2 = [
   ["a travel lie with no travel times", (s) => { delete s.travel; }, /nothing the player knows catches|doesn't lie/],
