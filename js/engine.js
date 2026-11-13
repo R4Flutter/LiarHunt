@@ -74,6 +74,12 @@
     var t = Date.now() + IST_MS;
     return (Math.floor(t / DAY_MS) + 1) * DAY_MS - t; // until the next midnight in India
   }
+  // When the next day opens on the player's own clock: "1:30 PM" in New York, "midnight" in India.
+  function nextDayClock() {
+    var d = new Date(Date.now() + msToNextDay());
+    if (!d.getHours() && !d.getMinutes()) return "midnight";
+    try { return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); } catch (e) { return d.getHours() + ":" + String(d.getMinutes()).padStart(2, "0"); }
+  }
   // Hours since the day began in India (0-24), e.g. to know when yesterday's Daily 5 archive opens (6 AM).
   function istHour() { return ((Date.now() + IST_MS) % DAY_MS) / 3600000; }
   // The time now. With ?test=1&today=N it moves by whole days, so clocks agree with dayNumber().
@@ -1129,7 +1135,7 @@
     LADDER: LADDER, tierOf: tierOf, ladderDay: ladderDay, seasonStartLp: seasonStartLp, ladderApply: ladderApply,
     inAppBrowser: inAppBrowser, nameRule: nameRule, now: now, seasonEndsAt: seasonEndsAt, seasonClock: seasonClock, fmtLong: fmtLong,
     cfg: CFG, rngFrom: rngFrom, shuffle: shuffle, pick: pick,
-    dayNumber: dayNumber, dateForDay: dateForDay, formatDate: formatDate, msToNextDay: msToNextDay, istHour: istHour,
+    dayNumber: dayNumber, dateForDay: dateForDay, formatDate: formatDate, msToNextDay: msToNextDay, nextDayClock: nextDayClock, istHour: istHour,
     buildDay: buildDay, generateCase: generateCase, endlessSpec: endlessSpec, endlessSeconds: endlessSeconds,
     tutorialCase: tutorialCase, FACT_AT: FACT_AT,
     generateCase2: generateCase2, rushCase: rushCase, roomCase: roomCase, newAvoid: newAvoid, packFor: packFor, seasonOf: seasonOf, seasonStart: seasonStart,

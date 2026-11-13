@@ -427,7 +427,7 @@
       var ok = scoreOf(res) === 5;
       if (done) {
         title = wk === 5 ? (ok ? "Solved: " + ed.title : ed.title + ": not the whole truth") : (ok ? "Chapter " + wk + " solved" : "Chapter " + wk + ": the trail went cold");
-        sub = wk < 5 ? (wk === 4 ? "Your verdict" : "Chapter " + (wk + 1)) + ' opens in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) + "</strong>" : "Classic cases until a new story starts next Monday.";
+        sub = wk < 5 ? (wk === 4 ? "Your verdict" : "Chapter " + (wk + 1)) + " opens at " + WL.nextDayClock() + ', in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) + "</strong>" : "Classic cases until a new story starts next Monday.";
         btn = "See your result";
       } else {
         title = (wk === 5 ? "The verdict" : "Chapter " + wk + " of 5") + " · " + ed.title;
@@ -437,7 +437,7 @@
     } else if (ed) {
       if (done) {
         title = scoreOf(res) === 5 ? "Solved: " + ed.title : ed.title + ": the trail went cold";
-        sub = (scoreOf(res) === 5 ? "A new mystery" : "The ending, and a new mystery,") + ' in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) + "</strong>";
+        sub = (scoreOf(res) === 5 ? "A new mystery" : "The ending, and a new mystery,") + " at " + WL.nextDayClock() + ', in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) + "</strong>";
         btn = "See your result";
       } else if (res.length) {
         title = (v2 ? "Chapter " : "Case ") + (res.length + 1) + " of 5 · " + ed.title;
@@ -451,7 +451,7 @@
       }
     } else if (done) {
       title = scoreOf(res) + " of 5 caught";
-      sub = 'New cases in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) + "</strong>";
+      sub = "New cases at " + WL.nextDayClock() + ', in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) + "</strong>";
       btn = "See your result";
     } else if (res.length) {
       title = "Case " + (res.length + 1) + " of 5";
@@ -1158,14 +1158,14 @@
     var box = $("d5-end");
     if (!box || !D5) return;
     if (p.ch && p.ch < 5) { // chapters 1-4: the story carries on tomorrow
-      box.innerHTML = day !== TODAY ? "" : '<div class="d5-locked"><b>' + (p.ch === 4 ? "Your verdict" : "Chapter " + (p.ch + 1)) + ' opens at midnight</b><span>In <strong data-countdown="1">' +
+      box.innerHTML = day !== TODAY ? "" : '<div class="d5-locked"><b>' + (p.ch === 4 ? "Your verdict" : "Chapter " + (p.ch + 1)) + " opens at " + WL.nextDayClock() + '</b><span>In <strong data-countdown="1">' +
         WL.fmtCountdown(WL.msToNextDay()) + "</strong>. What this chapter proved carries into the next one.</span></div>";
       return;
     }
     box.innerHTML = '<p class="muted small">Opening the full story…</p>';
     D5.finale(day).then(function (f) {
       if (f) { box.innerHTML = '<h3 class="sec">How it happened</h3>' + finaleHtml(f); WL.track("d5_finale_view", { day: day, from: "results" }); }
-      else box.innerHTML = '<div class="d5-locked"><b>The full story opens at midnight</b><span>Come back in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) +
+      else box.innerHTML = '<div class="d5-locked"><b>The full story opens at ' + WL.nextDayClock() + '</b><span>Come back in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) +
         "</strong> to see how “" + esc(p.title) + "” ended, and to start a new mystery.</span></div>";
     }).catch(function () { box.innerHTML = '<p class="muted small">The ending opens on the Daily card once the day is over.</p>'; });
   }
@@ -2219,7 +2219,7 @@
     var st = S.stats;
     $("res-stats").innerHTML = statsRow([["Days played", st.played], ["Streak", dailyStreak()], ["Best streak", st.maxStreak], ["Perfect days", st.perfect]]);
     resProgress();
-    $("res-next").innerHTML = (p.ch && p.ch < 5 && day === TODAY ? (p.ch === 4 ? "The verdict" : "Chapter " + (p.ch + 1)) : "New cases") + ' in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) + "</strong>";
+    $("res-next").innerHTML = (p.ch && p.ch < 5 && day === TODAY ? (p.ch === 4 ? "The verdict" : "Chapter " + (p.ch + 1)) : "New cases") + " at " + WL.nextDayClock() + ', in <strong data-countdown="1">' + WL.fmtCountdown(WL.msToNextDay()) + "</strong>";
     var acts = $("res-actions"); acts.innerHTML = "";
     acts.appendChild(actionBtn(careerLabel(), "primary", function () { Book.start(); }));
     if (replay) {
