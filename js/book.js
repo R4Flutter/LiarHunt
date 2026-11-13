@@ -701,10 +701,12 @@
   function renderDossier() {
     var done = storyDone(), held = R && R.phase !== "end" ? R.ev : evidenceAt(st().at, 0).filter(function (id) { return foundIn[id] < st().at; });
     var boardOpen = (B.board || []).some(function (x) { return x[1] <= done; });
-    $("dos-tabs").innerHTML = [["ev", "Evidence"], ["people", "People"]].concat(boardOpen ? [["board", mine ? "Suspects" : "Who is B?"]] : []).map(function (t) {
+    // the Timeline tab hides while a timeline step is on screen: it would give that puzzle away
+    var tl = (B.timeline || []).filter(function (x) { return x[0] <= done; }), tlOpen = tl.length && !(R && R.phase === "play" && step().type === "timeline");
+    if ((dosTab === "board" && !boardOpen) || (dosTab === "tl" && !tlOpen)) dosTab = "ev";
+    $("dos-tabs").innerHTML = [["ev", "Evidence"], ["people", "People"]].concat(tlOpen ? [["tl", "Timeline"]] : [], boardOpen ? [["board", mine ? "Suspects" : "Who is B?"]] : []).map(function (t) {
       return '<button type="button" data-tab="' + t[0] + '" aria-pressed="' + (dosTab === t[0]) + '">' + t[1] + "</button>";
     }).join("");
-    if (dosTab === "board" && !boardOpen) dosTab = "ev";
     var h = "";
     if (dosTab === "ev") {
       if (!held.length) h = '<p class="muted">Nothing yet.' + (mine ? "" : " Start Book 1 to open the case.") + "</p>";
@@ -725,6 +727,14 @@
         var p = B.people[id], note = (p.notes || []).filter(function (x) { return x[0] <= done; }).pop();
         return '<div class="bk-person row">' + mug(id, "small") + "<span><b>" + esc(p.name) + "</b><span>" + esc(p.role) + "</span>" + (note ? "<em>" + esc(note[1]) + "</em>" : "") + "</span></div>";
       }).join("") + "</div>" : '<p class="muted">You haven\'t met anyone yet.</p>';
+    } else if (dosTab === "tl") {
+      // everything you know so far, in the order it happened, one list per day
+      var day = null;
+      tl.forEach(function (x) {
+        if (x[1] !== day) h += (day === null ? "" : "</ul>") + "<h3>" + esc(day = x[1]) + '</h3><ul class="bk-tl">';
+        h += "<li><b>" + esc(x[2]) + "</b><span>" + esc(x[3]) + "</span></li>";
+      });
+      h += "</ul>";
     } else {
       h = '<p class="muted small">' + (mine ? "Everyone who could be behind it." : "Every payment ends with a 10% fee for someone called B. These are the people who could be B.") + '</p><div class="bk-people">' +
         B.board.filter(function (x) { return x[1] <= done; }).map(function (x) {

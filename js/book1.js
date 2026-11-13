@@ -858,6 +858,48 @@ window.WL_BOOK1 = {
     ["cal", 27, 29, "Can read Daniel's mail. Ruled out: in Singapore all month."]
   ],
 
+  /* The Timeline tab in the dossier: [shown after mission, day, time ("" = none), what happened], in the order it
+     happened. Each line only says what the player knows by then, so it stays true later and spoils nothing. */
+  timeline: [
+    [29, "Sat 1 March", "", "June Park buys three prepaid phones, 0148, 0149 and 0150, and gives all three to Helen Marsh."],
+    [15, "Sun 2 March", "", "Northgate 'delivers' $84,000 of steel to Blackstone on a day the port is shut. The steel never existed."],
+    [18, "Mon 3 March", "", "Daniel starts auditing Blackstone. He meets Adrian Cole every day until Wednesday."],
+    [24, "Mon 3 March", "", "Kestrel Logistics pays Marcus Reed $40,000 for 'consulting'. His debts are gone the next day."],
+    [16, "Mon 3 March", "", "Northgate passes the $84,000 to Greyfield Trading."],
+    [13, "Tue 4 March", "", "Greyfield pays $5,000 to Grant Holt (planning board) and $4,000 to Lisa Varga (port customs) for 'advice'."],
+    [27, "Wed 5 March", "", "Daniel tells Helen Marsh what he found and emails the audit mailbox, which Helen, June Park and Cal Brooks can read."],
+    [3, "Thu 6 March", "6:30 PM", "Prepaid phone 0148 calls Daniel. He shouts: 'How do you know about the files?'"],
+    [5, "Thu 6 March", "7:10 PM", "Daniel calls his sister Sara: he's going away, and she mustn't trust anyone at his work."],
+    [9, "Thu 6 March", "8:30 PM", "Owen Pike switches off his taxi app."],
+    [1, "Thu 6 March", "8:52 PM", "Daniel leaves his building with a small sports bag, without his laptop bag."],
+    [8, "Thu 6 March", "8:55 PM", "Bill Hanley's taxi picks Daniel up and drops him at the bus station at 9:05."],
+    [6, "Thu 6 March", "9:00 PM", "Silas Crane, Blackstone's head of security, signs out Kestrel van KL-2207."],
+    [8, "Thu 6 March", "9:10 PM", "Daniel pays cash for an open ticket on the north bus line."],
+    [9, "Thu 6 March", "9:15 PM", "Owen sits in the Corner Grill with a man in a grey coat who wears a Blackstone security badge."],
+    [8, "Thu 6 March", "9:20 PM", "Daniel leaves town on the north bus."],
+    [4, "Thu 6 March", "9:30 PM", "Van KL-2207 parks outside Daniel's building. It stays until 10 PM."],
+    [2, "Thu 6 March", "9:41 PM", "Someone searching Daniel's flat knocks his watch off the shelf. It stops at 9:41."],
+    [10, "Thu 6 March", "9:45 PM", "Greyfield Trading pays Owen $2,000."],
+    [3, "Thu 6 March", "9:55 PM", "A man in a grey coat leaves Daniel's flat with his laptop bag."],
+    [9, "Thu 6 March", "9:58 PM", "Owen's taxi app comes back on. He drives a fare from the Grill to the airport."],
+    [25, "Thu 6 March", "10:05 PM", "Silas calls Adrian Cole from prepaid phone 0149: 'It's not here. Only the laptop.'"],
+    [16, "Fri 7 March", "", "Greyfield sends $66,600 to Mercer Holdings. 10% of everything Mercer gets goes to someone called B."],
+    [11, "Sat 8 March", "7:45 AM", "A woman calls Owen from 0148 and gives him his story: the train, the blonde, the coast."],
+    [7, "Sat 8 March", "8:02 AM", "Owen calls our tip line to say he saw Daniel board a train to the coast."],
+    [1, "Sat 8 March", "9:00 AM", "Helen Marsh reports Daniel missing and writes that his work laptop is missing."],
+    [22, "Tue 11 March", "6:15 PM", "Evelyn chairs a staff meeting until 7:30. Her bag, with her keycard, stays in her empty office."],
+    [23, "Tue 11 March", "7:02 PM", "Marcus walks into Evelyn's empty office with a folder and comes out at 7:06."],
+    [22, "Tue 11 March", "8:05 PM", "Evelyn has dinner with Helen Marsh until 10:40. Helen asks how the Cross case is going."],
+    [20, "Tue 11 March", "9:08 PM", "Evelyn's keycard comes into our building. It leaves at 9:25."],
+    [19, "Tue 11 March", "9:12 PM", "Someone copies the raid plan from Daniel's case file in our evidence room."],
+    [21, "Wed 12 March", "2:14 AM", "Someone edits the lobby photo to add a red scarf and frame Evelyn."],
+    [17, "Fri 14 March", "6:00 AM", "We raid Greyfield at 12 Dock Road. The office was cleared minutes before."],
+    [25, "Later", "", "Three days after Marcus's arrest, every Mercer account is emptied overnight."],
+    [26, "Later", "", "Sara gets a postcard from Pinewood Lake. Daniel is at his grandfather's cabin."],
+    [27, "Later", "", "You find Daniel alive at Pinewood Lake."],
+    [30, "Later", "", "Helen Marsh is arrested in Suite 9. She is B, the Broker."]
+  ],
+
   ending: {
     title: "Case closed",
     text: "Helen Marsh is arrested in Suite 9. For years she ran the network from inside the firm that was meant to check it: her audits passed the fake companies, and 10% of every bribe came back to her. When Daniel told her what he'd found, she threatened him, sent Silas for the ledger, fed Owen his story and reported Daniel missing herself, so our agency would find him for her. Marcus told her every step we took.\n\nThe ledger goes to the city prosecutor. Grant Holt, Lisa Varga, Adrian Cole, Silas Crane and Marcus Reed are charged. Daniel comes home.\n\nEvelyn leaves a note on your desk: 'Twenty years I trusted her. You didn't. Good work, detective.'",

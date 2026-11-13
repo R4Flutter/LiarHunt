@@ -1923,6 +1923,18 @@ button.bk-ev:hover { filter: brightness(0.96); }
 .dossier-dlg { width: min(40rem, calc(100% - 28px)); }
 .dos-body { display: grid; gap: 0.6rem; align-content: start; max-height: min(58vh, 34rem); overflow-y: auto; padding-right: 0.2rem; overscroll-behavior: contain; }
 .dos-body h3 { margin: 0.35rem 0 0; }
+/* Timeline tab: a line down the left with a red dot per event */
+.bk-tl { list-style: none; margin: 0 0 0 0.45rem; padding: 0.1rem 0 0.1rem 1rem; border-left: 3px solid var(--ink); display: grid; gap: 0.5rem; }
+.bk-tl li { position: relative; display: grid; grid-template-columns: 4.3rem minmax(0, 1fr); gap: 0.5rem; font-size: var(--s-1); line-height: 1.35; }
+.bk-tl li::before { content: ""; position: absolute; left: calc(-1rem - 8px); top: 0.25em; width: 13px; height: 13px; box-sizing: border-box; border-radius: 50%; background: var(--needle); border: 2px solid var(--ink); }
+.bk-tl b { font-family: var(--display); font-weight: 800; font-size: 1rem; line-height: 1.25; white-space: nowrap; }
+.bk-tl b:empty { display: none; }
+.bk-tl b:empty + span { grid-column: 1 / -1; }
+/* four dossier tabs on a small phone: they share the full row instead of running off the edge */
+@media (max-width: 420px) {
+  #dos-tabs { display: flex; justify-self: stretch; }
+  #dos-tabs button { flex: 1 1 auto; padding-inline: 0.25rem; white-space: nowrap; }
+}
 .bk-people { display: grid; gap: 0.45rem; }
 .bk-person.row { position: relative; display: flex; align-items: center; gap: 0.7rem; padding: 0.5rem 0.6rem; border: 2px solid var(--grid-strong); border-radius: var(--r); background: var(--surface); }
 .bk-person.row > span:nth-child(2) { display: grid; gap: 0.1rem; min-width: 0; }
@@ -1954,7 +1966,8 @@ button.bk-ev:hover { filter: brightness(0.96); }
 
 /* ---------- Daily 5 chapters (v2 stories, js/chapter.js): search, question, accuse ---------- */
 .chapter-mode .pane-facts, .chapter-mode .pane-suspects, .chapter-mode .strings { display: none; }
-.pane-chapter { display: flex; flex-direction: column; gap: 0.7rem; min-width: 0; position: relative; }
+/* the chapter scrolls on its own: on phones the board around it is overflow: hidden */
+.pane-chapter { display: flex; flex-direction: column; gap: 0.7rem; min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; position: relative; }
 .pane-chapter > * { flex: none; }
 .ch-strip, .ch-spot, .ch-qa, .ch-accuse { scroll-margin-top: 3.6rem; }
 .ch-head { display: grid; gap: 0.2rem; }
@@ -2076,7 +2089,7 @@ button.bk-ev:hover { filter: brightness(0.96); }
 /* wide screens: the chapter takes the whole board; search and question sit side by side */
 @media (min-width: 700px) and (min-aspect-ratio: 6/5) {
   .chapter-mode .case-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "ch"; }
-  .pane-chapter { grid-area: ch; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; padding: 0 0.3rem 0.8rem; }
+  .pane-chapter { grid-area: ch; max-height: 100%; padding: 0 0.3rem 0.8rem; }
   .chapter-mode .verdict { grid-area: ch; justify-self: end; width: min(32rem, 100%); }
   .ch-search { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); align-items: start; }
   .ch-question { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr); align-items: start; }

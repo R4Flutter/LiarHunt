@@ -31,6 +31,18 @@ if (process.argv.includes("--lock")) {
   Object.keys(old).forEach((n) => { if (old[n] !== lock[n]) fail(`mission ${n}`, "its answers changed. If that's on purpose, run with --lock"); });
 } else fail("lock", "no tools/book1-lock.json yet: run node tools/check-book.mjs --lock");
 
+// The dossier's Timeline: each line unlocks after a real mission, days stay together, and times run forward within a day.
+const mins = (t) => { const m = /^(\d{1,2}):(\d\d) (AM|PM)$/.exec(t); return m ? (+m[1] % 12 + (m[3] === "PM" ? 12 : 0)) * 60 + +m[2] : NaN; };
+const daysSeen = [];
+let last = -1;
+(B.timeline || []).forEach((x, i) => {
+  const [n, day, time, text] = x, where = `timeline line ${i + 1}`;
+  if (x.length !== 4 || !Number.isInteger(n) || n < 1 || n > B.missions.length) fail(where, "needs [mission 1-" + B.missions.length + ", day, time, text]");
+  if (!day || !text) fail(where, "day and text can't be empty");
+  if (daysSeen[daysSeen.length - 1] !== day) { if (daysSeen.includes(day)) fail(where, `"${day}" comes back after another day`); daysSeen.push(day); last = -1; }
+  if (time) { const t = mins(time); if (Number.isNaN(t)) fail(where, `time "${time}" should look like 9:05 PM`); else if (t < last) fail(where, `${time} comes before the line above it`); else last = t; }
+});
+
 const kinds = {};
 B.missions.forEach((m) => m.steps.forEach((k) => { kinds[k.type] = (kinds[k.type] || 0) + 1; }));
 console.log(`Book 1 "${B.title}": ${B.missions.length} missions, ${B.missions.reduce((a, m) => a + m.steps.length, 0)} steps (${Object.entries(kinds).map(([k, v]) => v + " " + k).join(", ")}), ${Object.keys(B.evidence).length} pieces of evidence, ${Object.keys(B.people).length} people.`);
