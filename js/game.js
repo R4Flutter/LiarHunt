@@ -400,10 +400,10 @@
     if (!box) return;
     var list = pastChapters();
     box.hidden = !list.length;
-    box.innerHTML = list.length ? '<h3 class="sec">Past cases <span class="muted small">· missed chapters, half XP</span></h3>' + list.map(function (x) {
+    box.innerHTML = list.length ? '<h3 class="sec">Past cases <span class="muted small">· missed chapters</span></h3>' + list.map(function (x) {
       var c = (x.ed.cases || [])[x.ed.ch - 1] || {};
       return '<button class="past-row" type="button" data-day="' + x.day + '"><span class="past-pin">' + x.ed.ch + "</span><span><b>" + (x.ed.ch === 5 ? "The verdict" : "Chapter " + x.ed.ch) + " · " + esc(c.title || "") +
-        "</b><small>" + esc(x.ed.title) + " · " + WL.formatDate(WL.dateForDay(x.day)) + "</small></span><em>Play · ½ XP</em></button>";
+        "</b><small>" + esc(x.ed.title) + " · " + WL.formatDate(WL.dateForDay(x.day)) + "</small></span><em>Play</em></button>";
     }).join("") : "";
     [].forEach.call(box.querySelectorAll(".past-row"), function (b) {
       b.addEventListener("click", function () {
@@ -4469,7 +4469,7 @@
   $("btn-past").addEventListener("click", function () {
     Snd.play("click");
     var box = $("past-d5"), row = box.querySelector(".past-row");
-    if (box.hidden || !row) { toast("No missed chapters. Miss one and it waits here for 14 days, at half XP."); return; }
+    if (box.hidden || !row) { toast("No missed chapters. Miss one and it waits here for 14 days."); return; }
     box.scrollIntoView({ block: "center" });
     row.focus({ preventScroll: true });
   });
